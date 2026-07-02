@@ -2,10 +2,6 @@ import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 
-const navLinks = [
-  { href: "/", label: "Home" },
-  { href: "/scan", label: "Scan" },
-] as const
 
 export function MarketingNav() {
   return (
@@ -15,15 +11,7 @@ export function MarketingNav() {
           Aura
         </Link>
         <nav className="flex items-center gap-6">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-            >
-              {link.label}
-            </Link>
-          ))}
+         
           <Button asChild size="sm">
             <Link href="/scan">Start scan</Link>
           </Button>

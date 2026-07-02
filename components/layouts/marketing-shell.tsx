@@ -5,6 +5,9 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-svh flex-col">
       <MarketingNav />
       <main className="flex-1">{children}</main>
+      <footer className="">
+        Footer placeholder
+      </footer>
     </div>
   )
 }

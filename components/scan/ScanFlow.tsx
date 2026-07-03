@@ -3,19 +3,26 @@
 import Image from "next/image"
 import { useEffect, useRef, useState } from "react"
 import {
+  IconArrowsMove,
   IconCamera,
   IconCheck,
   IconChevronLeft,
+  IconCrop,
   IconDownload,
   IconFileAnalytics,
+  IconFlipHorizontal,
   IconLoader2,
   IconPhotoScan,
   IconRefresh,
   IconReportAnalytics,
+  IconRotate,
+  IconRotateClockwise,
   IconShieldCheck,
   IconSparkles,
   IconTrash,
   IconUpload,
+  IconZoomIn,
+  IconZoomOut,
 } from "@tabler/icons-react"
 
 import { Button } from "@/components/ui/button"
@@ -49,6 +56,30 @@ type AnalyzeScanResponse = {
   fallback: boolean
   error?: string
   analysis: ScanAnalysis | null
+}
+
+type ImageEditState = {
+  offsetX: number
+  offsetY: number
+  zoom: number
+  rotation: number
+  flipX: boolean
+}
+
+type DragState = {
+  pointerId: number
+  startX: number
+  startY: number
+  originX: number
+  originY: number
+} | null
+
+const defaultImageEdit: ImageEditState = {
+  offsetX: 0,
+  offsetY: 0,
+  zoom: 1,
+  rotation: 0,
+  flipX: false,
 }
 
 const steps: Array<{ id: ScanStep; label: string }> = [
@@ -307,28 +338,186 @@ function CaptureStep({
 function ReviewStep({
   selectedImage,
   inputMethod,
+  imageEdit,
+  onEditChange,
+  onResetEdit,
   onRetake,
   onRemove,
 }: {
   selectedImage: string
   inputMethod: ScanInputMethod
+  imageEdit: ImageEditState
+  onEditChange: (nextEdit: ImageEditState) => void
+  onResetEdit: () => void
   onRetake: () => void
   onRemove: () => void
 }) {
+  const [dragState, setDragState] = useState<DragState>(null)
+
+  function updateEdit(partialEdit: Partial<ImageEditState>) {
+    onEditChange({ ...imageEdit, ...partialEdit })
+  }
+
+  function nudgeImage(deltaX: number, deltaY: number) {
+    updateEdit({
+      offsetX: imageEdit.offsetX + deltaX,
+      offsetY: imageEdit.offsetY + deltaY,
+    })
+  }
+
+  function rotateImage(amount: number) {
+    updateEdit({ rotation: imageEdit.rotation + amount })
+  }
+
+  function startDrag(event: React.PointerEvent<HTMLDivElement>) {
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setDragState({
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: imageEdit.offsetX,
+      originY: imageEdit.offsetY,
+    })
+  }
+
+  function moveDrag(event: React.PointerEvent<HTMLDivElement>) {
+    if (!dragState || dragState.pointerId !== event.pointerId) return
+
+    updateEdit({
+      offsetX: dragState.originX + event.clientX - dragState.startX,
+      offsetY: dragState.originY + event.clientY - dragState.startY,
+    })
+  }
+
+  function endDrag(event: React.PointerEvent<HTMLDivElement>) {
+    if (dragState?.pointerId === event.pointerId) {
+      setDragState(null)
+    }
+  }
+
   return (
     <div className="grid gap-5">
-      <div className="relative aspect-[4/3] overflow-hidden rounded-xl border border-border bg-muted">
+      <div
+        className="relative mx-auto aspect-[4/5] w-full max-w-md touch-none overflow-hidden rounded-xl border border-border bg-muted"
+        onPointerDown={startDrag}
+        onPointerMove={moveDrag}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+      >
         <Image
           src={selectedImage}
           alt="Selected skin scan preview"
           fill
           unoptimized
-          className="object-cover"
+          className="select-none object-contain"
+          draggable={false}
+          style={{
+            transform: `translate(${imageEdit.offsetX}px, ${imageEdit.offsetY}px) scaleX(${imageEdit.flipX ? -1 : 1}) scale(${imageEdit.zoom}) rotate(${imageEdit.rotation}deg)`,
+          }}
         />
+        <div className="pointer-events-none absolute inset-0 bg-background/35" />
+        <div className="pointer-events-none absolute inset-[10%] rounded-full border-2 border-primary/70 shadow-[0_0_0_999px_hsl(var(--background)/0.35)]" />
+        <div className="pointer-events-none absolute left-1/2 top-[10%] h-[80%] w-px -translate-x-1/2 bg-primary/30" />
+        <div className="pointer-events-none absolute left-[10%] top-1/2 h-px w-[80%] -translate-y-1/2 bg-primary/30" />
+        <div className="absolute left-3 top-3 rounded-full border border-border bg-background/90 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
+          <IconArrowsMove className="mr-1 inline size-3" />
+          Drag to position
+        </div>
       </div>
       <div className="rounded-lg border border-border bg-muted p-4 text-sm text-muted-foreground">
-        Image source: {inputMethod === "camera" ? "Camera capture" : "Image upload"}. Continue
-        only if the image is clear and you consent to cosmetic analysis.
+        Image source: {inputMethod === "camera" ? "Camera capture" : "Image upload"}. Position
+        your face inside the guide, then continue only if the image is clear and you consent to
+        cosmetic analysis.
+      </div>
+      <div className="grid gap-4 rounded-xl border border-border bg-card p-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="grid gap-2 text-sm font-medium">
+            Zoom
+            <input
+              type="range"
+              min="1"
+              max="3"
+              step="0.05"
+              value={imageEdit.zoom}
+              onChange={(event) => updateEdit({ zoom: Number(event.target.value) })}
+              className="w-full accent-primary"
+            />
+          </label>
+          <label className="grid gap-2 text-sm font-medium">
+            Horizontal position
+            <input
+              type="range"
+              min="-180"
+              max="180"
+              step="1"
+              value={imageEdit.offsetX}
+              onChange={(event) => updateEdit({ offsetX: Number(event.target.value) })}
+              className="w-full accent-primary"
+            />
+          </label>
+          <label className="grid gap-2 text-sm font-medium">
+            Vertical position
+            <input
+              type="range"
+              min="-220"
+              max="220"
+              step="1"
+              value={imageEdit.offsetY}
+              onChange={(event) => updateEdit({ offsetY: Number(event.target.value) })}
+              className="w-full accent-primary"
+            />
+          </label>
+          <label className="grid gap-2 text-sm font-medium">
+            Rotation
+            <input
+              type="range"
+              min="-180"
+              max="180"
+              step="1"
+              value={imageEdit.rotation}
+              onChange={(event) => updateEdit({ rotation: Number(event.target.value) })}
+              className="w-full accent-primary"
+            />
+          </label>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => updateEdit({ zoom: Math.max(1, imageEdit.zoom - 0.1) })}>
+            <IconZoomOut className="size-4" />
+            Zoom Out
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => updateEdit({ zoom: Math.min(3, imageEdit.zoom + 0.1) })}>
+            <IconZoomIn className="size-4" />
+            Zoom In
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => rotateImage(-90)}>
+            <IconRotate className="size-4" />
+            Rotate Left
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => rotateImage(90)}>
+            <IconRotateClockwise className="size-4" />
+            Rotate Right
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => updateEdit({ flipX: !imageEdit.flipX })}>
+            <IconFlipHorizontal className="size-4" />
+            Flip
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => nudgeImage(0, -12)}>
+            Up
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => nudgeImage(0, 12)}>
+            Down
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => nudgeImage(-12, 0)}>
+            Left
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => nudgeImage(12, 0)}>
+            Right
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={onResetEdit}>
+            <IconCrop className="size-4" />
+            Reset
+          </Button>
+        </div>
       </div>
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button type="button" variant="outline" onClick={onRetake}>
@@ -492,6 +681,7 @@ export function ScanFlow() {
   const [currentStep, setCurrentStep] = useState<ScanStep>("intro")
   const [inputMethod, setInputMethod] = useState<ScanInputMethod>(null)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  const [imageEdit, setImageEdit] = useState<ImageEditState>(defaultImageEdit)
   const [selectedFileName, setSelectedFileName] = useState("aurora-skin-scan.jpg")
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [analysisResult, setAnalysisResult] = useState<ScanAnalysis | null>(null)
@@ -574,6 +764,7 @@ export function ScanFlow() {
     context.drawImage(video, 0, 0, width, height)
     setSelectedImage(canvas.toDataURL("image/jpeg", 0.92))
     setSelectedFileName("aurora-skin-scan.jpg")
+    setImageEdit(defaultImageEdit)
     setCameraError(null)
     setAnalysisResult(null)
     setAnalysisError(null)
@@ -596,6 +787,7 @@ export function ScanFlow() {
       if (typeof reader.result === "string") {
         setSelectedImage(reader.result)
         setSelectedFileName(file.name)
+        setImageEdit(defaultImageEdit)
         setAnalysisResult(null)
         setAnalysisError(null)
         setInputMethod("upload")
@@ -610,6 +802,7 @@ export function ScanFlow() {
   function retakeImage() {
     setSelectedImage(null)
     setInputMethod(null)
+    setImageEdit(defaultImageEdit)
     setAnalysisResult(null)
     setAnalysisError(null)
     setCurrentStep("capture")
@@ -618,6 +811,7 @@ export function ScanFlow() {
   function removeImage() {
     setSelectedImage(null)
     setInputMethod(null)
+    setImageEdit(defaultImageEdit)
     setAnalysisResult(null)
     setAnalysisError(null)
     setCurrentStep("capture")
@@ -643,6 +837,7 @@ export function ScanFlow() {
     stopCamera()
     setSelectedImage(null)
     setSelectedFileName("aurora-skin-scan.jpg")
+    setImageEdit(defaultImageEdit)
     setInputMethod(null)
     setCameraError(null)
     setAnalysisResult(null)
@@ -659,7 +854,9 @@ export function ScanFlow() {
     setAnalysisError(null)
 
     try {
-      const imageFile = await dataUrlToFile(selectedImage, selectedFileName)
+      const editedImage = await createEditedImageDataUrl(selectedImage, imageEdit)
+      setSelectedImage(editedImage)
+      const imageFile = await dataUrlToFile(editedImage, selectedFileName)
       const formData = new FormData()
       formData.append("image", imageFile)
 
@@ -717,6 +914,9 @@ export function ScanFlow() {
               <ReviewStep
                 selectedImage={selectedImage}
                 inputMethod={inputMethod}
+                imageEdit={imageEdit}
+                onEditChange={setImageEdit}
+                onResetEdit={() => setImageEdit(defaultImageEdit)}
                 onRetake={retakeImage}
                 onRemove={removeImage}
               />
@@ -797,6 +997,42 @@ async function dataUrlToFile(dataUrl: string, fileName: string) {
   return new File([blob], ensureImageExtension(fileName, type), { type })
 }
 
+async function createEditedImageDataUrl(dataUrl: string, edit: ImageEditState) {
+  const image = await loadEditableImage(dataUrl)
+  const canvas = document.createElement("canvas")
+  const width = 900
+  const height = 1125
+  canvas.width = width
+  canvas.height = height
+
+  const context = canvas.getContext("2d")
+  if (!context) return dataUrl
+
+  const baseScale = Math.min(width / image.naturalWidth, height / image.naturalHeight)
+  const drawWidth = image.naturalWidth * baseScale
+  const drawHeight = image.naturalHeight * baseScale
+
+  context.fillStyle = "white"
+  context.fillRect(0, 0, width, height)
+  context.imageSmoothingEnabled = true
+  context.imageSmoothingQuality = "high"
+  context.translate(width / 2 + edit.offsetX, height / 2 + edit.offsetY)
+  context.rotate((edit.rotation * Math.PI) / 180)
+  context.scale((edit.flipX ? -1 : 1) * edit.zoom, edit.zoom)
+  context.drawImage(image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight)
+
+  return canvas.toDataURL("image/jpeg", 0.92)
+}
+
+function loadEditableImage(dataUrl: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new globalThis.Image()
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error("Selected image could not be edited."))
+    image.src = dataUrl
+  })
+}
+
 async function requestCameraStream() {
   const preferredConstraints: MediaStreamConstraints = {
     audio: false,
@@ -857,9 +1093,9 @@ function getCameraErrorMessage(error: unknown) {
 }
 
 function ensureImageExtension(fileName: string, mimeType: string) {
-  if (/\.(jpe?g|png|webp)$/i.test(fileName)) return fileName
+  const baseName = fileName.replace(/\.(jpe?g|png|webp)$/i, "")
 
-  if (mimeType === "image/png") return `${fileName}.png`
-  if (mimeType === "image/webp") return `${fileName}.webp`
-  return `${fileName}.jpg`
+  if (mimeType === "image/png") return `${baseName}.png`
+  if (mimeType === "image/webp") return `${baseName}.webp`
+  return `${baseName}.jpg`
 }

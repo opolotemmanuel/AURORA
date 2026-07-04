@@ -27,18 +27,19 @@ Use only what is in `package.json` today. Before using any library, check `packa
 - **Auth:** better-auth (email OTP, email/password, admin, organizations) via `lib/auth/`
 - **Email:** Resend for OTP and transactional mail (`lib/email/`)
 - **Validation:** Zod for server action schemas
+- **Motion:** `motion` (beUI blocks) and `react-easy-crop` (scan crop step)
+- **On-device vision:** `@mediapipe/tasks-vision` — face detection + lighting quality gate (`lib/scan/mediapipe.ts`, `lib/scan/quality-gate.ts`)
+- **PDF:** `@react-pdf/renderer` — server-generated skin reports (`lib/pdf/`, `app/api/reports/[scanId]/pdf/route.ts`)
 - **Theme:** `next-themes` via `components/theme-provider.tsx`; tokens in `app/globals.css`
 - **Icons:** `@tabler/icons-react` only — no new icon libraries
 - **Fonts:** Inter (body), Roboto (headings), Cormorant Garamond (display/hero), Geist Mono (code) — loaded in `app/layout.tsx`
 
 ## Planned Stack
 
-These are target technologies for the product. **Do not install packages for planned stack items without user approval** — except adding shadcn UI components via CLI (see Docs and Dependencies).
+These are target technologies not yet fully wired. **Do not install packages for planned stack items without user approval** — except adding shadcn UI components via CLI (see Docs and Dependencies).
 
-- **AI provider:** Google Gemini via AI Studio API key — single swappable adapter module
-- **File storage:** S3-compatible object storage (e.g. Cloudflare R2), signed URLs
-- **PDF generation:** React-PDF (or headless-Chrome render), generated server-side
-- **On-device check:** MediaPipe / TF.js face + lighting quality gate before upload
+- **AI provider:** Google Gemini via AI Studio API key — single swappable adapter module (`lib/ai/adapter.ts`; today uses `lib/scan/simulate-analysis.ts` as a mock)
+- **File storage:** S3-compatible object storage (e.g. Cloudflare R2) for PDF `storageKey` and optional image retention
 - **Hosting:** Vercel
 - **CI:** GitHub Actions — lint, type-check, test on every PR
 
@@ -90,22 +91,26 @@ Group files by what they do, not by file type alone:
 
 ```
 lib/
-  ai/           # adapter, types, prompts — all AI logic here
+  ai/           # adapter, types, prompts — planned; use lib/scan/simulate-analysis.ts until built
   auth/         # better-auth config, session helpers, server utilities
-  db/           # Prisma client (when added)
+  db/           # Prisma client + connection helpers
+  pdf/          # React-PDF report document + generate-skin-report
+  scan/         # types, quality gate, mediapipe, mock analysis, persist, save action
+  products/     # catalog schemas, admin actions, seed map
+  tokens/       # wallet grant/debit helpers
 components/
   ui/           # shared shadcn primitives only
   layouts/      # route-group shells (marketing, scan, auth, onboarding, dashboard)
   auth/         # auth-specific UI (login form, OTP input, etc.)
-  scan/         # scan flow UI
-  report/       # report display UI
+  scan/         # scan wizard, report layout, modal, camera/upload panels
+  reports/      # reports list client (/reports)
 app/
   (marketing)/  # landing — top navbar
-  (scan)/       # scan flow — scan-specific chrome
+  (scan)/       # scan flow — /scan
   (auth)/       # login, verify — centered card
   (onboarding)/ # onboarding steps — no nav/sidebar
   (dashboard)/  # user + admin — sidebar
-  api/          # API routes — outside route groups
+  api/          # auth, report PDF, etc. — outside route groups
 ```
 
 **Route groups**
@@ -115,7 +120,7 @@ Next.js route groups `(name)` organize layouts without affecting URLs. Each grou
 | Group | Shell | Chrome | Routes |
 |-------|-------|--------|--------|
 | `(marketing)` | `MarketingShell` | Top navbar | `/` |
-| `(scan)` | `ScanShell` | Scan header/progress — not marketing nav | `/scan/*` |
+| `(scan)` | `ScanShell` | Minimal chrome — wizard only | `/scan` |
 | `(auth)` | `AuthShell` | Centered card, logo only | `/login`, `/verify` |
 | `(onboarding)` | `OnboardingShell` | No navbar/sidebar — step flow only | `/onboarding/*` |
 | `(dashboard)` | `DashboardShell` | Sidebar + main | `/dashboard`, `/admin`, `/reports`, `/settings` |
@@ -198,7 +203,31 @@ Theme is configured in `components.json` (`radix-sera`, `taupe`) and `app/global
 
 - Use `next/image` for UI images — no raw `<img>` unless there is a documented exception.
 - Use assets from `public/` (or add assets there); do not hotlink external images in production UI.
-- Scan/upload, R2, and privacy rules are covered under Planned Stack and Non-Negotiables.
+- **Scan exception:** blob URLs and live camera previews use `<img>` in `components/scan/` (object URLs and `HTMLVideoElement` frames cannot use `next/image`). Photos are not uploaded or stored by default.
+
+## Scan flow
+
+Implemented at `/scan` via `components/scan/scan-wizard.tsx`.
+
+**Wizard steps:** `capture` → `edit` (crop) → `quality` → `analyzing` → `results`
+
+| Concern | Location | Notes |
+| -------- | -------- | ----- |
+| UI shell | `scan-wizard.tsx`, `scan-capture-panel.tsx`, `scan-camera-view.tsx` | Camera mounts only when Camera tab is active |
+| Quality gate | `lib/scan/quality-gate.ts`, `lib/scan/mediapipe.ts` | VIDEO mode for live camera; IMAGE mode for stills |
+| Analysis (mock) | `lib/scan/simulate-analysis.ts` | Replace with `lib/ai/adapter.ts` when built |
+| Results layout | `scan-report-layout.tsx`, `skin-report-content.tsx` | Two-column desktop; image left, bands right |
+| Report modal | `scan-report-modal.tsx` | `ResponsiveDialog`; same content as results |
+| Persist | `lib/scan/actions.ts`, `lib/scan/persist.ts` | `saveScanResultAction` — no image; `imageRetained: false` |
+| PDF download | `lib/pdf/`, `app/api/reports/[scanId]/pdf/` | Generated on demand from DB; text-only (no photo) |
+| History | `app/(dashboard)/reports/`, `components/reports/` | Modal + PDF per saved scan |
+| Tokens | `lib/tokens/wallet.ts`, `SCAN_TOKEN_COST` env | Debited on save (`scan_debit`) |
+
+**Privacy:** Cropped photo lives in browser memory (`URL.createObjectURL`) for the session only. Revoke on rescan. Never write `imageStorageKey` unless explicit opt-in retention is added later.
+
+**Output:** Coarse `AssessmentBand` labels only — no fake health percentages. Use `formatBand()` / `formatSkinHeadline()` from `lib/scan/format.ts`.
+
+**Desktop camera:** Resizable embedded preview via `hooks/use-scan-camera-height.ts` (preference in `localStorage`).
 
 ## TypeScript
 
@@ -222,13 +251,16 @@ Theme is configured in `components.json` (`radix-sera`, `taupe`) and `app/global
 ## Prisma
 
 - PostgreSQL on Neon; schema in `prisma/schema.prisma`; client from `generated/prisma` via `lib/db/client.ts`.
+- `lib/db/client.ts` normalizes `DATABASE_URL` (strips `channel_binding`, sets `sslmode=verify-full` for Neon + node-pg).
+- Key domain models: `Scan`, `ScanResult`, `Report`, `Product`, `TokenWallet`, `TokenLedger`.
 - Follow workspace Prisma conventions: relations on both sides, `createdAt`/`updatedAt`, indexes on frequently queried fields.
 - Run `npx prisma migrate dev` after schema changes.
 
 ## AI Adapter
 
-- All vision/text model calls go through **one adapter file** (e.g. `lib/ai/adapter.ts`).
-- Default provider: **Google Gemini** (AI Studio API key via env, e.g. `GEMINI_API_KEY`) — vision model such as Gemini 2.5 Flash.
+- All vision/text model calls go through **one adapter file** (`lib/ai/adapter.ts` — **not built yet**).
+- **Interim:** `lib/scan/simulate-analysis.ts` returns mock `SkinAssessment` client-side; `saveScanResultAction` persists the result server-side.
+- When implementing the adapter: default provider **Google Gemini** (`GEMINI_API_KEY`); vision model such as Gemini 2.5 Flash.
 - The adapter exposes a stable app-level interface (e.g. `analyzeSkin(image): SkinAssessment`); swap provider by changing adapter internals only.
 - Read [Google AI Gemini API docs](https://ai.google.dev/gemini-api/docs) at implementation time — model IDs and APIs change.
 - Coarse band output only (see Non-Negotiables).

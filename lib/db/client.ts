@@ -13,9 +13,19 @@ function normalizeConnectionString(connectionString: string) {
     const url = new URL(connectionString)
     // channel_binding=require can cause timeouts with node-pg + Neon pooler.
     url.searchParams.delete("channel_binding")
-    if (!url.searchParams.has("sslmode")) {
-      url.searchParams.set("sslmode", "require")
+
+    const sslmode = url.searchParams.get("sslmode")
+    // pg v8 treats require/prefer/verify-ca as verify-full; set explicitly to
+    // avoid the deprecation warning and keep strict SSL with Neon.
+    if (
+      !sslmode ||
+      sslmode === "require" ||
+      sslmode === "prefer" ||
+      sslmode === "verify-ca"
+    ) {
+      url.searchParams.set("sslmode", "verify-full")
     }
+
     return url.toString()
   } catch {
     return connectionString

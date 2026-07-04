@@ -81,7 +81,9 @@ export function ScanCapturePanel({
           <ScanUploadPanel onImageSelected={onImageSelected} />
         </TabsContent>
         <TabsContent value="camera" className="mt-0">
-          <ScanCameraView onCapture={onImageSelected} />
+          {mode === "camera" ? (
+            <ScanCameraView onCapture={onImageSelected} />
+          ) : null}
         </TabsContent>
       </Tabs>
     </div>

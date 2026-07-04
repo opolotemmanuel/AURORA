@@ -95,7 +95,6 @@ function isFaceCentered(
 
 export async function runQualityGate(
   source: ImageSource,
-  videoTimestampMs?: number,
 ): Promise<QualityCheckResult> {
   const { width, height } = getSourceSize(source)
   const issues: string[] = []
@@ -106,10 +105,7 @@ export async function runQualityGate(
 
   let faces: Awaited<ReturnType<typeof detectFaces>> = []
   try {
-    faces = await detectFaces(
-      source,
-      source instanceof HTMLVideoElement ? videoTimestampMs : undefined,
-    )
+    faces = await detectFaces(source)
   } catch {
     issues.push("Face detection is unavailable. Try again or upload a photo.")
   }

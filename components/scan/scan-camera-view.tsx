@@ -17,6 +17,7 @@ import {
   SCAN_CAMERA_HEIGHT,
   useScanCameraHeight,
 } from "@/hooks/use-scan-camera-height"
+import { resetVideoFaceDetector } from "@/lib/scan/mediapipe"
 import { runQualityGate } from "@/lib/scan/quality-gate"
 import type { QualityCheckResult } from "@/lib/scan/types"
 import { cn } from "@/lib/utils"
@@ -125,6 +126,7 @@ export function ScanCameraView({
       setReady(false)
       setError(null)
       stopStream()
+      resetVideoFaceDetector()
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -158,22 +160,20 @@ export function ScanCameraView({
     return () => {
       cancelled = true
       stopStream()
+      resetVideoFaceDetector()
     }
   }, [facingMode, stopStream])
 
   useEffect(() => {
     if (!ready) return
 
-    let frame = 0
-
     const interval = window.setInterval(async () => {
       const video = videoRef.current
       if (!video || video.videoWidth === 0 || checkingRef.current) return
 
       checkingRef.current = true
-      frame += 1
       try {
-        const result = await runQualityGate(video, frame)
+        const result = await runQualityGate(video)
         setQuality(result)
       } catch {
         // ignore transient detection errors during live preview

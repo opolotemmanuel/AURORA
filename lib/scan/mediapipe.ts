@@ -10,8 +10,26 @@ type ImageSource =
   | HTMLVideoElement
   | ImageBitmap
 
+const VIDEO_FRAME_MS = 33
+
 let imageDetectorPromise: Promise<FaceDetector> | null = null
+let videoDetector: FaceDetector | null = null
 let videoDetectorPromise: Promise<FaceDetector> | null = null
+let nextVideoTimestampMs = 0
+
+export function resetVideoFaceDetector() {
+  if (videoDetector) {
+    videoDetector.close()
+    videoDetector = null
+  }
+  videoDetectorPromise = null
+  nextVideoTimestampMs = 0
+}
+
+function bumpVideoTimestamp() {
+  nextVideoTimestampMs += VIDEO_FRAME_MS
+  return nextVideoTimestampMs
+}
 
 async function getImageFaceDetector(): Promise<FaceDetector> {
   if (!imageDetectorPromise) {
@@ -42,7 +60,7 @@ async function getVideoFaceDetector(): Promise<FaceDetector> {
         "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm",
       )
 
-      return FaceDetector.createFromOptions(vision, {
+      const detector = await FaceDetector.createFromOptions(vision, {
         baseOptions: {
           modelAssetPath:
             "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
@@ -51,6 +69,9 @@ async function getVideoFaceDetector(): Promise<FaceDetector> {
         runningMode: "VIDEO",
         minDetectionConfidence: 0.5,
       })
+
+      videoDetector = detector
+      return detector
     })()
   }
 
@@ -72,18 +93,36 @@ function mapDetections(
   })
 }
 
+async function detectFacesInVideo(
+  source: HTMLVideoElement,
+): Promise<FaceDetection[]> {
+  const run = async () => {
+    const detector = await getVideoFaceDetector()
+    const result = detector.detectForVideo(source, bumpVideoTimestamp())
+    return mapDetections(result.detections)
+  }
+
+  try {
+    return await run()
+  } catch {
+    resetVideoFaceDetector()
+    try {
+      return await run()
+    } catch {
+      return []
+    }
+  }
+}
+
 export async function detectFaces(
   source: ImageSource,
-  timestampMs = performance.now(),
 ): Promise<FaceDetection[]> {
   if (source instanceof HTMLVideoElement) {
     if (source.videoWidth === 0 || source.videoHeight === 0) {
       return []
     }
 
-    const detector = await getVideoFaceDetector()
-    const result = detector.detectForVideo(source, timestampMs)
-    return mapDetections(result.detections)
+    return detectFacesInVideo(source)
   }
 
   const detector = await getImageFaceDetector()

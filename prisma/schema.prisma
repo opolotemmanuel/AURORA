@@ -1,0 +1,409 @@
+// Aura — better-auth + domain models
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── better-auth core ───────────────────────────────────────────────────────
+
+model User {
+  id                  String    @id
+  name                String
+  email               String
+  emailVerified       Boolean   @default(false)
+  image               String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  role                String?   @default("user")
+  banned              Boolean?  @default(false)
+  banReason           String?
+  banExpires          DateTime?
+  onboardingCompleted Boolean?  @default(false)
+
+  sessions      Session[]
+  accounts      Account[]
+  members       Member[]
+  invitations   Invitation[] @relation("Inviter")
+  profile       UserProfile?
+  location      UserLocation?
+  tokenWallet   TokenWallet?
+  tokenLedgers  TokenLedger[] @relation("TokenLedgerUser")
+  grantedTokens TokenLedger[] @relation("TokenGrantedBy")
+  scans         Scan[]
+  products      Product[]     @relation("ProductCreator")
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id             String   @id
+  expiresAt      DateTime
+  token          String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  ipAddress      String?
+  userAgent      String?
+  userId         String
+  impersonatedBy String?
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ─── better-auth organization plugin ────────────────────────────────────────
+
+model Organization {
+  id        String   @id
+  name      String
+  slug      String   @unique
+  logo      String?
+  metadata  String?
+  createdAt DateTime @default(now())
+
+  members     Member[]
+  invitations Invitation[]
+  products    Product[]
+  scans       Scan[]
+
+  @@map("organization")
+}
+
+model Member {
+  id             String       @id
+  userId         String
+  organizationId String
+  role           String       @default("member")
+  createdAt      DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@map("member")
+}
+
+model Invitation {
+  id             String       @id
+  email          String
+  inviterId      String
+  organizationId String
+  role           String?
+  status         String       @default("pending")
+  createdAt      DateTime     @default(now())
+  expiresAt      DateTime
+  inviter        User         @relation("Inviter", fields: [inviterId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+  @@map("invitation")
+}
+
+// ─── Aura domain ────────────────────────────────────────────────────────────
+
+enum BiologicalSex {
+  female
+  male
+  intersex
+  prefer_not_to_say
+}
+
+enum SkinType {
+  oily
+  dry
+  combination
+  sensitive
+  normal
+}
+
+enum FitzpatrickBand {
+  I
+  II
+  III
+  IV
+  V
+  VI
+}
+
+enum AgeBand {
+  under_18
+  age_18_24
+  age_25_34
+  age_35_44
+  age_45_54
+  age_55_64
+  age_65_plus
+}
+
+enum LocationSource {
+  manual
+  geocode
+  browser
+}
+
+enum ClimateBand {
+  low
+  moderate
+  high
+  extreme
+}
+
+enum TokenLedgerReason {
+  signup_bonus
+  admin_grant
+  scan_debit
+  refund
+  adjustment
+}
+
+enum AiProvider {
+  gemini
+  vercel_ai
+  openrouter
+  other
+}
+
+enum ScanStatus {
+  pending
+  processing
+  completed
+  failed
+  cancelled
+}
+
+enum AssessmentBand {
+  minimal
+  mild
+  moderate
+  elevated
+  not_assessed
+}
+
+enum ReportFormat {
+  pdf
+  json
+}
+
+model UserProfile {
+  id                     String           @id @default(cuid())
+  userId                 String           @unique
+  user                   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dateOfBirth            DateTime?
+  ageBand                AgeBand?
+  biologicalSex          BiologicalSex?
+  skinType               SkinType?
+  fitzpatrickBand        FitzpatrickBand?
+  primaryConcerns        String[]         @default([])
+  skinGoals              String[]         @default([])
+  allergies              String?
+  currentRoutine         Json?
+  previousPrescriptions  Json?
+  medications            Json?
+  lifestyleFactors       Json?
+  consentVersion         String?
+  consentAcceptedAt      DateTime?
+  photoProcessingConsent Boolean          @default(false)
+  marketingConsent       Boolean          @default(false)
+  onboardingStep         String           @default("welcome")
+  onboardingCompletedAt  DateTime?
+  expertReviewRequested  Boolean          @default(false)
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+
+  @@index([onboardingCompletedAt])
+  @@map("user_profile")
+}
+
+model UserLocation {
+  id              String         @id @default(cuid())
+  userId          String         @unique
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  city            String?
+  region          String?
+  country         String?
+  postalCode      String?
+  latitude        Float?
+  longitude       Float?
+  timezone        String?
+  locationSource  LocationSource @default(manual)
+  uvIndexBand     ClimateBand?
+  humidityBand    ClimateBand?
+  temperatureBand ClimateBand?
+  climateZone     String?
+  seasonBand      String?
+  lastSyncedAt    DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@map("user_location")
+}
+
+model TokenWallet {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance          Int      @default(0)
+  lifetimeUsed     Int      @default(0)
+  lifetimeGranted  Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("token_wallet")
+}
+
+model TokenLedger {
+  id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation("TokenLedgerUser", fields: [userId], references: [id], onDelete: Cascade)
+  delta       Int
+  reason      TokenLedgerReason
+  scanId      String?
+  scan        Scan?             @relation(fields: [scanId], references: [id], onDelete: SetNull)
+  grantedById String?
+  grantedBy   User?             @relation("TokenGrantedBy", fields: [grantedById], references: [id], onDelete: SetNull)
+  provider    AiProvider?
+  metadata    Json?
+  createdAt   DateTime          @default(now())
+
+  @@index([userId])
+  @@index([scanId])
+  @@map("token_ledger")
+}
+
+model Product {
+  id                String        @id @default(cuid())
+  sku               String        @unique
+  name              String
+  slug              String        @unique
+  description       String
+  category          String
+  ingredients       String?
+  targetConcerns    String[]      @default([])
+  suitableSkinTypes String[]      @default([])
+  climateTags       String[]      @default([])
+  imageUrl          String?
+  isActive          Boolean       @default(true)
+  createdById       String
+  createdBy         User          @relation("ProductCreator", fields: [createdById], references: [id])
+  organizationId    String?
+  organization      Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([isActive])
+  @@index([organizationId])
+  @@map("product")
+}
+
+model Scan {
+  id               String        @id @default(cuid())
+  userId           String
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId   String?
+  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  status           ScanStatus    @default(pending)
+  profileSnapshot  Json?
+  locationSnapshot Json?
+  consentSnapshot  Json?
+  imageRetained    Boolean       @default(false)
+  imageStorageKey  String?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  usage            ScanUsage?
+  result           ScanResult?
+  report           Report?
+  tokenLedgers     TokenLedger[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("scan")
+}
+
+model ScanUsage {
+  id                  String     @id @default(cuid())
+  scanId              String     @unique
+  scan                Scan       @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  provider            AiProvider
+  modelId             String
+  inputTokens         Int        @default(0)
+  outputTokens        Int        @default(0)
+  cachedTokens        Int        @default(0)
+  reasoningTokens     Int?
+  totalTokens         Int        @default(0)
+  estimatedCostMicros Int?
+  latencyMs           Int?
+  rawUsage            Json?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  @@map("scan_usage")
+}
+
+model ScanResult {
+  id                  String         @id @default(cuid())
+  scanId              String         @unique
+  scan                Scan           @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  overallBand         AssessmentBand @default(not_assessed)
+  dimensions          Json?
+  summary             String?
+  recommendations     Json?
+  disclaimerVersion   String         @default("1.0")
+  reportFormatVersion String         @default("1.0")
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  @@map("scan_result")
+}
+
+model Report {
+  id          String       @id @default(cuid())
+  scanId      String       @unique
+  scan        Scan         @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  format      ReportFormat @default(pdf)
+  storageKey  String?
+  generatedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("report")
+}

@@ -23,6 +23,10 @@ Use only what is in `package.json` today. Before using any library, check `packa
 
 - **Framework:** Next.js 16 (App Router), React 19, TypeScript 5
 - **UI:** shadcn v4 (`radix-sera`), Tailwind CSS 4, `class-variance-authority`, `cn()` from `lib/utils.ts`
+- **Database:** PostgreSQL (Neon) + Prisma 7 (`@prisma/adapter-pg`, client in `generated/prisma`)
+- **Auth:** better-auth (email OTP, email/password, admin, organizations) via `lib/auth/`
+- **Email:** Resend for OTP and transactional mail (`lib/email/`)
+- **Validation:** Zod for server action schemas
 - **Theme:** `next-themes` via `components/theme-provider.tsx`; tokens in `app/globals.css`
 - **Icons:** `@tabler/icons-react` only — no new icon libraries
 - **Fonts:** Inter (body), Roboto (headings), Cormorant Garamond (display/hero), Geist Mono (code) — loaded in `app/layout.tsx`
@@ -31,8 +35,6 @@ Use only what is in `package.json` today. Before using any library, check `packa
 
 These are target technologies for the product. **Do not install packages for planned stack items without user approval** — except adding shadcn UI components via CLI (see Docs and Dependencies).
 
-- **Database:** PostgreSQL + Prisma (schema conventions, migrations)
-- **Auth:** better-auth (email OTP + sessions)
 - **AI provider:** Google Gemini via AI Studio API key — single swappable adapter module
 - **File storage:** S3-compatible object storage (e.g. Cloudflare R2), signed URLs
 - **PDF generation:** React-PDF (or headless-Chrome render), generated server-side
@@ -53,7 +55,20 @@ These are target technologies for the product. **Do not install packages for pla
 - Before implementing a framework or library feature, read the **official latest docs** — do not rely on training-data assumptions. For Next.js, use `node_modules/next/dist/docs/`.
 - **Never** run `npm install` or bump package versions without user approval.
 - **Allowed without asking:** add shadcn UI primitives via CLI, e.g. `npx shadcn@latest add <component>` — components land in `components/ui/`.
+- **Allowed without asking:** add beUI (`@beui/*`) and Watermelon UI (`@watermelon/*`) blocks via shadcn registry CLI — animated components land in `components/motion/` or feature folders; may add `framer-motion` / `motion` as transitive deps.
 - If a new library would significantly help, recommend it, explain why, and wait for approval.
+
+## Component sources
+
+Use the right registry for each UI need. Always style with semantic theme tokens (`bg-background`, `text-muted-foreground`, `border-border`, etc.) — never bypass taupe / radix-sera.
+
+| Source | Registry | Use for |
+|--------|----------|---------|
+| shadcn v4 | default CLI | Primitives: button, input, card, form, table, dialog, etc. in `components/ui/` |
+| [beUI](https://beui.dev/) | `@beui` in `components.json` | Motion blocks: OTP input, theme toggle, tabs, drawers — `npx shadcn@latest add @beui/<name>` |
+| [Watermelon UI](https://ui.watermelon.sh/home) | `@watermelon` in `components.json` | Richer blocks and dashboards — `npx shadcn@latest add @watermelon/<name>` |
+
+Pick beUI for auth motion (OTP, transitions); Watermelon for data-heavy admin blocks when available; shadcn for everything else.
 
 ## Decision Making
 
@@ -198,16 +213,17 @@ Theme is configured in `components.json` (`radix-sera`, `taupe`) and `app/global
 
 ## Authentication
 
-- Use **better-auth** exclusively — do not build custom session/JWT auth.
-- Until installed: document intended integration points (server routes, session checks, email OTP) but do not add the package.
-- When implementing, read [better-auth.com/docs](https://www.better-auth.com/docs) as the source of truth.
+- Use **better-auth** exclusively — config in `lib/auth/server.ts`, client in `lib/auth/client.ts`, session helpers in `lib/auth/session.ts`.
+- Plugins: email OTP, email/password, admin (ban, impersonate, roles), organization (companies).
+- API handler: `app/api/auth/[...all]/route.ts`.
+- Route protection: thin cookie check in root [`proxy.ts`](proxy.ts) (Next.js 16+; `middleware.ts` is deprecated). Full session, onboarding, and role checks in route-group layouts via `lib/auth/session.ts`.
+- Read [better-auth.com/docs](https://www.better-auth.com/docs) as the source of truth.
 
 ## Prisma
 
-- Target: PostgreSQL + Prisma ORM.
+- PostgreSQL on Neon; schema in `prisma/schema.prisma`; client from `generated/prisma` via `lib/db/client.ts`.
 - Follow workspace Prisma conventions: relations on both sides, `createdAt`/`updatedAt`, indexes on frequently queried fields.
-- **Do not install Prisma or run migrations** until user approves.
-- When approved: schema lives in `prisma/schema.prisma`; use Prisma Client from a single module (e.g. `lib/db.ts`).
+- Run `npx prisma migrate dev` after schema changes.
 
 ## AI Adapter
 

@@ -13,6 +13,8 @@ export function VerifyOtpForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const email = searchParams.get("email") ?? ""
+  const mode = searchParams.get("mode") ?? "sign-in"
+  const name = searchParams.get("name") ?? ""
   const callbackUrl = searchParams.get("callbackUrl") ?? "/onboarding"
   const [otp, setOtp] = useState("")
   const [status, setStatus] = useState<"idle" | "error" | "success">("idle")
@@ -32,6 +34,7 @@ export function VerifyOtpForm() {
     const { data, error: signInError } = await authClient.signIn.emailOtp({
       email,
       otp: code,
+      ...(mode === "sign-up" && name ? { name } : {}),
     })
 
     if (signInError) {
@@ -68,8 +71,8 @@ export function VerifyOtpForm() {
 
   if (!email) {
     return (
-      <div className="space-y-4 rounded-lg border border-border bg-card p-6 text-center">
-        <p className="text-sm text-muted-foreground">No email provided.</p>
+      <div className="border-border bg-card space-y-4 rounded-lg border p-6 text-center">
+        <p className="text-muted-foreground text-sm">No email provided.</p>
         <Button asChild>
           <a href="/login">Back to sign in</a>
         </Button>
@@ -78,11 +81,12 @@ export function VerifyOtpForm() {
   }
 
   return (
-    <div className="space-y-6 rounded-lg border border-border bg-card p-6">
+    <div className="border-border bg-card mx-auto w-full max-w-sm space-y-6 rounded-lg border p-6">
       <div className="space-y-2 text-center">
         <h1 className="font-heading text-xl font-medium">Verify code</h1>
-        <p className="text-sm text-muted-foreground">
-          Enter the 6-digit code sent to <span className="text-foreground">{email}</span>
+        <p className="text-muted-foreground text-sm">
+          Enter the 6-digit code sent to{" "}
+          <span className="text-foreground">{email}</span>
         </p>
       </div>
 

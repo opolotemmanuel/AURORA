@@ -1,7 +1,9 @@
+import { Features3 } from "@/components/ui/feature-3"
+
 export function LandingBenefits() {
   return (
-    <section aria-label="Benefits" className="py-16">
-     benefits section
-    </section>
+    <div id="benefits">
+      <Features3 />
+    </div>
   )
 }

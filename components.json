@@ -23,6 +23,6 @@
   "menuAccent": "subtle",
   "registries": {
     "@beui": "https://beui.dev/r/{name}.json",
-    "@watermelon": "https://registry.watermelon.sh/{name}.json"
+    "@watermelon": "https://raw.githubusercontent.com/WatermelonCorp/watermellon-registry/main/public/r/{name}.json"
   }
 }

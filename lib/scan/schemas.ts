@@ -38,4 +38,13 @@ export const saveScanResultSchema = z.object({
     .enum(["image/jpeg", "image/png", "image/webp"])
     .optional()
     .default("image/jpeg"),
+  usage: z
+    .object({
+      provider: z.enum(["gemini", "vercel_ai", "openrouter", "other"]),
+      modelId: z.string(),
+      inputTokens: z.number().int().nonnegative(),
+      outputTokens: z.number().int().nonnegative(),
+      cachedTokens: z.number().int().nonnegative().optional(),
+    })
+    .optional(),
 })

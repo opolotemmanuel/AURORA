@@ -21,6 +21,7 @@ export async function grantAdminTokensAction(input: unknown) {
   })
 
   revalidatePath("/admin")
+  revalidatePath("/admin/tokens")
 }
 
 export async function setUserRoleAction(userId: string, role: AppRole) {

@@ -10,3 +10,12 @@ export function getScanTokenCost(): number {
   const parsed = raw ? Number.parseInt(raw, 10) : 1000
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1000
 }
+
+export function getMinScanCredits(): number {
+  const raw = process.env.SCAN_TOKEN_COST_MIN
+  if (raw) {
+    const parsed = Number.parseInt(raw, 10)
+    if (Number.isFinite(parsed) && parsed > 0) return parsed
+  }
+  return getScanTokenCost()
+}

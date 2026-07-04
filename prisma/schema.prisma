@@ -203,6 +203,24 @@ enum AiProvider {
   other
 }
 
+model AiModelRate {
+  id                     String     @id @default(cuid())
+  provider               AiProvider
+  modelId                String
+  displayName            String?
+  inputMicrosPer1M       Int
+  outputMicrosPer1M      Int
+  cachedInputMicrosPer1M Int        @default(0)
+  isActive               Boolean    @default(true)
+  effectiveFrom          DateTime   @default(now())
+  createdAt              DateTime   @default(now())
+  updatedAt              DateTime   @updatedAt
+
+  @@unique([provider, modelId])
+  @@index([isActive])
+  @@map("ai_model_rate")
+}
+
 enum ScanStatus {
   pending
   processing

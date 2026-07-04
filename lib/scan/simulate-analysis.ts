@@ -3,6 +3,9 @@ import type {
   SkinAssessment,
 } from "@/lib/scan/types"
 import { SKIN_DISCLAIMER } from "@/lib/scan/constants"
+import { DEFAULT_MOCK_USAGE } from "@/lib/tokens/constants"
+
+export { DEFAULT_MOCK_USAGE }
 
 const TOOL_STEPS: Array<Pick<AnalysisToolCall, "id" | "name" | "label">> = [
   { id: "locate_face", name: "locate_face", label: "Locating facial regions" },

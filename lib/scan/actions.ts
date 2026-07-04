@@ -6,15 +6,18 @@ import { CONSENT_VERSION } from "@/lib/onboarding/constants"
 import { requireSession } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/client"
 import { withDbRetry } from "@/lib/db/retry"
-import {
-  getScanTokenCost,
-  REPORT_FORMAT_VERSION,
-} from "@/lib/scan/constants"
+import { REPORT_FORMAT_VERSION } from "@/lib/scan/constants"
 import { toScanResultData } from "@/lib/scan/persist"
 import { parseScanImageBase64 } from "@/lib/scan/image-bytes"
 import { saveScanResultSchema } from "@/lib/scan/schemas"
 import type { SkinAssessment } from "@/lib/scan/types"
-import { debitTokens } from "@/lib/tokens/wallet"
+import { DEFAULT_MOCK_USAGE } from "@/lib/tokens/constants"
+import {
+  computeScanCreditCost,
+  pricingResultToLedgerMetadata,
+  type UsageInput,
+} from "@/lib/tokens/pricing"
+import { debitTokensInTransaction, getBalance } from "@/lib/tokens/wallet"
 import type { z } from "zod"
 
 type SaveScanResultInput = z.input<typeof saveScanResultSchema> | SkinAssessment
@@ -22,6 +25,14 @@ type SaveScanResultInput = z.input<typeof saveScanResultSchema> | SkinAssessment
 type SaveScanResult =
   | { ok: true; scanId: string; reportId: string }
   | { ok: false; error: string }
+
+function hasMeteredUsage(usage: UsageInput): boolean {
+  return (
+    usage.inputTokens > 0 ||
+    usage.outputTokens > 0 ||
+    (usage.cachedTokens ?? 0) > 0
+  )
+}
 
 export async function saveScanResultAction(
   input: SaveScanResultInput,
@@ -35,7 +46,14 @@ export async function saveScanResultAction(
   const assessment = parsed.assessment
   const image = parseScanImageBase64(parsed.imageBase64, parsed.imageMimeType)
   const resultData = toScanResultData(assessment)
-  const tokenCost = getScanTokenCost()
+  const usage: UsageInput = parsed.usage ?? DEFAULT_MOCK_USAGE
+
+  const pricing = await computeScanCreditCost(usage)
+  const balance = await getBalance(session.user.id)
+
+  if (balance < pricing.credits) {
+    return { ok: false, error: "Insufficient credits" }
+  }
 
   const [profile, location] = await Promise.all([
     prisma.userProfile.findUnique({ where: { userId: session.user.id } }),
@@ -99,21 +117,38 @@ export async function saveScanResultAction(
           },
         })
 
+        if (hasMeteredUsage(usage)) {
+          const totalTokens =
+            usage.inputTokens +
+            usage.outputTokens +
+            (usage.cachedTokens ?? 0)
+
+          await tx.scanUsage.create({
+            data: {
+              scanId: created.id,
+              provider: usage.provider,
+              modelId: usage.modelId,
+              inputTokens: usage.inputTokens,
+              outputTokens: usage.outputTokens,
+              cachedTokens: usage.cachedTokens ?? 0,
+              totalTokens,
+              estimatedCostMicros: pricing.costMicros,
+            },
+          })
+        }
+
+        await debitTokensInTransaction(tx, {
+          userId: session.user.id,
+          amount: pricing.credits,
+          reason: "scan_debit",
+          scanId: created.id,
+          provider: usage.provider,
+          metadata: pricingResultToLedgerMetadata(usage, pricing),
+        })
+
         return { scan: created, report }
       }),
     )
-
-    try {
-      await debitTokens({
-        userId: session.user.id,
-        amount: tokenCost,
-        reason: "scan_debit",
-        scanId: scan.scan.id,
-        provider: "gemini",
-      })
-    } catch {
-      // Scan is saved; token debit can fail if balance is low
-    }
 
     revalidatePath("/reports")
     revalidatePath("/dashboard")
@@ -123,7 +158,13 @@ export async function saveScanResultAction(
       scanId: scan.scan.id,
       reportId: scan.report.id,
     }
-  } catch {
+  } catch (err) {
+    if (
+      err instanceof Error &&
+      err.message === "Insufficient token balance"
+    ) {
+      return { ok: false, error: "Insufficient credits" }
+    }
     return { ok: false, error: "Could not save scan result" }
   }
 }

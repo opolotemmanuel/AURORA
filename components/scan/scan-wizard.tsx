@@ -30,6 +30,7 @@ export function ScanWizard() {
   const [assessment, setAssessment] = useState<SkinAssessment | null>(null)
   const [scanId, setScanId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [reportOpen, setReportOpen] = useState(false)
   const urlsRef = useRef<string[]>([])
 
@@ -56,6 +57,7 @@ export function ScanWizard() {
     setAssessment(null)
     setScanId(null)
     setIsSaving(false)
+    setSaveError(null)
     setReportOpen(false)
   }, [revokeAllUrls])
 
@@ -69,6 +71,7 @@ export function ScanWizard() {
     setAssessment(null)
     setScanId(null)
     setIsSaving(false)
+    setSaveError(null)
     setReportOpen(false)
     setStep("edit")
   }, [croppedPreviewUrl])
@@ -100,6 +103,7 @@ export function ScanWizard() {
   const persistAssessment = useCallback(
     async (result: SkinAssessment, photo: Blob | null) => {
       setIsSaving(true)
+      setSaveError(null)
       try {
         const imageBase64 = photo ? await blobToBase64(photo) : undefined
         const saved = await saveScanResultAction({
@@ -111,9 +115,11 @@ export function ScanWizard() {
         })
         if (saved.ok) {
           setScanId(saved.scanId)
+        } else {
+          setSaveError(saved.error)
         }
       } catch {
-        // Results remain visible even if save fails
+        setSaveError("Could not save scan result. Please try again.")
       } finally {
         setIsSaving(false)
       }
@@ -190,6 +196,7 @@ export function ScanWizard() {
                 onNewScan={resetScan}
                 onReEdit={handleBackToEdit}
                 onViewReport={() => setReportOpen(true)}
+                saveError={saveError}
               />
             ) : null}
           </motion.div>

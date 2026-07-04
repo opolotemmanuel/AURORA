@@ -2,6 +2,57 @@ import type { AiProvider, Prisma, TokenLedgerReason } from "@/generated/prisma/c
 
 import { prisma } from "@/lib/db/client"
 
+type DebitInput = {
+  userId: string
+  amount: number
+  reason: TokenLedgerReason
+  scanId?: string
+  provider?: AiProvider
+  metadata?: Prisma.InputJsonValue
+}
+
+async function debitTokensWithClient(
+  tx: Prisma.TransactionClient,
+  { userId, amount, reason, scanId, provider, metadata }: DebitInput,
+) {
+  if (amount <= 0) {
+    throw new Error("Debit amount must be positive")
+  }
+
+  const wallet = await tx.tokenWallet.findUnique({ where: { userId } })
+  if (!wallet || wallet.balance < amount) {
+    throw new Error("Insufficient token balance")
+  }
+
+  const updated = await tx.tokenWallet.update({
+    where: { userId },
+    data: {
+      balance: { decrement: amount },
+      lifetimeUsed: { increment: amount },
+    },
+  })
+
+  await tx.tokenLedger.create({
+    data: {
+      userId,
+      delta: -amount,
+      reason,
+      scanId,
+      provider,
+      metadata: metadata ?? undefined,
+    },
+  })
+
+  return updated
+}
+
+export async function debitTokensInTransaction(
+  tx: Prisma.TransactionClient,
+  input: DebitInput,
+) {
+  return debitTokensWithClient(tx, input)
+}
+
 export async function ensureTokenWallet(userId: string) {
   return prisma.tokenWallet.upsert({
     where: { userId },
@@ -81,35 +132,14 @@ export async function debitTokens({
   provider?: AiProvider
   metadata?: Prisma.InputJsonValue
 }) {
-  if (amount <= 0) {
-    throw new Error("Debit amount must be positive")
-  }
-
-  return prisma.$transaction(async (tx) => {
-    const wallet = await tx.tokenWallet.findUnique({ where: { userId } })
-    if (!wallet || wallet.balance < amount) {
-      throw new Error("Insufficient token balance")
-    }
-
-    const updated = await tx.tokenWallet.update({
-      where: { userId },
-      data: {
-        balance: { decrement: amount },
-        lifetimeUsed: { increment: amount },
-      },
-    })
-
-    await tx.tokenLedger.create({
-      data: {
-        userId,
-        delta: -amount,
-        reason,
-        scanId,
-        provider,
-        metadata: metadata ?? undefined,
-      },
-    })
-
-    return updated
-  })
+  return prisma.$transaction((tx) =>
+    debitTokensWithClient(tx, {
+      userId,
+      amount,
+      reason,
+      scanId,
+      provider,
+      metadata,
+    }),
+  )
 }

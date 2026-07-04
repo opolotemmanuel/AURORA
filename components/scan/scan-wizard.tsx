@@ -10,8 +10,6 @@ import { ScanQualityStep } from "@/components/scan/scan-quality-step"
 import { ScanReportModal } from "@/components/scan/scan-report-modal"
 import { ScanResultsView } from "@/components/scan/scan-results-view"
 import { EASE_OUT } from "@/lib/ease"
-import { saveScanResultAction } from "@/lib/scan/actions"
-import { blobToBase64 } from "@/lib/scan/image-bytes"
 import type {
   CaptureMode,
   ScanWizardStep,
@@ -29,8 +27,7 @@ export function ScanWizard() {
   const [imageBlob, setImageBlob] = useState<Blob | null>(null)
   const [assessment, setAssessment] = useState<SkinAssessment | null>(null)
   const [scanId, setScanId] = useState<string | null>(null)
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
+  const [creditsCharged, setCreditsCharged] = useState<number | null>(null)
   const [reportOpen, setReportOpen] = useState(false)
   const urlsRef = useRef<string[]>([])
 
@@ -56,8 +53,7 @@ export function ScanWizard() {
     setImageBlob(null)
     setAssessment(null)
     setScanId(null)
-    setIsSaving(false)
-    setSaveError(null)
+    setCreditsCharged(null)
     setReportOpen(false)
   }, [revokeAllUrls])
 
@@ -70,8 +66,7 @@ export function ScanWizard() {
     setImageBlob(null)
     setAssessment(null)
     setScanId(null)
-    setIsSaving(false)
-    setSaveError(null)
+    setCreditsCharged(null)
     setReportOpen(false)
     setStep("edit")
   }, [croppedPreviewUrl])
@@ -100,40 +95,18 @@ export function ScanWizard() {
     setStep("analyzing")
   }, [])
 
-  const persistAssessment = useCallback(
-    async (result: SkinAssessment, photo: Blob | null) => {
-      setIsSaving(true)
-      setSaveError(null)
-      try {
-        const imageBase64 = photo ? await blobToBase64(photo) : undefined
-        const saved = await saveScanResultAction({
-          assessment: result,
-          imageBase64,
-          imageMimeType: photo?.type.startsWith("image/")
-            ? (photo.type as "image/jpeg" | "image/png" | "image/webp")
-            : "image/jpeg",
-        })
-        if (saved.ok) {
-          setScanId(saved.scanId)
-        } else {
-          setSaveError(saved.error)
-        }
-      } catch {
-        setSaveError("Could not save scan result. Please try again.")
-      } finally {
-        setIsSaving(false)
-      }
+  const handleAnalysisComplete = useCallback(
+    (result: {
+      assessment: SkinAssessment
+      scanId: string
+      creditsCharged: number
+    }) => {
+      setAssessment(result.assessment)
+      setScanId(result.scanId)
+      setCreditsCharged(result.creditsCharged)
+      setStep("results")
     },
     [],
-  )
-
-  const handleAnalysisComplete = useCallback(
-    (result: SkinAssessment) => {
-      setAssessment(result)
-      setStep("results")
-      void persistAssessment(result, imageBlob)
-    },
-    [persistAssessment, imageBlob],
   )
 
   const isReportPhase = step === "results"
@@ -196,7 +169,7 @@ export function ScanWizard() {
                 onNewScan={resetScan}
                 onReEdit={handleBackToEdit}
                 onViewReport={() => setReportOpen(true)}
-                saveError={saveError}
+                creditsCharged={creditsCharged}
               />
             ) : null}
           </motion.div>
@@ -210,7 +183,6 @@ export function ScanWizard() {
           assessment={assessment}
           imageSrc={croppedPreviewUrl}
           scanId={scanId}
-          isSaving={isSaving}
         />
       ) : null}
     </div>

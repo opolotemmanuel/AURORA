@@ -1,58 +1,87 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { z } from "zod"
 
+import { analyzeSkin } from "@/lib/ai/adapter"
 import { CONSENT_VERSION } from "@/lib/onboarding/constants"
 import { requireSession } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/client"
 import { withDbRetry } from "@/lib/db/retry"
+import { getActiveScanModel } from "@/lib/models/queries"
+import { parseScanImageBase64 } from "@/lib/scan/image-bytes"
 import { REPORT_FORMAT_VERSION } from "@/lib/scan/constants"
 import { toScanResultData } from "@/lib/scan/persist"
-import { saveScanResultSchema } from "@/lib/scan/schemas"
 import type { SkinAssessment } from "@/lib/scan/types"
-import { DEFAULT_MOCK_USAGE } from "@/lib/tokens/constants"
+import { getMinScanCredits } from "@/lib/scan/constants"
 import {
   computeScanCreditCost,
   pricingResultToLedgerMetadata,
-  type UsageInput,
 } from "@/lib/tokens/pricing"
 import { debitTokensInTransaction, getBalance } from "@/lib/tokens/wallet"
-import type { z } from "zod"
 
-type SaveScanResultInput = z.input<typeof saveScanResultSchema> | SkinAssessment
+const analyzeScanInputSchema = z.object({
+  imageBase64: z.string().min(1),
+  imageMimeType: z
+    .enum(["image/jpeg", "image/png", "image/webp"])
+    .default("image/jpeg"),
+})
 
-type SaveScanResult =
-  | { ok: true; scanId: string; reportId: string }
+export type AnalyzeScanResult =
+  | {
+      ok: true
+      assessment: SkinAssessment
+      scanId: string
+      reportId: string
+      creditsCharged: number
+    }
   | { ok: false; error: string }
 
-function hasMeteredUsage(usage: UsageInput): boolean {
-  return (
-    usage.inputTokens > 0 ||
-    usage.outputTokens > 0 ||
-    (usage.cachedTokens ?? 0) > 0
-  )
-}
-
-/** @deprecated Prefer analyzeScanAction for new scan flow. */
-export async function saveScanResultAction(
-  input: SaveScanResultInput,
-): Promise<SaveScanResult> {
+export async function analyzeScanAction(
+  input: z.input<typeof analyzeScanInputSchema>,
+): Promise<AnalyzeScanResult> {
   const session = await requireSession()
-  const parsed = saveScanResultSchema.parse(
-    typeof input === "object" && input !== null && "assessment" in input
-      ? input
-      : { assessment: input },
-  )
-  const assessment = parsed.assessment
-  const resultData = toScanResultData(assessment)
-  const usage: UsageInput = parsed.usage ?? DEFAULT_MOCK_USAGE
+  const parsed = analyzeScanInputSchema.parse(input)
+  const image = parseScanImageBase64(parsed.imageBase64, parsed.imageMimeType)
 
-  const pricing = await computeScanCreditCost(usage)
+  if (!image) {
+    return { ok: false, error: "Invalid scan image" }
+  }
+
+  const activeModel = await getActiveScanModel()
+  if (!activeModel) {
+    return { ok: false, error: "No active scan model configured" }
+  }
+
   const balance = await getBalance(session.user.id)
+  if (balance < getMinScanCredits()) {
+    return { ok: false, error: "Insufficient credits" }
+  }
 
+  let analysis
+  try {
+    analysis = await analyzeSkin({
+      userId: session.user.id,
+      image: image.buffer,
+      mimeType: image.mimeType,
+      model: {
+        provider: activeModel.provider,
+        modelId: activeModel.modelId,
+        displayName: activeModel.displayName,
+      },
+    })
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Skin analysis failed"
+    return { ok: false, error: message }
+  }
+
+  const pricing = await computeScanCreditCost(analysis.usage)
   if (balance < pricing.credits) {
     return { ok: false, error: "Insufficient credits" }
   }
+
+  const resultData = toScanResultData(analysis.assessment)
 
   const [profile, location] = await Promise.all([
     prisma.userProfile.findUnique({ where: { userId: session.user.id } }),
@@ -60,7 +89,7 @@ export async function saveScanResultAction(
   ])
 
   try {
-    const scan = await withDbRetry(() =>
+    const saved = await withDbRetry(() =>
       prisma.$transaction(async (tx) => {
         const created = await tx.scan.create({
           data: {
@@ -114,22 +143,23 @@ export async function saveScanResultAction(
           },
         })
 
-        if (hasMeteredUsage(usage)) {
-          const totalTokens =
-            usage.inputTokens +
-            usage.outputTokens +
-            (usage.cachedTokens ?? 0)
+        const totalTokens =
+          analysis.usage.inputTokens +
+          analysis.usage.outputTokens +
+          (analysis.usage.cachedTokens ?? 0)
 
+        if (totalTokens > 0) {
           await tx.scanUsage.create({
             data: {
               scanId: created.id,
-              provider: usage.provider,
-              modelId: usage.modelId,
-              inputTokens: usage.inputTokens,
-              outputTokens: usage.outputTokens,
-              cachedTokens: usage.cachedTokens ?? 0,
+              provider: analysis.usage.provider,
+              modelId: analysis.usage.modelId,
+              inputTokens: analysis.usage.inputTokens,
+              outputTokens: analysis.usage.outputTokens,
+              cachedTokens: analysis.usage.cachedTokens ?? 0,
               totalTokens,
               estimatedCostMicros: pricing.costMicros,
+              latencyMs: analysis.latencyMs,
             },
           })
         }
@@ -139,8 +169,8 @@ export async function saveScanResultAction(
           amount: pricing.credits,
           reason: "scan_debit",
           scanId: created.id,
-          provider: usage.provider,
-          metadata: pricingResultToLedgerMetadata(usage, pricing),
+          provider: analysis.usage.provider,
+          metadata: pricingResultToLedgerMetadata(analysis.usage, pricing),
         })
 
         return { scan: created, report }
@@ -149,11 +179,14 @@ export async function saveScanResultAction(
 
     revalidatePath("/reports")
     revalidatePath("/dashboard")
+    revalidatePath("/dashboard/usage")
 
     return {
       ok: true,
-      scanId: scan.scan.id,
-      reportId: scan.report.id,
+      assessment: analysis.assessment,
+      scanId: saved.scan.id,
+      reportId: saved.report.id,
+      creditsCharged: pricing.credits,
     }
   } catch (err) {
     if (

@@ -3,6 +3,36 @@ import { StatCard } from "@/components/dashboard/page-header"
 import { requireAuthContext } from "@/lib/auth/context"
 import { getUserDashboardStats } from "@/lib/dashboard/stats"
 
+type ScanDebitMetadata = {
+  modelId?: string
+  inputTokens?: number
+  outputTokens?: number
+  creditsCharged?: number
+}
+
+function formatLedgerLabel(
+  reason: string,
+  metadata: unknown,
+): string {
+  if (reason !== "scan_debit") {
+    return reason.replace(/_/g, " ")
+  }
+
+  const data = metadata as ScanDebitMetadata | null
+  if (!data?.modelId) {
+    return "Scan"
+  }
+
+  const tokens =
+    data.inputTokens != null && data.outputTokens != null
+      ? `${data.inputTokens.toLocaleString()} in / ${data.outputTokens.toLocaleString()} out`
+      : null
+
+  return tokens
+    ? `Scan · ${data.modelId} · ${tokens}`
+    : `Scan · ${data.modelId}`
+}
+
 export async function UsageStats() {
   const ctx = await requireAuthContext()
   const stats = await getUserDashboardStats(ctx.userId)
@@ -34,7 +64,7 @@ export async function UsageStats() {
                 className="flex justify-between gap-4 border-b border-border py-2 last:border-0"
               >
                 <span className="capitalize text-muted-foreground">
-                  {entry.reason.replace(/_/g, " ")}
+                  {formatLedgerLabel(entry.reason, entry.metadata)}
                 </span>
                 <span
                   className={

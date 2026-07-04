@@ -11,7 +11,7 @@ type ScanResultsViewProps = {
   onNewScan: () => void
   onReEdit: () => void
   onViewReport: () => void
-  saveError?: string | null
+  creditsCharged?: number | null
 }
 
 export function ScanResultsView({
@@ -20,7 +20,7 @@ export function ScanResultsView({
   onNewScan,
   onReEdit,
   onViewReport,
-  saveError,
+  creditsCharged,
 }: ScanResultsViewProps) {
   return (
     <ScanReportLayout
@@ -29,11 +29,15 @@ export function ScanResultsView({
       onReEdit={onReEdit}
       onViewReport={onViewReport}
     >
-      {saveError ? (
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription>{saveError}</AlertDescription>
-        </Alert>
-      ) : null}
+      <Alert className="mb-4">
+        <AlertDescription>
+          Your photo is shown only for this session. It is not stored or included
+          in saved reports or PDFs.
+          {creditsCharged != null
+            ? ` This scan used ${creditsCharged.toLocaleString()} credits.`
+            : null}
+        </AlertDescription>
+      </Alert>
       <SkinReportContent assessment={assessment} />
     </ScanReportLayout>
   )

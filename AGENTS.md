@@ -38,7 +38,7 @@ Use only what is in `package.json` today. Before using any library, check `packa
 
 These are target technologies not yet fully wired. **Do not install packages for planned stack items without user approval** — except adding shadcn UI components via CLI (see Docs and Dependencies).
 
-- **AI provider:** Google Gemini via AI Studio API key — single swappable adapter module (`lib/ai/adapter.ts`; today uses `lib/scan/simulate-analysis.ts` as a mock)
+- **AI provider:** Google Gemini via AI Studio API key (`GEMINI_API_KEY`) — swappable adapter in `lib/ai/adapter.ts` with provider in `lib/ai/providers/gemini.ts`
 - **File storage:** S3-compatible object storage (e.g. Cloudflare R2) for PDF `storageKey` and optional image retention
 - **Hosting:** Vercel
 - **CI:** GitHub Actions — lint, type-check, test on every PR
@@ -91,7 +91,7 @@ Group files by what they do, not by file type alone:
 
 ```
 lib/
-  ai/           # adapter, types, prompts — planned; use lib/scan/simulate-analysis.ts until built
+  ai/           # adapter, types, prompts, providers, context loaders
   auth/         # better-auth config, session helpers, server utilities
   db/           # Prisma client + connection helpers
   pdf/          # React-PDF report document + generate-skin-report
@@ -215,10 +215,10 @@ Implemented at `/scan` via `components/scan/scan-wizard.tsx`.
 | -------- | -------- | ----- |
 | UI shell | `scan-wizard.tsx`, `scan-capture-panel.tsx`, `scan-camera-view.tsx` | Camera mounts only when Camera tab is active |
 | Quality gate | `lib/scan/quality-gate.ts`, `lib/scan/mediapipe.ts` | VIDEO mode for live camera; IMAGE mode for stills |
-| Analysis (mock) | `lib/scan/simulate-analysis.ts` | Replace with `lib/ai/adapter.ts` when built |
+| Analysis | `lib/ai/adapter.ts`, `lib/scan/analyze-action.ts` | Server-side Gemini vision; structured `SkinAssessment` |
 | Results layout | `scan-report-layout.tsx`, `skin-report-content.tsx` | Two-column desktop; image left, bands right |
 | Report modal | `scan-report-modal.tsx` | `ResponsiveDialog`; same content as results |
-| Persist | `lib/scan/actions.ts`, `lib/scan/persist.ts` | `saveScanResultAction` — no image; `imageRetained: false` |
+| Persist | `lib/scan/analyze-action.ts` | Atomic analyze + save + debit; `imageRetained: false` always |
 | PDF download | `lib/pdf/`, `app/api/reports/[scanId]/pdf/` | Generated on demand from DB; text-only (no photo) |
 | History | `app/(dashboard)/reports/`, `components/reports/` | Modal + PDF per saved scan |
 | Tokens | `lib/tokens/wallet.ts`, `SCAN_TOKEN_COST` env | Debited on save (`scan_debit`) |
@@ -258,9 +258,9 @@ Implemented at `/scan` via `components/scan/scan-wizard.tsx`.
 
 ## AI Adapter
 
-- All vision/text model calls go through **one adapter file** (`lib/ai/adapter.ts` — **not built yet**).
-- **Interim:** `lib/scan/simulate-analysis.ts` returns mock `SkinAssessment` client-side; `saveScanResultAction` persists the result server-side.
-- When implementing the adapter: default provider **Google Gemini** (`GEMINI_API_KEY`); vision model such as Gemini 2.5 Flash.
+- All vision/text model calls go through **`lib/ai/adapter.ts`** (`analyzeSkin`).
+- Default provider **Google Gemini** (`GEMINI_API_KEY`); active model from `AiModelRate` DB row (`isScanDefault`).
+- `analyzeScanAction` persists result server-side with metered token debit.
 - The adapter exposes a stable app-level interface (e.g. `analyzeSkin(image): SkinAssessment`); swap provider by changing adapter internals only.
 - Read [Google AI Gemini API docs](https://ai.google.dev/gemini-api/docs) at implementation time — model IDs and APIs change.
 - Coarse band output only (see Non-Negotiables).

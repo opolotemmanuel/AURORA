@@ -1,7 +1,8 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { revalidatePath, revalidateTag } from "next/cache"
 
+import { CATALOG_CONTEXT_TAG } from "@/lib/ai/context/catalog"
 import { requireAdmin } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/client"
 import { normalizeProductInput } from "@/lib/products/normalize"
@@ -29,6 +30,7 @@ export async function createProductAction(input: unknown) {
 
   revalidatePath("/admin")
   revalidatePath("/admin/products")
+  revalidateTag(CATALOG_CONTEXT_TAG, "max")
   return product
 }
 
@@ -61,6 +63,7 @@ export async function updateProductAction(id: string, input: unknown) {
 
   revalidatePath("/admin")
   revalidatePath("/admin/products")
+  revalidateTag(CATALOG_CONTEXT_TAG, "max")
   return product
 }
 
@@ -69,4 +72,5 @@ export async function deleteProductAction(id: string) {
   await prisma.product.delete({ where: { id } })
   revalidatePath("/admin")
   revalidatePath("/admin/products")
+  revalidateTag(CATALOG_CONTEXT_TAG, "max")
 }

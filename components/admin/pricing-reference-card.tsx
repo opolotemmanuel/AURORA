@@ -35,7 +35,12 @@ export async function PricingReferenceCard() {
         <h2 className="font-heading text-lg font-medium">Pricing reference</h2>
         <p className="text-sm text-muted-foreground">
           Usage-based debits convert provider token costs into Aura credits. Mock
-          scans use the flat floor until real AI usage is recorded.
+          scans use the flat floor until real AI usage is recorded. Manage models
+          on the{" "}
+          <a href="/admin/models" className="text-foreground underline">
+            models page
+          </a>
+          .
         </p>
       </div>
 

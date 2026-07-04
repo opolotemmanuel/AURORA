@@ -1,5 +1,6 @@
 import type { TablerIcon } from "@tabler/icons-react"
 import {
+  IconBrain,
   IconChartBar,
   IconCoin,
   IconHome,
@@ -53,6 +54,7 @@ const ADMIN: NavSection = {
     { href: "/admin", label: "Analytics", icon: IconChartBar },
     { href: "/admin/users", label: "Users", icon: IconUsers },
     { href: "/admin/tokens", label: "Tokens", icon: IconCoin },
+    { href: "/admin/models", label: "Models", icon: IconBrain },
     { href: "/admin/products", label: "Products", icon: IconPackage },
   ],
 }

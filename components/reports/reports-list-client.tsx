@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import Link from "next/link"
 import { IconDownload, IconFileText } from "@tabler/icons-react"
 
 import { ScanReportModal } from "@/components/scan/scan-report-modal"
@@ -14,7 +13,6 @@ type ReportListItem = {
   id: string
   createdAt: string
   status: string
-  imageRetained: boolean
   result: {
     overallBand: string
     dimensions: unknown
@@ -32,7 +30,6 @@ export function ReportsListClient({ scans }: ReportsListClientProps) {
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState<{
     scanId: string
-    imageRetained: boolean
     assessment: SkinAssessment
   } | null>(null)
 
@@ -40,7 +37,6 @@ export function ReportsListClient({ scans }: ReportsListClientProps) {
     if (!scan.result) return
     setSelected({
       scanId: scan.id,
-      imageRetained: scan.imageRetained,
       assessment: fromScanResult({
         overallBand: scan.result.overallBand as SkinAssessment["overallBand"],
         dimensions: scan.result.dimensions as Parameters<
@@ -120,11 +116,6 @@ export function ReportsListClient({ scans }: ReportsListClientProps) {
           onOpenChange={setOpen}
           assessment={selected.assessment}
           scanId={selected.scanId}
-          imageSrc={
-            selected.imageRetained
-              ? `/api/reports/${selected.scanId}/image`
-              : null
-          }
         />
       ) : null}
     </>

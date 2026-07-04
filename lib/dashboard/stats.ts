@@ -21,7 +21,12 @@ export const getUserDashboardStats = cache(async (userId: string) => {
         where: { userId },
         orderBy: { createdAt: "desc" },
         take: 14,
-        select: { delta: true, reason: true, createdAt: true },
+        select: {
+          delta: true,
+          reason: true,
+          createdAt: true,
+          metadata: true,
+        },
       }),
       prisma.userProfile.findUnique({
         where: { userId },

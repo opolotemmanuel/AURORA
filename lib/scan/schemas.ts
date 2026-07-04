@@ -33,11 +33,6 @@ export const skinAssessmentSchema = z.object({
 
 export const saveScanResultSchema = z.object({
   assessment: skinAssessmentSchema,
-  imageBase64: z.string().optional(),
-  imageMimeType: z
-    .enum(["image/jpeg", "image/png", "image/webp"])
-    .optional()
-    .default("image/jpeg"),
   usage: z
     .object({
       provider: z.enum(["gemini", "vercel_ai", "openrouter", "other"]),

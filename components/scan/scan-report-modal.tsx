@@ -15,7 +15,6 @@ type ScanReportModalProps = {
   assessment: SkinAssessment
   imageSrc?: string | null
   scanId?: string | null
-  isSaving?: boolean
 }
 
 export function ScanReportModal({
@@ -24,7 +23,6 @@ export function ScanReportModal({
   assessment,
   imageSrc,
   scanId,
-  isSaving = false,
 }: ScanReportModalProps) {
   const pdfHref = scanId ? `/api/reports/${scanId}/pdf` : null
 
@@ -57,7 +55,7 @@ export function ScanReportModal({
           ) : (
             <Button size="sm" className="rounded-full" disabled>
               <IconDownload className="size-3.5" />
-              {isSaving ? "Saving report…" : "Download PDF"}
+              Download PDF
             </Button>
           )}
           <Button asChild variant="outline" size="sm" className="rounded-full">

@@ -23,6 +23,8 @@ async function main() {
       outputMicrosPer1M: 600_000,
       cachedInputMicrosPer1M: 37_500,
       isActive: true,
+      isScanDefault: true,
+      supportsVision: true,
     },
     update: {
       displayName: "Gemini 2.5 Flash",
@@ -30,6 +32,8 @@ async function main() {
       outputMicrosPer1M: 600_000,
       cachedInputMicrosPer1M: 37_500,
       isActive: true,
+      isScanDefault: true,
+      supportsVision: true,
     },
   })
 

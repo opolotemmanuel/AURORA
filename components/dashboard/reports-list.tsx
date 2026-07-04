@@ -17,7 +17,6 @@ export async function ReportsList() {
     id: scan.id,
     createdAt: scan.createdAt.toISOString(),
     status: scan.status,
-    imageRetained: scan.imageRetained,
     result: scan.result
       ? {
           overallBand: scan.result.overallBand,

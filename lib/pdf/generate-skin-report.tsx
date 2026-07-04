@@ -3,7 +3,6 @@ import { renderToBuffer } from "@react-pdf/renderer"
 import { prisma } from "@/lib/db/client"
 import { SkinReportDocument } from "@/lib/pdf/skin-report-document"
 import { fromScanResult } from "@/lib/scan/persist"
-import { scanImageToDataUri } from "@/lib/scan/image-bytes"
 
 export async function generateSkinReportPdf(scanId: string, userId: string) {
   const scan = await prisma.scan.findFirst({
@@ -20,7 +19,6 @@ export async function generateSkinReportPdf(scanId: string, userId: string) {
   }
 
   const assessment = fromScanResult(scan.result)
-  const imageSrc = scanImageToDataUri(scan.imageData, scan.imageMimeType)
   const scanDate = scan.createdAt.toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
@@ -32,7 +30,6 @@ export async function generateSkinReportPdf(scanId: string, userId: string) {
       assessment={assessment}
       userName={scan.user.name}
       scanDate={scanDate}
-      imageSrc={imageSrc}
     />,
   )
 

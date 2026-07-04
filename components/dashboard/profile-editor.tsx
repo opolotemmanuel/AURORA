@@ -51,9 +51,9 @@ const CONCERNS = ["acne", "aging", "dryness", "redness", "hyperpigmentation", "s
 const GOALS = ["hydration", "even_tone", "clear_skin", "barrier_support", "sun_protection", "gentle_routine"]
 
 export function ProfileEditor({ profile }: ProfileFormProps) {
-  const [tab, setTab] = useTabSearchParam(PROFILE_TABS, "basics")
+  const [tab, setTab, tabPending] = useTabSearchParam(PROFILE_TABS, "basics")
   const [message, setMessage] = useState<string | null>(null)
-  const [pending, startTransition] = useTransition()
+  const [savePending, startSaveTransition] = useTransition()
   const [basics, setBasics] = useState({
     name: profile.name,
     dateOfBirth: profile.dateOfBirth,
@@ -79,7 +79,7 @@ export function ProfileEditor({ profile }: ProfileFormProps) {
   }
 
   function save(section: string, action: () => Promise<void>) {
-    startTransition(async () => {
+    startSaveTransition(async () => {
       try {
         await action()
         setMessage(`${section} saved.`)
@@ -92,13 +92,13 @@ export function ProfileEditor({ profile }: ProfileFormProps) {
   return (
     <Tabs value={tab} onValueChange={setTab} variant="underline" className="w-full">
       <TabsList className="w-full flex-wrap gap-x-1 gap-y-0">
-        <TabsTrigger value="basics">Basics</TabsTrigger>
-        <TabsTrigger value="skin">Skin</TabsTrigger>
-        <TabsTrigger value="routine">Routine</TabsTrigger>
-        <TabsTrigger value="location">Location</TabsTrigger>
+        <TabsTrigger value="basics" pending={tabPending === "basics"}>Basics</TabsTrigger>
+        <TabsTrigger value="skin" pending={tabPending === "skin"}>Skin</TabsTrigger>
+        <TabsTrigger value="routine" pending={tabPending === "routine"}>Routine</TabsTrigger>
+        <TabsTrigger value="location" pending={tabPending === "location"}>Location</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="basics">
+      <TabsContent value="basics" pending={tabPending === "basics"}>
         <section className="space-y-4 rounded-xl border border-border p-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -110,13 +110,13 @@ export function ProfileEditor({ profile }: ProfileFormProps) {
               <Input id="dob" type="date" value={basics.dateOfBirth} onChange={(e) => setBasics({ ...basics, dateOfBirth: e.target.value })} />
             </div>
           </div>
-          <Button disabled={pending} onClick={() => save("Basics", () => updateBasicsAction({ ...basics, biologicalSex: basics.biologicalSex || undefined }))}>
+          <Button disabled={savePending} onClick={() => save("Basics", () => updateBasicsAction({ ...basics, biologicalSex: basics.biologicalSex || undefined }))}>
             Save basics
           </Button>
         </section>
       </TabsContent>
 
-      <TabsContent value="skin">
+      <TabsContent value="skin" pending={tabPending === "skin"}>
         <section className="space-y-4 rounded-xl border border-border p-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <Select value={skin.skinType} onValueChange={(v) => setSkin({ ...skin, skinType: v })}>
@@ -161,26 +161,26 @@ export function ProfileEditor({ profile }: ProfileFormProps) {
             ))}
           </div>
           <Textarea value={skin.allergies} onChange={(e) => setSkin({ ...skin, allergies: e.target.value })} placeholder="Allergies" />
-          <Button disabled={pending} onClick={() => save("Skin profile", () => updateSkinAction(skin))}>Save skin profile</Button>
+          <Button disabled={savePending} onClick={() => save("Skin profile", () => updateSkinAction(skin))}>Save skin profile</Button>
         </section>
       </TabsContent>
 
-      <TabsContent value="routine">
+      <TabsContent value="routine" pending={tabPending === "routine"}>
         <section className="space-y-4 rounded-xl border border-border p-5">
           <Textarea value={routine.am} onChange={(e) => setRoutine({ ...routine, am: e.target.value })} placeholder="Morning routine" />
           <Textarea value={routine.pm} onChange={(e) => setRoutine({ ...routine, pm: e.target.value })} placeholder="Evening routine" />
-          <Button disabled={pending} onClick={() => save("Routine", () => updateRoutineAction({ currentRoutine: routine }))}>Save routine</Button>
+          <Button disabled={savePending} onClick={() => save("Routine", () => updateRoutineAction({ currentRoutine: routine }))}>Save routine</Button>
         </section>
       </TabsContent>
 
-      <TabsContent value="location">
+      <TabsContent value="location" pending={tabPending === "location"}>
         <section className="space-y-4 rounded-xl border border-border p-5">
           <div className="grid gap-4 sm:grid-cols-3">
             <Input value={location.city} onChange={(e) => setLocation({ ...location, city: e.target.value })} placeholder="City" />
             <Input value={location.region} onChange={(e) => setLocation({ ...location, region: e.target.value })} placeholder="Region" />
             <Input value={location.country} onChange={(e) => setLocation({ ...location, country: e.target.value })} placeholder="Country" />
           </div>
-          <Button disabled={pending} onClick={() => save("Location", () => updateLocationAction(location))}>Save location</Button>
+          <Button disabled={savePending} onClick={() => save("Location", () => updateLocationAction(location))}>Save location</Button>
         </section>
       </TabsContent>
 

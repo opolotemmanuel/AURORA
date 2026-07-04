@@ -59,37 +59,41 @@ export function ScanAnalyzingView({
   )
   const [activeLabel, setActiveLabel] = useState("Preparing analysis")
   const [error, setError] = useState<string | null>(null)
+  const [isComplete, setIsComplete] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     let stepIndex = 0
 
-    const advanceStep = () => {
-      if (cancelled || stepIndex >= ANALYSIS_STEPS.length) return
+    const syncStepVisuals = () => {
       const step = ANALYSIS_STEPS[stepIndex]
       if (!step) return
 
       setActiveLabel(step.label)
       setToolCalls((current) =>
-        current.map((entry) =>
-          entry.id === step.id
-            ? { ...entry, status: "running" }
-            : entry,
-        ),
+        current.map((entry, index) => ({
+          ...entry,
+          status:
+            index < stepIndex
+              ? "done"
+              : index === stepIndex
+                ? "running"
+                : "pending",
+          detail: index < stepIndex ? "Complete" : undefined,
+        })),
       )
+    }
 
-      window.setTimeout(() => {
-        if (cancelled) return
-        setToolCalls((current) =>
-          current.map((entry) =>
-            entry.id === step.id
-              ? { ...entry, status: "done", detail: "Complete" }
-              : entry,
-          ),
-        )
-        stepIndex += 1
-        advanceStep()
-      }, 900)
+    const advanceStep = () => {
+      if (cancelled) return
+      syncStepVisuals()
+      if (stepIndex < ANALYSIS_STEPS.length - 1) {
+        window.setTimeout(() => {
+          if (cancelled) return
+          stepIndex += 1
+          advanceStep()
+        }, 900)
+      }
     }
 
     async function run() {
@@ -140,6 +144,7 @@ export function ScanAnalyzingView({
           return
         }
 
+        setIsComplete(true)
         setActiveLabel("Analysis complete")
         setToolCalls((current) =>
           current.map((entry) => ({ ...entry, status: "done", detail: "Complete" })),
@@ -191,15 +196,17 @@ export function ScanAnalyzingView({
           alt="Scan photo"
           className="mx-auto aspect-[3/4] h-[min(48svh,20rem)] w-auto max-w-full object-cover"
         />
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/60 backdrop-blur-[2px]">
-          <AnimatedBadge
-            status={error ? "danger" : "loading"}
-            size="md"
-            aria-live="polite"
-          >
-            {activeLabel}
-          </AnimatedBadge>
-        </div>
+        {!error && !isComplete ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/60 backdrop-blur-[2px]">
+            <AnimatedBadge
+              status="loading"
+              size="md"
+              aria-live="polite"
+            >
+              {activeLabel}
+            </AnimatedBadge>
+          </div>
+        ) : null}
       </div>
 
       {error ? (

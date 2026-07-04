@@ -8,6 +8,10 @@ import { AnimatedBadge } from "@/components/motion/animated-badge"
 import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
+import {
+  getCameraAccessError,
+  getCameraPermissionError,
+} from "@/lib/scan/camera-access"
 import { runQualityGate } from "@/lib/scan/quality-gate"
 import type { QualityCheckResult } from "@/lib/scan/types"
 import { cn } from "@/lib/utils"
@@ -117,6 +121,12 @@ export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
           return
         }
 
+        const accessError = getCameraAccessError()
+        if (accessError) {
+          setError(accessError)
+          return
+        }
+
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
           audio: false,
@@ -207,9 +217,7 @@ export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
         }, 1000)
       } catch (err) {
         if (!cancelled) {
-          setError(
-            err instanceof Error ? err.message : "Could not start live scan",
-          )
+          setError(getCameraPermissionError(err))
         }
       }
     }

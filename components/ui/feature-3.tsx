@@ -12,7 +12,7 @@ export function Features3() {
         <div className="space-y-6">
           <div className="text-muted-foreground bg-muted/50 inline-flex w-fit items-center gap-2 rounded-lg px-3 py-1 text-sm">
             <span className="bg-primary h-2 w-2 rounded-full" />
-            Skin intelligence
+            Why Aura
           </div>
 
           <h2 className="font-heading text-4xl leading-tight font-semibold tracking-tight text-balance md:text-5xl">
@@ -20,16 +20,16 @@ export function Features3() {
           </h2>
 
           <p className="text-muted-foreground max-w-lg">
-            Aura turns a quick face scan into cosmetic wellness insights and
-            Aurora product recommendations — honest bands, not invented
-            precision. This is not a medical diagnosis.
+            Stop guessing at the shelf. Aura reads your skin, surfaces what matters
+            in plain language, and connects you to Aurora Organics formulas that fit
+            your goals, routine, and climate.
           </p>
 
           <div className="space-y-2">
             {[
               "Scan via camera or upload with on-device quality checks",
-              "Receive a coarse cosmetic assessment with clear band labels",
-              "Get Aurora product matches tailored to your profile",
+              "Receive a clear cosmetic assessment with easy-to-read band labels",
+              "Get product matches chosen for your skin and lifestyle",
               "Keep your report; photos are not stored by default",
             ].map((item) => (
               <div key={item} className="flex items-center gap-2">

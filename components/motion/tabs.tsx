@@ -3,6 +3,7 @@
 
 import { motion, MotionConfig, useReducedMotion, type Transition } from "motion/react";
 import { createContext, useContext, useId, useState, type ReactNode } from "react";
+import { IconLoader2 } from "@tabler/icons-react";
 import { EASE_OUT } from "@/lib/ease";
 import { cn } from "@/lib/utils";
 
@@ -91,14 +92,17 @@ export function TabsTrigger({
   children,
   className,
   indicatorClassName,
+  pending,
 }: {
   value: string;
   children: ReactNode;
   className?: string;
   indicatorClassName?: string;
+  pending?: boolean;
 }) {
   const { value: current, setValue, layoutId, variant } = useTabs();
   const active = current === value;
+  const showPending = Boolean(pending);
 
   if (variant === "underline") {
     return (
@@ -106,13 +110,16 @@ export function TabsTrigger({
         type="button"
         role="tab"
         aria-selected={active}
+        aria-busy={showPending}
         onClick={() => setValue(value)}
         className={cn(
-          "relative isolate cursor-pointer px-3 pb-2.5 pt-1 -mb-px text-sm font-medium transition-colors min-h-[44px] inline-flex items-center",
+          "relative isolate cursor-pointer px-3 pb-2.5 pt-1 -mb-px text-sm font-medium transition-colors min-h-[44px] inline-flex items-center gap-1.5",
           active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+          showPending && !active && "opacity-70",
           className,
         )}
       >
+        {showPending ? <IconLoader2 className="size-3.5 shrink-0 animate-spin" /> : null}
         {children}
         {active ? (
         <motion.span
@@ -148,21 +155,34 @@ export function TabsTrigger({
         type="button"
         role="tab"
         aria-selected={active}
+        aria-busy={showPending}
         onClick={() => setValue(value)}
         className={cn(
-          "relative z-10 inline-flex cursor-pointer items-center justify-center whitespace-nowrap bg-transparent px-3.5 py-1.5 text-sm font-medium transition-colors outline-none",
+          "relative z-10 inline-flex cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap bg-transparent px-3.5 py-1.5 text-sm font-medium transition-colors outline-none",
           active ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+          showPending && !active && "opacity-70",
           radius,
           className,
         )}
       >
+        {showPending ? <IconLoader2 className="size-3.5 shrink-0 animate-spin" /> : null}
         {children}
       </button>
     </div>
   );
 }
 
-export function TabsContent({ value, children, className }: { value: string; children: ReactNode; className?: string }) {
+export function TabsContent({
+  value,
+  children,
+  className,
+  pending,
+}: {
+  value: string;
+  children: ReactNode;
+  className?: string;
+  pending?: boolean;
+}) {
   const { value: current } = useTabs();
   const reduce = useReducedMotion();
   const active = current === value;
@@ -180,10 +200,17 @@ export function TabsContent({ value, children, className }: { value: string; chi
     <motion.div
       key={value}
       initial={{ opacity: 0, y: reduce ? 0 : 4 }}
-      animate={{ opacity: 1, y: 0 }}
+      animate={{ opacity: pending ? 0.6 : 1, y: 0 }}
       transition={{ duration: 0.18, ease: EASE_OUT }}
-      className={cn("mt-4", className)}
+      className={cn("relative mt-4", className)}
+      aria-busy={pending}
     >
+      {pending ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-10 animate-pulse rounded-xl bg-muted/40"
+        />
+      ) : null}
       {children}
     </motion.div>
   );

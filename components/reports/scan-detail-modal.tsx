@@ -8,7 +8,6 @@ import {
   IconTrash,
 } from "@tabler/icons-react"
 
-import { DimensionRadarChart } from "@/components/scan/dimension-radar-chart"
 import { SkinReportContent } from "@/components/scan/skin-report-content"
 import {
   AlertDialog,
@@ -29,7 +28,7 @@ import { downloadReportPdf } from "@/lib/reports/download-report-pdf"
 import { fromScanResult } from "@/lib/scan/persist"
 import { formatBand } from "@/lib/scan/format"
 import type { ScanClimateContext, SkinAssessment } from "@/lib/scan/types"
-import { formatCreditUsdValue } from "@/lib/tokens/pricing"
+import { formatCreditUsdValue } from "@/lib/tokens/format"
 import { deleteScanAction } from "@/lib/user/data-actions"
 import { cn } from "@/lib/utils"
 
@@ -78,8 +77,6 @@ export function ScanDetailModal({
     scan.locationSnapshot,
   )
 
-  const dimensions = assessment.dimensions
-
   async function handleDownloadPdf() {
     setDownloading(true)
     await downloadReportPdf(scan!.id, {
@@ -127,60 +124,46 @@ export function ScanDetailModal({
       >
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-4 sm:px-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-heading text-sm font-medium">Scan stats</h3>
-                  <Badge variant="secondary" className="font-normal capitalize">
-                    {scan.captureMode}
-                  </Badge>
-                </div>
-                <div className="space-y-2">
-                  <StatRow
-                    label="Date"
-                    value={new Date(scan.createdAt).toLocaleString()}
-                  />
-                  <StatRow
-                    label="Overall band"
-                    value={formatBand(
-                      scan.result.overallBand as SkinAssessment["overallBand"],
-                    )}
-                  />
-                  <StatRow label="Credits used" value={creditsLabel} />
-                  <StatRow label="Credit value" value={costLabel} />
-                  <StatRow label="Provider cost" value={providerCostLabel} />
-                  {scan.usage ? (
-                    <>
-                      <StatRow label="Model" value={scan.usage.modelId} />
-                      <StatRow
-                        label="Tokens"
-                        value={`${scan.usage.inputTokens.toLocaleString()} in / ${scan.usage.outputTokens.toLocaleString()} out`}
-                      />
-                      <StatRow
-                        label="Total tokens"
-                        value={scan.usage.totalTokens.toLocaleString()}
-                      />
-                      {scan.usage.latencyMs != null ? (
-                        <StatRow
-                          label="Latency"
-                          value={`${(scan.usage.latencyMs / 1000).toFixed(1)}s`}
-                        />
-                      ) : null}
-                    </>
-                  ) : null}
-                </div>
+            <div className="rounded-xl border border-border bg-card p-4 space-y-3 sm:max-w-md">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="font-heading text-sm font-medium">Scan stats</h3>
+                <Badge variant="secondary" className="font-normal capitalize">
+                  {scan.captureMode}
+                </Badge>
               </div>
-
-              <div className="rounded-xl border border-border bg-card p-4">
-                <h3 className="font-heading text-sm font-medium">
-                  Dimension profile
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Band levels from minimal (center) to elevated (outer edge)
-                </p>
-                <div className="mt-2">
-                  <DimensionRadarChart dimensions={dimensions} />
-                </div>
+              <div className="space-y-2">
+                <StatRow
+                  label="Date"
+                  value={new Date(scan.createdAt).toLocaleString()}
+                />
+                <StatRow
+                  label="Overall band"
+                  value={formatBand(
+                    scan.result.overallBand as SkinAssessment["overallBand"],
+                  )}
+                />
+                <StatRow label="Credits used" value={creditsLabel} />
+                <StatRow label="Credit value" value={costLabel} />
+                <StatRow label="Provider cost" value={providerCostLabel} />
+                {scan.usage ? (
+                  <>
+                    <StatRow label="Model" value={scan.usage.modelId} />
+                    <StatRow
+                      label="Tokens"
+                      value={`${scan.usage.inputTokens.toLocaleString()} in / ${scan.usage.outputTokens.toLocaleString()} out`}
+                    />
+                    <StatRow
+                      label="Total tokens"
+                      value={scan.usage.totalTokens.toLocaleString()}
+                    />
+                    {scan.usage.latencyMs != null ? (
+                      <StatRow
+                        label="Latency"
+                        value={`${(scan.usage.latencyMs / 1000).toFixed(1)}s`}
+                      />
+                    ) : null}
+                  </>
+                ) : null}
               </div>
             </div>
 

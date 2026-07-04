@@ -9,6 +9,16 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart"
 
+const CHART_MARGIN = { top: 8, right: 8, left: 12, bottom: 0 }
+
+const yAxisProps = {
+  tickLine: false,
+  axisLine: false,
+  tickMargin: 8,
+  width: 48,
+  className: "text-xs fill-muted-foreground",
+} as const
+
 export function UsageBarChart({
   data,
   label = "Tokens",
@@ -29,8 +39,8 @@ export function UsageBarChart({
   }
 
   return (
-    <ChartContainer config={config} className="h-48 w-full">
-      <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+    <ChartContainer config={config} className="h-48 w-full min-w-0">
+      <BarChart data={data} margin={CHART_MARGIN}>
         <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border" />
         <XAxis
           dataKey="label"
@@ -39,13 +49,7 @@ export function UsageBarChart({
           tickMargin={8}
           className="text-xs fill-muted-foreground"
         />
-        <YAxis
-          tickLine={false}
-          axisLine={false}
-          tickMargin={8}
-          width={40}
-          className="text-xs fill-muted-foreground"
-        />
+        <YAxis {...yAxisProps} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Bar dataKey="value" fill="var(--color-value)" radius={[4, 4, 0, 0]} />
       </BarChart>
@@ -63,8 +67,8 @@ export function RoleDistributionChart({
   } satisfies ChartConfig
 
   return (
-    <ChartContainer config={config} className="h-48 w-full">
-      <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+    <ChartContainer config={config} className="h-48 w-full min-w-0">
+      <BarChart data={data} margin={CHART_MARGIN}>
         <CartesianGrid vertical={false} strokeDasharray="3 3" className="stroke-border" />
         <XAxis
           dataKey="role"
@@ -73,13 +77,7 @@ export function RoleDistributionChart({
           tickMargin={8}
           className="text-xs fill-muted-foreground"
         />
-        <YAxis
-          tickLine={false}
-          axisLine={false}
-          tickMargin={8}
-          width={32}
-          className="text-xs fill-muted-foreground"
-        />
+        <YAxis {...yAxisProps} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Bar dataKey="count" fill="var(--color-count)" radius={[4, 4, 0, 0]} />
       </BarChart>

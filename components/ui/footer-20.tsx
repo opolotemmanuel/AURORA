@@ -1,8 +1,11 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { IconArrowUpRight } from "@tabler/icons-react"
 import { motion, type Variants } from "motion/react"
+
+import brandIcon from "@/app/icon.png"
 
 const staggerContainer: Variants = {
   hidden: { opacity: 0 },
@@ -44,8 +47,8 @@ export interface Footer20Props {
 }
 
 export function Footer20({
-  brandName = "Aura",
-  description = "Cosmetic skin intelligence by Aurora Organics. Personalized assessments and product guidance — not a medical diagnosis.",
+  brandName = "Aurora Organics",
+  description = "Thoughtful skincare, made personal. Aura brings Aurora Organics expertise to your screen — clear cosmetic insights, routines tailored to you, and product guidance you can trust. Wellness guidance only; not a medical diagnosis.",
   email = "hello@auroraorganics.com",
   links = {
     good: [
@@ -78,7 +81,14 @@ export function Footer20({
             variants={riseItem}
             className="flex flex-col gap-6 md:gap-8 lg:col-span-5 xl:col-span-4"
           >
-            <div className="text-foreground flex items-center gap-2">
+            <div className="text-foreground flex items-center gap-2.5">
+              <Image
+                src={brandIcon}
+                alt=""
+                width={32}
+                height={32}
+                className="size-8 shrink-0 rounded-lg"
+              />
               <span className="font-heading mt-0.5 text-lg font-medium tracking-wide">
                 {brandName}
               </span>

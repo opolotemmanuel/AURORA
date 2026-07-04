@@ -1,5 +1,7 @@
 "use client"
 
+import { usePathname } from "next/navigation"
+
 import { DashboardContent } from "@/components/layouts/dashboard-content"
 import { DashboardSidebar } from "@/components/layouts/dashboard-sidebar"
 import {
@@ -8,7 +10,26 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import type { AppRole } from "@/lib/dashboard/nav"
+import { getActiveNavItem, type AppRole } from "@/lib/dashboard/nav"
+
+function MobileHeader({ role }: { role: AppRole }) {
+  const pathname = usePathname()
+  const activeItem = getActiveNavItem(pathname, role)
+
+  if (activeItem) {
+    const Icon = activeItem.icon
+    return (
+      <>
+        <Icon className="size-4 shrink-0 text-muted-foreground" />
+        <span className="font-heading truncate text-sm font-medium">
+          {activeItem.label}
+        </span>
+      </>
+    )
+  }
+
+  return <span className="font-heading text-sm font-medium">Aura</span>
+}
 
 export function DashboardShell({
   children,
@@ -38,7 +59,7 @@ export function DashboardShell({
       <SidebarInset className="min-h-0 overflow-y-auto">
         <header className="sticky top-0 z-20 flex h-12 items-center gap-2 border-b border-border bg-background/90 px-4 backdrop-blur-sm md:hidden">
           <SidebarTrigger />
-          <span className="font-heading text-sm font-medium">Aura</span>
+          <MobileHeader role={role} />
         </header>
         <DashboardContent>{children}</DashboardContent>
       </SidebarInset>

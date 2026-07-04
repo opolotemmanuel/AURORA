@@ -34,7 +34,7 @@ export function LandingFaq() {
       <FAQ3
         badge="FAQ"
         heading="Common questions about Aura"
-        subheading="Cosmetic skin intelligence — honest bands, privacy by design, and Aurora product guidance."
+        subheading="Everything you need to know about Aura — personalized guidance, privacy-first by design, and Aurora Organics products chosen for you."
         items={items}
       />
     </div>

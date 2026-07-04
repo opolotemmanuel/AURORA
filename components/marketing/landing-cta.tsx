@@ -71,7 +71,7 @@ export function LandingCta() {
     <PerformanceOverview
       title="Ready for your"
       accentWord="first scan?"
-      subtitle="Create an account, complete a short onboarding, and receive your personalized cosmetic skin report in minutes."
+      subtitle="Create your account, tell us about your skin, and receive a personalized cosmetic wellness report — plus Aurora Organics recommendations — in minutes."
       ctaLabel="Start your scan"
       onCtaClick={() => router.push("/scan")}
       periods={periods}

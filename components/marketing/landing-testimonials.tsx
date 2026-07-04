@@ -5,7 +5,7 @@ export function LandingTestimonials() {
     <Testimonials4
       badge="Real experiences"
       heading="Trusted by people who care about their skin"
-      subheading="Aura users share how honest cosmetic bands and personalized Aurora guidance helped them build routines with confidence — not medical claims."
+      subheading="Real people using Aura to understand their skin, simplify their routines, and shop Aurora Organics with confidence."
     />
   )
 }

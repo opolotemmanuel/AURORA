@@ -73,6 +73,22 @@ export function getNavSections(role: AppRole): NavSection[] {
   return sections
 }
 
+export function isNavItemActive(pathname: string, href: string): boolean {
+  return (
+    pathname === href ||
+    (href !== "/dashboard" && pathname.startsWith(`${href}/`)) ||
+    (href === "/dashboard" && pathname === "/dashboard")
+  )
+}
+
+export function getActiveNavItem(
+  pathname: string,
+  role: AppRole,
+): NavItem | null {
+  const items = getNavSections(role).flatMap((section) => section.items)
+  return items.find((item) => isNavItemActive(pathname, item.href)) ?? null
+}
+
 export function getRoleLabel(role: AppRole): string {
   switch (role) {
     case "admin":

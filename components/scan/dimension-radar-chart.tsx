@@ -3,6 +3,7 @@
 import {
   PolarAngleAxis,
   PolarGrid,
+  PolarRadiusAxis,
   Radar,
   RadarChart,
 } from "recharts"
@@ -22,6 +23,8 @@ type DimensionRadarChartProps = {
   dimensions: SkinDimension[]
   className?: string
 }
+
+const MAX_BAND_SCORE = 4
 
 const config = {
   score: { label: "Band level", color: "var(--chart-1)" },
@@ -53,34 +56,39 @@ export function DimensionRadarChart({
   return (
     <ChartContainer
       config={config}
-      className={cn("mx-auto aspect-square h-56 w-full max-w-sm", className)}
+      className={cn("mx-auto aspect-square max-h-[250px] w-full", className)}
     >
-      <RadarChart data={data} cx="50%" cy="50%" outerRadius="70%">
-        <PolarGrid className="stroke-border" />
-        <PolarAngleAxis
-          dataKey="axis"
-          tickLine={false}
-          className="text-[10px] fill-muted-foreground"
-        />
+      <RadarChart data={data} cx="50%" cy="50%" outerRadius="80%">
         <ChartTooltip
+          cursor={false}
           content={
             <ChartTooltipContent
               formatter={(value, _name, item) => {
                 const band = (item.payload as { band?: AssessmentBand }).band
                 return band
-                  ? `${formatBand(band)} (${value}/4)`
+                  ? `${formatBand(band)} (${value}/${MAX_BAND_SCORE})`
                   : String(value)
               }}
             />
           }
         />
+        <PolarGrid />
+        <PolarAngleAxis dataKey="axis" tick={{ fontSize: 11 }} />
+        <PolarRadiusAxis
+          domain={[0, MAX_BAND_SCORE]}
+          tick={false}
+          axisLine={false}
+        />
         <Radar
           name="score"
           dataKey="score"
-          stroke="var(--color-score)"
           fill="var(--color-score)"
-          fillOpacity={0.25}
-          strokeWidth={2}
+          fillOpacity={0.6}
+          dot={{
+            r: 4,
+            fillOpacity: 1,
+            fill: "var(--color-score)",
+          }}
         />
       </RadarChart>
     </ChartContainer>

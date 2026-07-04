@@ -32,12 +32,12 @@ export function PrivacyControls({
 }: {
   scans: { id: string; status: string; createdAt: string }[]
 }) {
-  const [tab, setTab] = useTabSearchParam(PRIVACY_TABS, "data")
-  const [pending, setPending] = useState<string | null>(null)
+  const [tab, setTab, tabPending] = useTabSearchParam(PRIVACY_TABS, "data")
+  const [actionPending, setActionPending] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
   async function run(action: () => Promise<void>, key: string) {
-    setPending(key)
+    setActionPending(key)
     setMessage(null)
     try {
       await action()
@@ -45,44 +45,44 @@ export function PrivacyControls({
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Action failed")
     } finally {
-      setPending(null)
+      setActionPending(null)
     }
   }
 
   return (
     <Tabs value={tab} onValueChange={setTab} variant="underline" className="w-full">
       <TabsList className="w-full flex-wrap gap-x-1 gap-y-0">
-        <TabsTrigger value="data">Your data</TabsTrigger>
-        <TabsTrigger value="scans">Scans</TabsTrigger>
-        <TabsTrigger value="account">Account</TabsTrigger>
+        <TabsTrigger value="data" pending={tabPending === "data"}>Your data</TabsTrigger>
+        <TabsTrigger value="scans" pending={tabPending === "scans"}>Scans</TabsTrigger>
+        <TabsTrigger value="account" pending={tabPending === "account"}>Account</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="data">
+      <TabsContent value="data" pending={tabPending === "data"}>
         <div className="space-y-4">
           <PrivacyAction
             title="Profile & wellness data"
             description="Clears skin profile, routine, prescriptions, and lifestyle fields. Your account stays active."
             confirmLabel="Delete profile data"
-            pending={pending === "profile"}
+            pending={actionPending === "profile"}
             onConfirm={() => run(deleteProfileDataAction, "profile")}
           />
           <PrivacyAction
             title="Location & climate cache"
             description="Removes city, coordinates, and cached climate bands."
             confirmLabel="Delete location"
-            pending={pending === "location"}
+            pending={actionPending === "location"}
             onConfirm={() => run(deleteLocationDataAction, "location")}
           />
         </div>
       </TabsContent>
 
-      <TabsContent value="scans">
+      <TabsContent value="scans" pending={tabPending === "scans"}>
         <div className="space-y-4">
           <PrivacyAction
             title="All scans & reports"
             description="Permanently deletes every scan and associated results for your account."
             confirmLabel="Delete all scans"
-            pending={pending === "scans"}
+            pending={actionPending === "scans"}
             onConfirm={() => run(deleteAllScansAction, "scans")}
             destructive
           />
@@ -132,13 +132,13 @@ export function PrivacyControls({
         </div>
       </TabsContent>
 
-      <TabsContent value="account">
+      <TabsContent value="account" pending={tabPending === "account"}>
         <div className="space-y-4">
           <PrivacyAction
             title="All personal data"
             description="Deletes profile, location, scans, and token history. Account remains for sign-in."
             confirmLabel="Delete all personal data"
-            pending={pending === "all"}
+            pending={actionPending === "all"}
             onConfirm={() => run(deleteAllPersonalDataAction, "all")}
             destructive
           />
@@ -146,7 +146,7 @@ export function PrivacyControls({
             title="Delete account"
             description="Permanently deletes your account and all associated data. You will be signed out."
             confirmLabel="Delete my account"
-            pending={pending === "account"}
+            pending={actionPending === "account"}
             onConfirm={() => run(deleteAccountAction, "account")}
             destructive
           />

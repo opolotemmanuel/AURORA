@@ -1,36 +1,15 @@
 import { Resend } from "resend"
 
+import {
+  buildOtpEmailHtml,
+  buildOtpEmailText,
+  subjectForType,
+  type OtpType,
+} from "@/lib/email/otp-template"
+
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 
-const from = process.env.EMAIL_FROM ?? "Aura <onboarding@resend.dev>"
-
-type OtpType = "sign-in" | "email-verification" | "forget-password" | "change-email"
-
-function subjectForType(type: OtpType): string {
-  switch (type) {
-    case "sign-in":
-      return "Your Aura sign-in code"
-    case "email-verification":
-      return "Verify your Aura email"
-    case "forget-password":
-      return "Reset your Aura password"
-    case "change-email":
-      return "Confirm your new Aura email"
-    default:
-      return "Your Aura verification code"
-  }
-}
-
-function bodyForType(type: OtpType, otp: string): string {
-  const intro =
-    type === "forget-password"
-      ? "Use this code to reset your password:"
-      : type === "email-verification"
-        ? "Use this code to verify your email:"
-        : "Use this code to sign in to Aura:"
-
-  return `${intro}\n\n${otp}\n\nThis code expires in 10 minutes. If you did not request this, you can ignore this email.\n\n— Aura (cosmetic wellness guidance only; not a medical diagnosis)`
-}
+const from = process.env.EMAIL_FROM ?? "Aurora Organics <onboarding@resend.dev>"
 
 export async function sendOtpEmail({
   email,
@@ -50,6 +29,7 @@ export async function sendOtpEmail({
     from,
     to: email,
     subject: subjectForType(type),
-    text: bodyForType(type, otp),
+    text: buildOtpEmailText({ otp, type }),
+    html: buildOtpEmailHtml({ otp, type }),
   })
 }

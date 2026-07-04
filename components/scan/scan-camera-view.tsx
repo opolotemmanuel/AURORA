@@ -12,12 +12,17 @@ import {
 import { AnimatePresence, motion } from "motion/react"
 
 import { AnimatedBadge } from "@/components/motion/animated-badge"
+import { Button } from "@/components/ui/button"
 import { ScanDashboardLink } from "@/components/scan/scan-close-button"
 import {
   SCAN_CAMERA_HEIGHT,
   useScanCameraHeight,
 } from "@/hooks/use-scan-camera-height"
 import { resetVideoFaceDetector } from "@/lib/scan/mediapipe"
+import {
+  getCameraAccessError,
+  getCameraPermissionError,
+} from "@/lib/scan/camera-access"
 import { runQualityGate } from "@/lib/scan/quality-gate"
 import type { QualityCheckResult } from "@/lib/scan/types"
 import { cn } from "@/lib/utils"
@@ -129,6 +134,12 @@ export function ScanCameraView({
       resetVideoFaceDetector()
 
       try {
+        const accessError = getCameraAccessError()
+        if (accessError) {
+          setError(accessError)
+          return
+        }
+
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode,
@@ -150,8 +161,8 @@ export function ScanCameraView({
           await video.play()
           setReady(true)
         }
-      } catch {
-        setError("Camera access is required for live capture.")
+      } catch (err) {
+        setError(getCameraPermissionError(err))
       }
     }
 
@@ -319,9 +330,14 @@ export function ScanCameraView({
         </div>
 
         {error ? (
-          <p className="pointer-events-none text-center text-sm text-destructive">
-            {error}
-          </p>
+          <div className="pointer-events-auto space-y-3 text-center">
+            <p className="text-sm text-destructive">{error}</p>
+            {onSwitchToUpload ? (
+              <Button type="button" size="sm" variant="secondary" onClick={onSwitchToUpload}>
+                Use photo upload instead
+              </Button>
+            ) : null}
+          </div>
         ) : null}
 
         {!canCapture && ready && !error && quality.issues[0] ? (

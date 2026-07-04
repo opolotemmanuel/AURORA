@@ -15,20 +15,20 @@ type SettingsTabsProps = {
 }
 
 export function SettingsTabs({ account, climate }: SettingsTabsProps) {
-  const [tab, setTab] = useTabSearchParam(SETTINGS_TABS, "account")
+  const [tab, setTab, tabPending] = useTabSearchParam(SETTINGS_TABS, "account")
 
   return (
     <Tabs value={tab} onValueChange={setTab} variant="underline" className="w-full">
       <TabsList className="w-full flex-wrap gap-x-1 gap-y-0">
-        <TabsTrigger value="account">Account</TabsTrigger>
-        <TabsTrigger value="climate">Climate</TabsTrigger>
-        <TabsTrigger value="data">Your data</TabsTrigger>
+        <TabsTrigger value="account" pending={tabPending === "account"}>Account</TabsTrigger>
+        <TabsTrigger value="climate" pending={tabPending === "climate"}>Climate</TabsTrigger>
+        <TabsTrigger value="data" pending={tabPending === "data"}>Your data</TabsTrigger>
       </TabsList>
 
-      <TabsContent value="account">{account}</TabsContent>
-      <TabsContent value="climate">{climate}</TabsContent>
+      <TabsContent value="account" pending={tabPending === "account"}>{account}</TabsContent>
+      <TabsContent value="climate" pending={tabPending === "climate"}>{climate}</TabsContent>
 
-      <TabsContent value="data">
+      <TabsContent value="data" pending={tabPending === "data"}>
         <section className="rounded-xl border border-border p-5">
           <h2 className="font-heading text-sm font-medium">Manage your data</h2>
           <p className="mt-2 text-sm text-muted-foreground">

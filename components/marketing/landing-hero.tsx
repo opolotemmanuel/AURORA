@@ -64,7 +64,7 @@ export function LandingHero() {
             className="text-muted-foreground bg-muted/60 inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs sm:text-sm"
           >
             <span className="bg-primary size-1.5 rounded-full" />
-            Cosmetic skin intelligence
+            Skincare, made personal
           </motion.p>
 
           <motion.h1
@@ -80,8 +80,9 @@ export function LandingHero() {
             variants={itemVariants}
             className="text-muted-foreground max-w-lg text-base leading-relaxed md:text-lg"
           >
-            Scan your face, receive an AI cosmetic assessment in honest bands, and
-            get personalized Aurora product guidance. Not a medical diagnosis.
+            A quick face scan turns into a personalized cosmetic wellness report —
+            clear insights, Aurora Organics product matches, and a routine built
+            around you. Guidance you can act on; not a medical diagnosis.
           </motion.p>
 
           <motion.div
@@ -135,7 +136,7 @@ export function LandingHero() {
             <div className="relative aspect-[4/5] overflow-hidden rounded-xl">
               <Image
                 src={PLACEHOLDER_IMAGES.hero}
-                alt="Cosmetic skincare routine — placeholder wellness imagery"
+                alt="Personalized skincare routine — Aurora Organics wellness imagery"
                 fill
                 className="object-cover"
                 sizes="(max-width: 768px) 100vw, 50vw"

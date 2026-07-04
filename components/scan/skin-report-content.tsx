@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "motion/react"
 
 import { BandBadge } from "@/components/scan/band-badge"
 import { ClimateContextCard } from "@/components/scan/climate-context-card"
+import { DimensionRadarChart } from "@/components/scan/dimension-radar-chart"
 import { ProductCard } from "@/components/products/product-card"
 import {
   Card,
@@ -47,10 +48,10 @@ export function SkinReportContent({
         <Card className="rounded-[1.5rem] outline-8 outline-card/40">
           <CardContent className="space-y-3">
             <BandBadge band={assessment.overallBand} size="md" />
-            <p className="max-w-md text-balance text-lg text-foreground">
+            <p className="max-w-prose text-balance text-lg text-foreground capitalize">
                {formatSkinHeadline(assessment.overallBand)}
             </p>
-            <p className="text-sm leading-relaxed text-muted-foreground max-w-md">
+            <p className="text-sm leading-relaxed text-muted-foreground max-w-prose ">
               {assessment.summary}
             </p>
           </CardContent>
@@ -65,6 +66,16 @@ export function SkinReportContent({
         <p className="font-heading text-sm font-semibold text-foreground">
           Dimensions
         </p>
+        <motion.div {...fadeIn(STAGGER * 0.75)}>
+          <Card className="rounded-[1.5rem]">
+            <CardContent className="space-y-2 pt-4">
+              <p className="text-center text-xs text-muted-foreground">
+                Band levels from minimal (center) to elevated (outer edge)
+              </p>
+              <DimensionRadarChart dimensions={assessment.dimensions} />
+            </CardContent>
+          </Card>
+        </motion.div>
         <div className="grid gap-2 md:grid-cols-2">
           {assessment.dimensions.map((dimension, index) => (
             <motion.div

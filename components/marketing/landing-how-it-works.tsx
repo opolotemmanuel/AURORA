@@ -17,13 +17,13 @@ const steps = [
     icon: IconSparkles,
     title: "Assess",
     description:
-      "Aura reviews your image and returns coarse cosmetic bands — hydration, tone, texture — with clear, honest language.",
+      "Aura reviews your image and returns clear cosmetic wellness bands — hydration, tone, texture — in language you can actually use.",
   },
   {
     icon: IconBottle,
     title: "Recommend",
     description:
-      "Receive Aurora product matches aligned with your profile, routine, and local climate. Download a PDF report anytime.",
+      "Discover Aurora Organics products matched to your profile, routine, and climate. Save and share your PDF report anytime.",
   },
 ]
 
@@ -57,7 +57,7 @@ export function LandingHowItWorks() {
             How it works
           </p>
           <h2 className="font-heading text-foreground text-3xl font-semibold tracking-tight text-balance md:text-4xl">
-            Three steps to your skin report
+            Your skin report in three simple steps
           </h2>
         </div>
 

@@ -10,12 +10,32 @@ type ImageSource =
   | HTMLVideoElement
   | ImageBitmap
 
+const MEDIAPIPE_WASM_BASE =
+  "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm"
+
+const FACE_MODEL = {
+  shortRange:
+    "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
+  fullRange:
+    "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_full_range/float16/1/blaze_face_full_range.tflite",
+} as const
+
+const MIN_DETECTION_CONFIDENCE = 0.45
 const VIDEO_FRAME_MS = 33
 
+let imageDetector: FaceDetector | null = null
 let imageDetectorPromise: Promise<FaceDetector> | null = null
 let videoDetector: FaceDetector | null = null
 let videoDetectorPromise: Promise<FaceDetector> | null = null
 let nextVideoTimestampMs = 0
+
+export function resetImageFaceDetector() {
+  if (imageDetector) {
+    imageDetector.close()
+    imageDetector = null
+  }
+  imageDetectorPromise = null
+}
 
 export function resetVideoFaceDetector() {
   if (videoDetector) {
@@ -34,19 +54,19 @@ function bumpVideoTimestamp() {
 async function getImageFaceDetector(): Promise<FaceDetector> {
   if (!imageDetectorPromise) {
     imageDetectorPromise = (async () => {
-      const vision = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm",
-      )
+      const vision = await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_BASE)
 
-      return FaceDetector.createFromOptions(vision, {
+      const detector = await FaceDetector.createFromOptions(vision, {
         baseOptions: {
-          modelAssetPath:
-            "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
+          modelAssetPath: FACE_MODEL.fullRange,
           delegate: "CPU",
         },
         runningMode: "IMAGE",
-        minDetectionConfidence: 0.5,
+        minDetectionConfidence: MIN_DETECTION_CONFIDENCE,
       })
+
+      imageDetector = detector
+      return detector
     })()
   }
 
@@ -56,18 +76,15 @@ async function getImageFaceDetector(): Promise<FaceDetector> {
 async function getVideoFaceDetector(): Promise<FaceDetector> {
   if (!videoDetectorPromise) {
     videoDetectorPromise = (async () => {
-      const vision = await FilesetResolver.forVisionTasks(
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm",
-      )
+      const vision = await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_BASE)
 
       const detector = await FaceDetector.createFromOptions(vision, {
         baseOptions: {
-          modelAssetPath:
-            "https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite",
+          modelAssetPath: FACE_MODEL.shortRange,
           delegate: "CPU",
         },
         runningMode: "VIDEO",
-        minDetectionConfidence: 0.5,
+        minDetectionConfidence: MIN_DETECTION_CONFIDENCE,
       })
 
       videoDetector = detector
@@ -114,6 +131,27 @@ async function detectFacesInVideo(
   }
 }
 
+async function detectFacesInImage(
+  source: Exclude<ImageSource, HTMLVideoElement>,
+): Promise<FaceDetection[]> {
+  const run = async () => {
+    const detector = await getImageFaceDetector()
+    const result = detector.detect(source)
+    return mapDetections(result.detections)
+  }
+
+  try {
+    return await run()
+  } catch {
+    resetImageFaceDetector()
+    try {
+      return await run()
+    } catch {
+      return []
+    }
+  }
+}
+
 export async function detectFaces(
   source: ImageSource,
 ): Promise<FaceDetection[]> {
@@ -125,7 +163,5 @@ export async function detectFaces(
     return detectFacesInVideo(source)
   }
 
-  const detector = await getImageFaceDetector()
-  const result = detector.detect(source)
-  return mapDetections(result.detections)
+  return detectFacesInImage(source)
 }

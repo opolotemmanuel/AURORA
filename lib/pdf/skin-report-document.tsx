@@ -1,5 +1,6 @@
 import {
   Document,
+  Image,
   Page,
   StyleSheet,
   Text,
@@ -68,18 +69,34 @@ const styles = StyleSheet.create({
     color: "#888",
     marginBottom: 20,
   },
+  heroRow: {
+    flexDirection: "row",
+    gap: 16,
+    marginBottom: 16,
+  },
+  heroImage: {
+    width: 120,
+    height: 160,
+    borderRadius: 8,
+    objectFit: "cover",
+  },
+  heroCopy: {
+    flex: 1,
+  },
 })
 
 type SkinReportDocumentProps = {
   assessment: SkinAssessment
   userName: string
   scanDate: string
+  imageSrc?: string | null
 }
 
 export function SkinReportDocument({
   assessment,
   userName,
   scanDate,
+  imageSrc,
 }: SkinReportDocumentProps) {
   return (
     <Document title="Aura Skin Report">
@@ -88,13 +105,20 @@ export function SkinReportDocument({
           Aura · {scanDate} · Prepared for {userName}
         </Text>
 
-        <Text style={styles.title}>
-          Your skin is {formatSkinHeadline(assessment.overallBand)}
-        </Text>
-        <Text style={styles.band}>
-          Overall: {formatBand(assessment.overallBand)}
-        </Text>
-        <Text style={styles.subtitle}>{assessment.summary}</Text>
+        <View style={styles.heroRow}>
+          {imageSrc ? (
+            <Image src={imageSrc} style={styles.heroImage} />
+          ) : null}
+          <View style={styles.heroCopy}>
+            <Text style={styles.title}>
+              Your skin is {formatSkinHeadline(assessment.overallBand)}
+            </Text>
+            <Text style={styles.band}>
+              Overall: {formatBand(assessment.overallBand)}
+            </Text>
+            <Text style={styles.subtitle}>{assessment.summary}</Text>
+          </View>
+        </View>
 
         <Text style={styles.sectionTitle}>Dimensions</Text>
         {assessment.dimensions.map((dimension) => (

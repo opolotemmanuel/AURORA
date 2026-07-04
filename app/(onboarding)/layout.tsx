@@ -1,21 +1,16 @@
-import { redirect } from "next/navigation"
+import { Suspense } from "react"
 
-import { OnboardingShell } from "@/components/layouts/onboarding-shell"
-import { getOnboardingContext } from "@/lib/onboarding/context"
+import { OnboardingAuthShell } from "@/components/layouts/onboarding-auth-shell"
+import { OnboardingSkeleton } from "@/components/onboarding/onboarding-skeleton"
 
-export default async function OnboardingLayout({
+export default function OnboardingLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const context = await getOnboardingContext()
-  if (!context) {
-    redirect("/login")
-  }
-
-  if (context.completed) {
-    redirect("/dashboard")
-  }
-
-  return <OnboardingShell>{children}</OnboardingShell>
+  return (
+    <Suspense fallback={<OnboardingSkeleton />}>
+      <OnboardingAuthShell>{children}</OnboardingAuthShell>
+    </Suspense>
+  )
 }

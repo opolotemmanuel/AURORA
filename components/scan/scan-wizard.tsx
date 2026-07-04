@@ -5,13 +5,13 @@ import { AnimatePresence, motion } from "motion/react"
 
 import { ScanAnalyzingView } from "@/components/scan/scan-analyzing-view"
 import { ScanCapturePanel } from "@/components/scan/scan-capture-panel"
-import { ScanDashboardLink } from "@/components/scan/scan-close-button"
 import { ScanImageEditor } from "@/components/scan/scan-image-editor"
 import { ScanQualityStep } from "@/components/scan/scan-quality-step"
 import { ScanReportModal } from "@/components/scan/scan-report-modal"
 import { ScanResultsView } from "@/components/scan/scan-results-view"
 import { EASE_OUT } from "@/lib/ease"
 import { saveScanResultAction } from "@/lib/scan/actions"
+import { blobToBase64 } from "@/lib/scan/image-bytes"
 import type {
   CaptureMode,
   ScanWizardStep,
@@ -59,8 +59,22 @@ export function ScanWizard() {
     setReportOpen(false)
   }, [revokeAllUrls])
 
+  const handleBackToEdit = useCallback(() => {
+    if (croppedPreviewUrl) {
+      URL.revokeObjectURL(croppedPreviewUrl)
+      urlsRef.current = urlsRef.current.filter((url) => url !== croppedPreviewUrl)
+    }
+    setCroppedPreviewUrl(null)
+    setImageBlob(null)
+    setAssessment(null)
+    setScanId(null)
+    setIsSaving(false)
+    setReportOpen(false)
+    setStep("edit")
+  }, [croppedPreviewUrl])
+
   const handleImageSelected = useCallback(
-    (file: File, previewUrl: string) => {
+    (file: File, previewUrl: string, _source: CaptureMode) => {
       trackUrl(previewUrl)
       setRawPreviewUrl(previewUrl)
       setImageBlob(file)
@@ -83,42 +97,43 @@ export function ScanWizard() {
     setStep("analyzing")
   }, [])
 
-  const persistAssessment = useCallback(async (result: SkinAssessment) => {
-    setIsSaving(true)
-    try {
-      const saved = await saveScanResultAction(result)
-      if (saved.ok) {
-        setScanId(saved.scanId)
+  const persistAssessment = useCallback(
+    async (result: SkinAssessment, photo: Blob | null) => {
+      setIsSaving(true)
+      try {
+        const imageBase64 = photo ? await blobToBase64(photo) : undefined
+        const saved = await saveScanResultAction({
+          assessment: result,
+          imageBase64,
+          imageMimeType: photo?.type.startsWith("image/")
+            ? (photo.type as "image/jpeg" | "image/png" | "image/webp")
+            : "image/jpeg",
+        })
+        if (saved.ok) {
+          setScanId(saved.scanId)
+        }
+      } catch {
+        // Results remain visible even if save fails
+      } finally {
+        setIsSaving(false)
       }
-    } catch {
-      // Results remain visible even if save fails
-    } finally {
-      setIsSaving(false)
-    }
-  }, [])
+    },
+    [],
+  )
 
   const handleAnalysisComplete = useCallback(
     (result: SkinAssessment) => {
       setAssessment(result)
       setStep("results")
-      void persistAssessment(result)
+      void persistAssessment(result, imageBlob)
     },
-    [persistAssessment],
+    [persistAssessment, imageBlob],
   )
 
-  const showFloatingDashboard =
-    step === "edit" || step === "quality" || step === "analyzing"
-
-  const isReportPhase = step === "analyzing" || step === "results"
+  const isReportPhase = step === "results"
 
   return (
     <div className="relative flex min-h-svh flex-col">
-      {showFloatingDashboard ? (
-        <div className="absolute top-4 right-4 z-40 pt-[env(safe-area-inset-top)]">
-          <ScanDashboardLink />
-        </div>
-      ) : null}
-
       <div
         className={cn(
           "flex flex-1 flex-col items-center justify-center px-4 py-8",
@@ -127,11 +142,7 @@ export function ScanWizard() {
       >
         <AnimatePresence mode="wait">
           <motion.div
-            key={
-              isReportPhase
-                ? "report-phase"
-                : step
-            }
+            key={isReportPhase ? "report-phase" : step}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
@@ -159,6 +170,7 @@ export function ScanWizard() {
               <ScanQualityStep
                 imageSrc={croppedPreviewUrl}
                 onPass={handleQualityPass}
+                onReEdit={handleBackToEdit}
                 onRetake={resetScan}
               />
             ) : null}
@@ -176,6 +188,7 @@ export function ScanWizard() {
                 assessment={assessment}
                 imageSrc={croppedPreviewUrl}
                 onNewScan={resetScan}
+                onReEdit={handleBackToEdit}
                 onViewReport={() => setReportOpen(true)}
               />
             ) : null}

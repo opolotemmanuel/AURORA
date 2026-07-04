@@ -2,10 +2,11 @@
 
 import { useCallback, useState } from "react"
 import { IconRefresh, IconTrash } from "@tabler/icons-react"
-import Cropper, { type Area } from "react-easy-crop"
 
+import { RectCropCanvas } from "@/components/scan/rect-crop-canvas"
+import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import { Button } from "@/components/ui/button"
-import { getCroppedImageBlob } from "@/lib/scan/crop-image"
+import { getCroppedImageBlob, type PixelCrop } from "@/lib/scan/crop-image"
 import { cn } from "@/lib/utils"
 
 type ScanImageEditorProps = {
@@ -21,13 +22,11 @@ export function ScanImageEditor({
   onRetake,
   onDelete,
 }: ScanImageEditorProps) {
-  const [crop, setCrop] = useState({ x: 0, y: 0 })
-  const [zoom, setZoom] = useState(1)
-  const [croppedArea, setCroppedArea] = useState<Area | null>(null)
+  const [croppedArea, setCroppedArea] = useState<PixelCrop | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
-  const onCropComplete = useCallback((_: Area, areaPixels: Area) => {
-    setCroppedArea(areaPixels)
+  const onCropChange = useCallback((crop: PixelCrop) => {
+    setCroppedArea(crop)
   }, [])
 
   const handleConfirm = async () => {
@@ -43,42 +42,15 @@ export function ScanImageEditor({
   }
 
   return (
-    <div className="w-full max-w-md space-y-4 rounded-[2rem] border border-border bg-background p-3">
-      <div className="px-1">
-        <p className="font-heading text-sm font-semibold text-foreground">
-          Adjust your photo
-        </p>
-        <p className="text-xs text-muted-foreground">
-          Crop to focus on your face within the guide
-        </p>
-      </div>
+    <ScanStepShell
+      title="Adjust your photo"
+      description="Drag the box to move it. Pull the corners to resize. Only the highlighted rectangle is saved."
+    >
+      <RectCropCanvas imageSrc={imageSrc} onCropChange={onCropChange} />
 
-      <div className="relative aspect-[3/4] overflow-hidden rounded-[1.5rem] bg-muted">
-        <Cropper
-          image={imageSrc}
-          crop={crop}
-          zoom={zoom}
-          aspect={3 / 4}
-          cropShape="round"
-          showGrid={false}
-          onCropChange={setCrop}
-          onZoomChange={setZoom}
-          onCropComplete={onCropComplete}
-        />
-      </div>
-
-      <label className="flex items-center gap-3 px-1 text-xs text-muted-foreground">
-        <span className="shrink-0">Zoom</span>
-        <input
-          type="range"
-          min={1}
-          max={3}
-          step={0.05}
-          value={zoom}
-          onChange={(event) => setZoom(Number(event.target.value))}
-          className="h-1.5 w-full accent-primary"
-        />
-      </label>
+      <p className="text-center text-xs text-muted-foreground">
+        The dimmed area is not included in your scan.
+      </p>
 
       <div className="flex flex-wrap gap-2">
         <Button
@@ -111,6 +83,6 @@ export function ScanImageEditor({
           {submitting ? "Preparing…" : "Continue"}
         </Button>
       </div>
-    </div>
+    </ScanStepShell>
   )
 }

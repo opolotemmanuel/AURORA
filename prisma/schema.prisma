@@ -347,6 +347,8 @@ model Scan {
   consentSnapshot  Json?
   imageRetained    Boolean       @default(false)
   imageStorageKey  String?
+  imageMimeType    String?
+  imageData        Bytes?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
   usage            ScanUsage?

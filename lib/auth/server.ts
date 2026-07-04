@@ -65,6 +65,16 @@ export const auth = betterAuth({
       allowUserToCreateOrganization: true,
     }),
   ],
+  session: {
+    cookieCache: {
+      enabled: true,
+      maxAge: 60,
+      strategy: "compact",
+      version: (session, user) =>
+        `${user.role ?? "user"}:${user.onboardingCompleted}:${user.banned}:${user.updatedAt?.toString() ?? ""}`,
+    },
+    deferSessionRefresh: true,
+  },
   user: {
     additionalFields: {
       onboardingCompleted: {

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { Suspense } from "react"
 
+import { OnboardingSkeleton } from "@/components/onboarding/onboarding-skeleton"
 import { OnboardingWizard } from "@/components/onboarding/onboarding-wizard"
 import {
   DEFAULT_POST_ONBOARDING_PATH,
@@ -14,6 +15,19 @@ export default async function OnboardingPage({
   searchParams: Promise<{ callbackUrl?: string }>
 }>) {
   const { callbackUrl: rawCallbackUrl } = await searchParams
+
+  return (
+    <Suspense fallback={<OnboardingSkeleton />}>
+      <OnboardingPageContent callbackUrl={rawCallbackUrl} />
+    </Suspense>
+  )
+}
+
+async function OnboardingPageContent({
+  callbackUrl: rawCallbackUrl,
+}: {
+  callbackUrl?: string
+}) {
   const context = await getOnboardingContext()
 
   if (!context) {
@@ -38,18 +52,10 @@ export default async function OnboardingPage({
   )
 
   return (
-    <Suspense
-      fallback={
-        <div className="text-muted-foreground py-12 text-center text-sm">
-          Loading onboarding…
-        </div>
-      }
-    >
-      <OnboardingWizard
-        initialStep={context.step}
-        userName={context.user.name ?? ""}
-        callbackUrl={callbackUrl}
-      />
-    </Suspense>
+    <OnboardingWizard
+      initialStep={context.step}
+      userName={context.user.name ?? ""}
+      callbackUrl={callbackUrl}
+    />
   )
 }

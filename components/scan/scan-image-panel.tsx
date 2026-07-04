@@ -10,6 +10,8 @@ type ScanImagePanelProps = {
   isLoading?: boolean
   loadingLabel?: string
   overlay?: ReactNode
+  /** Constrain width for report layout; image keeps natural aspect height */
+  compact?: boolean
   className?: string
 }
 
@@ -18,13 +20,15 @@ export function ScanImagePanel({
   isLoading = false,
   loadingLabel = "Analyzing",
   overlay,
+  compact = false,
   className,
 }: ScanImagePanelProps) {
   if (!imageSrc) {
     return (
       <div
         className={cn(
-          "flex aspect-[3/4] items-center justify-center rounded-[1.5rem] border border-dashed border-border bg-muted/30",
+          "flex aspect-[3/4] w-full items-center justify-center rounded-[1.5rem] border border-dashed border-border bg-muted/30",
+          compact && "max-w-[280px]",
           className,
         )}
       >
@@ -46,7 +50,10 @@ export function ScanImagePanel({
       <img
         src={imageSrc}
         alt="Scan photo"
-        className="aspect-[3/4] w-full object-cover"
+        className={cn(
+          "block w-full object-cover",
+          compact ? "h-auto" : "aspect-[3/4]",
+        )}
       />
 
       {isLoading ? (

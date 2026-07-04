@@ -1,72 +1,42 @@
 import Link from "next/link"
-import { headers } from "next/headers"
-import { redirect } from "next/navigation"
+import { Suspense } from "react"
 
-import { DashboardPageHeader } from "@/components/dashboard/page-header"
+import { ClimateSection } from "@/components/dashboard/climate-section"
+import { SettingsAccountSection } from "@/components/dashboard/settings-account-section"
+import { SettingsPageHeader } from "@/components/dashboard/settings-page-header"
+import { ClimateSectionSkeleton } from "@/components/dashboard/skeletons/climate-section-skeleton"
+import { PageHeaderSkeleton } from "@/components/dashboard/skeletons/page-header-skeleton"
 import { Button } from "@/components/ui/button"
-import { auth } from "@/lib/auth/server"
-import { requireSession } from "@/lib/auth/session"
-import { getRoleLabel, type AppRole } from "@/lib/dashboard/nav"
-import { syncUserClimateAction } from "@/lib/onboarding/actions"
-import { prisma } from "@/lib/db/client"
+import { Skeleton } from "@/components/ui/skeleton"
 
-export default async function SettingsPage() {
-  const session = await requireSession()
-  const role = ((session.user as { role?: string }).role ?? "user") as AppRole
-  const location = await prisma.userLocation.findUnique({
-    where: { userId: session.user.id },
-  })
+function AccountSectionSkeleton() {
+  return (
+    <section className="rounded-xl border border-border p-5">
+      <Skeleton className="h-4 w-20" />
+      <Skeleton className="mt-3 h-4 w-48" />
+      <div className="mt-4 flex gap-2">
+        <Skeleton className="h-9 w-24 rounded-lg" />
+        <Skeleton className="h-9 w-32 rounded-lg" />
+      </div>
+    </section>
+  )
+}
 
-  async function syncClimate() {
-    "use server"
-    await syncUserClimateAction()
-  }
-
+export default function SettingsPage() {
   return (
     <div className="space-y-8">
-      <DashboardPageHeader
-        title="Settings"
-        description="Account preferences and session."
-        badge={getRoleLabel(role)}
-      />
+      <Suspense fallback={<PageHeaderSkeleton withBadge />}>
+        <SettingsPageHeader />
+      </Suspense>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-xl border border-border p-5">
-          <h2 className="font-heading text-sm font-medium">Account</h2>
-          <p className="mt-2 text-sm text-muted-foreground">{session.user.email}</p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <form
-              action={async () => {
-                "use server"
-                await auth.api.signOut({ headers: await headers() })
-                redirect("/login")
-              }}
-            >
-              <Button type="submit" variant="outline">
-                Sign out
-              </Button>
-            </form>
-            <Button asChild variant="secondary">
-              <Link href="/forgot-password">Reset password</Link>
-            </Button>
-          </div>
-        </section>
+        <Suspense fallback={<AccountSectionSkeleton />}>
+          <SettingsAccountSection />
+        </Suspense>
 
-        <section className="rounded-xl border border-border p-5">
-          <h2 className="font-heading text-sm font-medium">Climate cache</h2>
-          {location?.city ? (
-            <p className="mt-2 text-sm text-muted-foreground">
-              {location.city}, {location.region} — {location.climateZone ?? "unknown"}
-            </p>
-          ) : (
-            <p className="mt-2 text-sm text-muted-foreground">No location on file.</p>
-          )}
-          <form action={syncClimate} className="mt-4">
-            <Button type="submit" variant="secondary">
-              Refresh climate bands
-            </Button>
-          </form>
-        </section>
+        <Suspense fallback={<ClimateSectionSkeleton />}>
+          <ClimateSection />
+        </Suspense>
       </div>
 
       <section className="rounded-xl border border-border p-5">

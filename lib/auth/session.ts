@@ -2,35 +2,39 @@ import { cache } from "react"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
+import { getAuthContext } from "@/lib/auth/context"
 import { auth } from "@/lib/auth/server"
-import { getUserRole } from "@/lib/auth/role"
 import { prisma } from "@/lib/db/client"
 import { withDbRetry } from "@/lib/db/retry"
 
 export const getSession = cache(async () => {
   const requestHeaders = await headers()
-  return withDbRetry(() =>
-    auth.api.getSession({
-      headers: requestHeaders,
-    }),
+  return withDbRetry(
+    () =>
+      auth.api.getSession({
+        headers: requestHeaders,
+      }),
+    1,
   )
 })
 
 export async function requireSession() {
-  const session = await getSession()
-  if (!session) {
+  const ctx = await getAuthContext()
+  if (!ctx) {
     redirect("/login")
   }
-  return session
+  return ctx.session
 }
 
 export async function requireRole(roles: string[]) {
-  const session = await requireSession()
-  const userRole = await getUserRole(session.user.id)
-  if (!roles.includes(userRole)) {
+  const ctx = await getAuthContext()
+  if (!ctx) {
+    redirect("/login")
+  }
+  if (!roles.includes(ctx.role)) {
     redirect("/dashboard")
   }
-  return session
+  return ctx.session
 }
 
 export async function requireAdmin() {
@@ -52,10 +56,12 @@ export const getOnboardingStatus = cache(async (userId: string) => {
 })
 
 export async function requireOnboardingComplete() {
-  const session = await requireSession()
-  const { completed } = await getOnboardingStatus(session.user.id)
-  if (!completed) {
+  const ctx = await getAuthContext()
+  if (!ctx) {
+    redirect("/login")
+  }
+  if (!ctx.onboardingCompleted) {
     redirect("/onboarding")
   }
-  return session
+  return ctx.session
 }

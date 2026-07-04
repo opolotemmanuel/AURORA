@@ -1,4 +1,9 @@
-import type { Area } from "react-easy-crop"
+export type PixelCrop = {
+  x: number
+  y: number
+  width: number
+  height: number
+}
 
 function createImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -26,7 +31,7 @@ function rotateSize(width: number, height: number, rotation: number) {
 
 export async function getCroppedImageBlob(
   imageSrc: string,
-  pixelCrop: Area,
+  pixelCrop: PixelCrop,
   rotation = 0,
   mimeType = "image/jpeg",
 ): Promise<Blob> {

@@ -11,19 +11,29 @@ import {
   REPORT_FORMAT_VERSION,
 } from "@/lib/scan/constants"
 import { toScanResultData } from "@/lib/scan/persist"
-import { skinAssessmentSchema } from "@/lib/scan/schemas"
+import { parseScanImageBase64 } from "@/lib/scan/image-bytes"
+import { saveScanResultSchema } from "@/lib/scan/schemas"
 import type { SkinAssessment } from "@/lib/scan/types"
 import { debitTokens } from "@/lib/tokens/wallet"
+import type { z } from "zod"
+
+type SaveScanResultInput = z.input<typeof saveScanResultSchema> | SkinAssessment
 
 type SaveScanResult =
   | { ok: true; scanId: string; reportId: string }
   | { ok: false; error: string }
 
 export async function saveScanResultAction(
-  input: SkinAssessment,
+  input: SaveScanResultInput,
 ): Promise<SaveScanResult> {
   const session = await requireSession()
-  const assessment = skinAssessmentSchema.parse(input)
+  const parsed = saveScanResultSchema.parse(
+    typeof input === "object" && input !== null && "assessment" in input
+      ? input
+      : { assessment: input },
+  )
+  const assessment = parsed.assessment
+  const image = parseScanImageBase64(parsed.imageBase64, parsed.imageMimeType)
   const resultData = toScanResultData(assessment)
   const tokenCost = getScanTokenCost()
 
@@ -39,7 +49,9 @@ export async function saveScanResultAction(
           data: {
             userId: session.user.id,
             status: "completed",
-            imageRetained: false,
+            imageRetained: image !== null,
+            imageMimeType: image?.mimeType,
+            imageData: image ? Uint8Array.from(image.buffer) : undefined,
             profileSnapshot: profile
               ? {
                   ageBand: profile.ageBand,

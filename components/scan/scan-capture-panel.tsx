@@ -6,13 +6,14 @@ import { IconCamera, IconUpload } from "@tabler/icons-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/motion/tabs"
 import { ScanCameraView } from "@/components/scan/scan-camera-view"
 import { ScanDashboardLink } from "@/components/scan/scan-close-button"
+import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import { ScanUploadPanel } from "@/components/scan/scan-upload-panel"
 import type { CaptureMode } from "@/lib/scan/types"
 
 type ScanCapturePanelProps = {
   mode: CaptureMode
   onModeChange: (mode: CaptureMode) => void
-  onImageSelected: (file: File, previewUrl: string) => void
+  onImageSelected: (file: File, previewUrl: string, source: CaptureMode) => void
 }
 
 function useIsMobile() {
@@ -40,52 +41,50 @@ export function ScanCapturePanel({
     return (
       <ScanCameraView
         fullscreen
-        onCapture={onImageSelected}
+        onCapture={(file, previewUrl) =>
+          onImageSelected(file, previewUrl, "camera")
+        }
         onSwitchToUpload={() => onModeChange("upload")}
       />
     )
   }
 
   return (
-    <div className="w-full max-w-2xl rounded-[2rem] border border-border bg-background p-3">
-      <Tabs
-        value={mode}
-        onValueChange={(value) => onModeChange(value as CaptureMode)}
-        variant="segment"
+    <Tabs
+      value={mode}
+      onValueChange={(value) => onModeChange(value as CaptureMode)}
+      variant="segment"
+    >
+      <ScanStepShell
+        title="Capture your photo"
+        description="Upload a photo or use your camera"
+        headerTrailing={
+          <TabsList className="w-fit">
+            <TabsTrigger value="upload" className="gap-1.5 px-3">
+              <IconUpload className="size-3.5" />
+              Upload
+            </TabsTrigger>
+            <TabsTrigger value="camera" className="gap-1.5 px-3">
+              <IconCamera className="size-3.5" />
+              Camera
+            </TabsTrigger>
+            <ScanDashboardLink variant="segment" />
+          </TabsList>
+        }
       >
-        <div className="mb-3 space-y-2 px-1">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-            <p className="font-heading text-sm font-semibold text-foreground">
-              Capture your photo
-            </p>
-
-            <TabsList className="w-fit shrink-0 self-start sm:self-center">
-              <TabsTrigger value="upload" className="gap-1.5 px-3">
-                <IconUpload className="size-3.5" />
-                Upload
-              </TabsTrigger>
-              <TabsTrigger value="camera" className="gap-1.5 px-3">
-                <IconCamera className="size-3.5" />
-                Camera
-              </TabsTrigger>
-              <ScanDashboardLink variant="segment" />
-            </TabsList>
-          </div>
-
-          <p className="text-xs text-muted-foreground">
-            Upload a photo or use your camera
-          </p>
-        </div>
-
         <TabsContent value="upload" className="mt-0">
           <ScanUploadPanel onImageSelected={onImageSelected} />
         </TabsContent>
         <TabsContent value="camera" className="mt-0">
           {mode === "camera" ? (
-            <ScanCameraView onCapture={onImageSelected} />
+            <ScanCameraView
+              onCapture={(file, previewUrl) =>
+                onImageSelected(file, previewUrl, "camera")
+              }
+            />
           ) : null}
         </TabsContent>
-      </Tabs>
-    </div>
+      </ScanStepShell>
+    </Tabs>
   )
 }

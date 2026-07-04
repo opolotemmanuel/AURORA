@@ -1,9 +1,11 @@
 import { cache } from "react"
+import { connection } from "next/server"
 
 import { prisma } from "@/lib/db/client"
 import { withDbRetry } from "@/lib/db/retry"
 
 export const getUserDashboardStats = cache(async (userId: string) => {
+  await connection()
   return withDbRetry(async () => {
     const [wallet, scanCount, ledgerAgg] = await Promise.all([
       prisma.tokenWallet.findUnique({ where: { userId } }),
@@ -55,6 +57,7 @@ export const getUserDashboardStats = cache(async (userId: string) => {
 })
 
 export const getAdminDashboardStats = cache(async () => {
+  await connection()
   return withDbRetry(async () => {
     const thirtyDaysAgo = daysAgo(30)
 

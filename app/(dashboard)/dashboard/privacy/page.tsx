@@ -1,29 +1,35 @@
-import { PrivacyControls } from "@/components/dashboard/privacy-controls"
+import { Suspense } from "react"
+
+import { PrivacyControlsLoader } from "@/components/dashboard/privacy-controls-loader"
 import { DashboardPageHeader } from "@/components/dashboard/page-header"
-import { requireSession } from "@/lib/auth/session"
-import { prisma } from "@/lib/db/client"
+import { Skeleton } from "@/components/ui/skeleton"
 
-export default async function PrivacyPage() {
-  const session = await requireSession()
-  const scans = await prisma.scan.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-    select: { id: true, status: true, createdAt: true },
-  })
+function PrivacyControlsSkeleton() {
+  return (
+    <div className="space-y-4 rounded-xl border border-border bg-card p-5">
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="flex items-center justify-between gap-4 border-b border-border pb-4 last:border-0">
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+          <Skeleton className="h-8 w-20 rounded-lg" />
+        </div>
+      ))}
+    </div>
+  )
+}
 
+export default function PrivacyPage() {
   return (
     <div className="space-y-8">
       <DashboardPageHeader
         title="Privacy"
         description="Delete individual items or all personal data. Account deletion is permanent."
       />
-      <PrivacyControls
-        scans={scans.map((s) => ({
-          id: s.id,
-          status: s.status,
-          createdAt: s.createdAt.toISOString(),
-        }))}
-      />
+      <Suspense fallback={<PrivacyControlsSkeleton />}>
+        <PrivacyControlsLoader />
+      </Suspense>
     </div>
   )
 }

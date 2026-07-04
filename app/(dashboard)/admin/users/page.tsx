@@ -1,18 +1,30 @@
-import { headers } from "next/headers"
+import { Suspense } from "react"
 
-import { UsersTable } from "@/components/admin/users-table"
+import { UsersTableLoader } from "@/components/dashboard/users-table-loader"
 import { DashboardPageHeader } from "@/components/dashboard/page-header"
-import { auth } from "@/lib/auth/server"
-import { requireAdmin } from "@/lib/auth/session"
+import { Skeleton } from "@/components/ui/skeleton"
 
-export default async function AdminUsersPage() {
-  await requireAdmin()
+function UsersTableSkeleton() {
+  return (
+    <div className="rounded-xl border border-border">
+      <div className="border-b border-border p-4">
+        <Skeleton className="h-9 w-full max-w-sm rounded-lg" />
+      </div>
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4 border-b border-border p-4 last:border-0">
+          <Skeleton className="size-8 rounded-full" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-3 w-56" />
+          </div>
+          <Skeleton className="h-8 w-20 rounded-lg" />
+        </div>
+      ))}
+    </div>
+  )
+}
 
-  const usersResult = await auth.api.listUsers({
-    query: { limit: 100 },
-    headers: await headers(),
-  })
-
+export default function AdminUsersPage() {
   return (
     <div className="space-y-8">
       <DashboardPageHeader
@@ -20,9 +32,9 @@ export default async function AdminUsersPage() {
         description="Block, change roles, impersonate, or delete user accounts."
         badge="Admin"
       />
-      <UsersTable
-        initialUsers={(usersResult?.users ?? []) as Parameters<typeof UsersTable>[0]["initialUsers"]}
-      />
+      <Suspense fallback={<UsersTableSkeleton />}>
+        <UsersTableLoader />
+      </Suspense>
     </div>
   )
 }

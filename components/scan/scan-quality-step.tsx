@@ -1,9 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { IconRefresh } from "@tabler/icons-react"
+import { IconCrop, IconRefresh } from "@tabler/icons-react"
 
 import { AnimatedBadge } from "@/components/motion/animated-badge"
+import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import { Button } from "@/components/ui/button"
 import { runQualityGate } from "@/lib/scan/quality-gate"
 import type { QualityCheckResult } from "@/lib/scan/types"
@@ -12,12 +13,14 @@ import { cn } from "@/lib/utils"
 type ScanQualityStepProps = {
   imageSrc: string
   onPass: () => void
+  onReEdit: () => void
   onRetake: () => void
 }
 
 export function ScanQualityStep({
   imageSrc,
   onPass,
+  onReEdit,
   onRetake,
 }: ScanQualityStepProps) {
   const [loading, setLoading] = useState(true)
@@ -30,7 +33,7 @@ export function ScanQualityStep({
       setLoading(true)
       try {
         const image = await loadImage(imageSrc)
-        const quality = await runQualityGate(image)
+        const quality = await runQualityGate(image, { trustUserCrop: true })
         if (!cancelled) setResult(quality)
       } catch {
         if (!cancelled) {
@@ -57,19 +60,17 @@ export function ScanQualityStep({
   }, [imageSrc])
 
   return (
-    <div className="w-full max-w-md space-y-4 rounded-[2rem] border border-border bg-background p-3">
-      <div className="px-1">
-        <p className="font-heading text-sm font-semibold text-foreground">
-          Checking photo quality
-        </p>
-        <p className="text-xs text-muted-foreground">
-          We verify lighting and that this is a real face photo
-        </p>
-      </div>
-
-      <div className="overflow-hidden rounded-[1.5rem] border border-border">
+    <ScanStepShell
+      title="Checking photo quality"
+      description="We verify lighting on your cropped skin photo"
+    >
+      <div className="mx-auto overflow-hidden rounded-[1.5rem] border border-border">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={imageSrc} alt="Photo preview" className="aspect-[3/4] w-full object-cover" />
+        <img
+          src={imageSrc}
+          alt="Photo preview"
+          className="mx-auto aspect-[3/4] h-[min(48svh,20rem)] w-auto max-w-full object-cover"
+        />
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -83,7 +84,7 @@ export function ScanQualityStep({
           }
           size="sm"
         >
-          Face detected
+          Skin crop
         </AnimatedBadge>
         <AnimatedBadge
           status={
@@ -119,7 +120,17 @@ export function ScanQualityStep({
         </ul>
       ) : null}
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onReEdit}
+          className="rounded-full"
+        >
+          <IconCrop className="size-3.5" />
+          Adjust crop
+        </Button>
         <Button
           type="button"
           variant="outline"
@@ -128,7 +139,7 @@ export function ScanQualityStep({
           className="rounded-full"
         >
           <IconRefresh className="size-3.5" />
-          Retake
+          Retake photo
         </Button>
         <Button
           type="button"
@@ -140,7 +151,7 @@ export function ScanQualityStep({
           Analyze skin
         </Button>
       </div>
-    </div>
+    </ScanStepShell>
   )
 }
 

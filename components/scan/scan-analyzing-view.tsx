@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 
 import { AnimatedBadge } from "@/components/motion/animated-badge"
-import { ScanReportLayout } from "@/components/scan/scan-report-layout"
+import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import {
   createInitialToolCalls,
   simulateSkinAnalysis,
@@ -59,53 +59,54 @@ export function ScanAnalyzingView({
   }, [imageBlob, onComplete])
 
   return (
-    <ScanReportLayout
-      imageSrc={imageSrc}
-      imageLoading
-      imageLoadingLabel={activeLabel}
-      showActions={false}
+    <ScanStepShell
+      title="Analyzing your scan"
+      description="Cosmetic assessment only — not a medical diagnosis"
     >
-      <div className="space-y-4">
-        <div className="space-y-1">
-          <p className="font-heading text-lg font-semibold text-foreground">
-            Analyzing your scan
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Cosmetic assessment only — not a medical diagnosis
-          </p>
+      <div className="relative mx-auto overflow-hidden rounded-[1.5rem] border border-border">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imageSrc}
+          alt="Scan photo"
+          className="mx-auto aspect-[3/4] h-[min(48svh,20rem)] w-auto max-w-full object-cover"
+        />
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/60 backdrop-blur-[2px]">
+          <AnimatedBadge status="loading" size="md" aria-live="polite">
+            {activeLabel}
+          </AnimatedBadge>
         </div>
-
-        <ul className="space-y-2">
-          {toolCalls.map((call) => (
-            <li
-              key={call.id}
-              className={cn(
-                "flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm",
-                call.status === "running" && "bg-muted/50",
-              )}
-            >
-              <span className="text-foreground">{call.label}</span>
-              <AnimatedBadge
-                status={
-                  call.status === "done"
-                    ? "success"
-                    : call.status === "running"
-                      ? "loading"
-                      : "neutral"
-                }
-                size="sm"
-                showIcon
-              >
-                {call.status === "done"
-                  ? "Done"
-                  : call.status === "running"
-                    ? "Running"
-                    : "Queued"}
-              </AnimatedBadge>
-            </li>
-          ))}
-        </ul>
       </div>
-    </ScanReportLayout>
+
+      <ul className="space-y-2">
+        {toolCalls.map((call) => (
+          <li
+            key={call.id}
+            className={cn(
+              "flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm",
+              call.status === "running" && "bg-muted/50",
+            )}
+          >
+            <span className="text-foreground">{call.label}</span>
+            <AnimatedBadge
+              status={
+                call.status === "done"
+                  ? "success"
+                  : call.status === "running"
+                    ? "loading"
+                    : "neutral"
+              }
+              size="sm"
+              showIcon
+            >
+              {call.status === "done"
+                ? "Done"
+                : call.status === "running"
+                  ? "Running"
+                  : "Queued"}
+            </AnimatedBadge>
+          </li>
+        ))}
+      </ul>
+    </ScanStepShell>
   )
 }

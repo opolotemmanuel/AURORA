@@ -1,8 +1,6 @@
 import type { TablerIcon } from "@tabler/icons-react"
 import {
-  IconBuilding,
   IconChartBar,
-  IconClipboardCheck,
   IconCoin,
   IconHome,
   IconLock,
@@ -59,30 +57,6 @@ const ADMIN: NavSection = {
   ],
 }
 
-const EXPERT: NavSection = {
-  title: "Expert",
-  items: [
-    {
-      href: "/admin/reviews",
-      label: "Review queue",
-      icon: IconClipboardCheck,
-      badge: "Soon",
-    },
-  ],
-}
-
-const ORGANIZATION: NavSection = {
-  title: "Organization",
-  items: [
-    {
-      href: "/admin/organization",
-      label: "Workspace",
-      icon: IconBuilding,
-      badge: "Soon",
-    },
-  ],
-}
-
 export function canSeeAdminNav(role: AppRole): boolean {
   return role === "admin"
 }
@@ -92,14 +66,6 @@ export function getNavSections(role: AppRole): NavSection[] {
 
   if (canSeeAdminNav(role)) {
     sections.push(ADMIN)
-  }
-
-  if (role === "expert" || role === "admin") {
-    sections.push(EXPERT)
-  }
-
-  if (role === "company_admin" || role === "admin") {
-    sections.push(ORGANIZATION)
   }
 
   return sections

@@ -1,11 +1,16 @@
-import { ScanShell } from "@/components/layouts/scan-shell"
-import { requireOnboardingComplete } from "@/lib/auth/session"
+import { Suspense } from "react"
 
-export default async function ScanLayout({
+import { ScanAuthShell } from "@/components/layouts/scan-auth-shell"
+import { ScanPageSkeleton } from "@/components/scan/scan-page-skeleton"
+
+export default function ScanLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  await requireOnboardingComplete()
-  return <ScanShell>{children}</ScanShell>
+  return (
+    <Suspense fallback={<ScanPageSkeleton />}>
+      <ScanAuthShell>{children}</ScanAuthShell>
+    </Suspense>
+  )
 }

@@ -5,9 +5,10 @@ import {
   FileUpload,
   type FileUploadItem,
 } from "@/components/motion/file-upload"
+import type { CaptureMode } from "@/lib/scan/types"
 
 type ScanUploadPanelProps = {
-  onImageSelected: (file: File, previewUrl: string) => void
+  onImageSelected: (file: File, previewUrl: string, source: CaptureMode) => void
 }
 
 export function ScanUploadPanel({ onImageSelected }: ScanUploadPanelProps) {
@@ -17,7 +18,7 @@ export function ScanUploadPanel({ onImageSelected }: ScanUploadPanelProps) {
     if (!file || !item) return
 
     const previewUrl = URL.createObjectURL(file)
-    onImageSelected(file, previewUrl)
+    onImageSelected(file, previewUrl, "upload")
   }
 
   return (

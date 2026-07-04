@@ -30,3 +30,12 @@ export const skinAssessmentSchema = z.object({
   ),
   disclaimer: z.string(),
 }) satisfies z.ZodType<SkinAssessment>
+
+export const saveScanResultSchema = z.object({
+  assessment: skinAssessmentSchema,
+  imageBase64: z.string().optional(),
+  imageMimeType: z
+    .enum(["image/jpeg", "image/png", "image/webp"])
+    .optional()
+    .default("image/jpeg"),
+})

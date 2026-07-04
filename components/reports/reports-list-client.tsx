@@ -14,6 +14,7 @@ type ReportListItem = {
   id: string
   createdAt: string
   status: string
+  imageRetained: boolean
   result: {
     overallBand: string
     dimensions: unknown
@@ -31,6 +32,7 @@ export function ReportsListClient({ scans }: ReportsListClientProps) {
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState<{
     scanId: string
+    imageRetained: boolean
     assessment: SkinAssessment
   } | null>(null)
 
@@ -38,6 +40,7 @@ export function ReportsListClient({ scans }: ReportsListClientProps) {
     if (!scan.result) return
     setSelected({
       scanId: scan.id,
+      imageRetained: scan.imageRetained,
       assessment: fromScanResult({
         overallBand: scan.result.overallBand as SkinAssessment["overallBand"],
         dimensions: scan.result.dimensions as Parameters<
@@ -55,7 +58,7 @@ export function ReportsListClient({ scans }: ReportsListClientProps) {
 
   return (
     <>
-      <div className="grid gap-4">
+      <div className="grid md:grid-cols-2 gap-4">
         {scans.map((scan) => (
           <article
             key={scan.id}
@@ -117,6 +120,11 @@ export function ReportsListClient({ scans }: ReportsListClientProps) {
           onOpenChange={setOpen}
           assessment={selected.assessment}
           scanId={selected.scanId}
+          imageSrc={
+            selected.imageRetained
+              ? `/api/reports/${selected.scanId}/image`
+              : null
+          }
         />
       ) : null}
     </>

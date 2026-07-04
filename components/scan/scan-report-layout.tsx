@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react"
 import Link from "next/link"
-import { IconFileText, IconRefresh } from "@tabler/icons-react"
+import { IconCrop, IconFileText, IconRefresh } from "@tabler/icons-react"
 
 import { Button } from "@/components/ui/button"
 import { ScanImagePanel } from "@/components/scan/scan-image-panel"
@@ -15,6 +15,7 @@ type ScanReportLayoutProps = {
   imageOverlay?: ReactNode
   children: ReactNode
   onRescan?: () => void
+  onReEdit?: () => void
   onViewReport?: () => void
   showActions?: boolean
   className?: string
@@ -27,6 +28,7 @@ export function ScanReportLayout({
   imageOverlay,
   children,
   onRescan,
+  onReEdit,
   onViewReport,
   showActions = true,
   className,
@@ -35,6 +37,18 @@ export function ScanReportLayout({
     <div className={cn("w-full max-w-5xl space-y-4", className)}>
       {showActions ? (
         <div className="flex flex-wrap items-center justify-end gap-2">
+          {onReEdit ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onReEdit}
+              className="rounded-full"
+            >
+              <IconCrop className="size-3.5" />
+              Adjust crop
+            </Button>
+          ) : null}
           {onRescan ? (
             <Button
               type="button"
@@ -64,14 +78,17 @@ export function ScanReportLayout({
         </div>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-2 lg:gap-8">
-        <ScanImagePanel
-          imageSrc={imageSrc}
-          isLoading={imageLoading}
-          loadingLabel={imageLoadingLabel}
-          overlay={imageOverlay}
-        />
-        <div className="flex min-w-0 flex-col justify-center">{children}</div>
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,280px)_1fr] lg:gap-8">
+        <div className="mx-auto w-full max-w-[280px] self-start lg:sticky lg:top-8 lg:mx-0">
+          <ScanImagePanel
+            imageSrc={imageSrc}
+            isLoading={imageLoading}
+            loadingLabel={imageLoadingLabel}
+            overlay={imageOverlay}
+            compact
+          />
+        </div>
+        <div className="min-w-0 self-start">{children}</div>
       </div>
     </div>
   )

@@ -8,6 +8,7 @@ type ScanResultsViewProps = {
   assessment: SkinAssessment
   imageSrc: string
   onNewScan: () => void
+  onReEdit: () => void
   onViewReport: () => void
 }
 
@@ -15,12 +16,14 @@ export function ScanResultsView({
   assessment,
   imageSrc,
   onNewScan,
+  onReEdit,
   onViewReport,
 }: ScanResultsViewProps) {
   return (
     <ScanReportLayout
       imageSrc={imageSrc}
       onRescan={onNewScan}
+      onReEdit={onReEdit}
       onViewReport={onViewReport}
     >
       <SkinReportContent assessment={assessment} />

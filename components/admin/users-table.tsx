@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 
 import {
   AlertDialog,
@@ -28,8 +29,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { setUserRoleAction, setUserScanTierAction } from "@/lib/admin/actions"
 import { ASSIGNABLE_ROLES, type AppRole } from "@/lib/dashboard/nav"
-import { setUserRoleAction } from "@/lib/admin/actions"
+import {
+  SCAN_TIER_LABELS,
+  SCAN_TIERS,
+  type ScanTier,
+} from "@/lib/models/types"
 import { authClient } from "@/lib/auth/client"
 
 type AdminUser = {
@@ -38,21 +44,17 @@ type AdminUser = {
   email: string
   role?: string | null
   banned?: boolean | null
+  scanTier?: ScanTier
 }
 
 export function UsersTable({ initialUsers }: { initialUsers: AdminUser[] }) {
-  const [users, setUsers] = useState(initialUsers)
+  const router = useRouter()
   const [loadingId, setLoadingId] = useState<string | null>(null)
-
-  async function refresh() {
-    const { data } = await authClient.admin.listUsers({ query: { limit: 100 } })
-    if (data?.users) setUsers(data.users as AdminUser[])
-  }
 
   async function withLoading(userId: string, fn: () => Promise<void>) {
     setLoadingId(userId)
     await fn()
-    await refresh()
+    router.refresh()
     setLoadingId(null)
   }
 
@@ -64,12 +66,13 @@ export function UsersTable({ initialUsers }: { initialUsers: AdminUser[] }) {
             <TableHead>Name</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Role</TableHead>
+            <TableHead>Scan tier</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {users.map((user) => (
+          {initialUsers.map((user) => (
             <TableRow key={user.id}>
               <TableCell className="font-medium">{user.name}</TableCell>
               <TableCell className="text-muted-foreground">{user.email}</TableCell>
@@ -91,6 +94,29 @@ export function UsersTable({ initialUsers }: { initialUsers: AdminUser[] }) {
                         }
                       >
                         {role}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
+              <TableCell>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" disabled={loadingId === user.id}>
+                      {SCAN_TIER_LABELS[user.scanTier ?? "start"]}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {SCAN_TIERS.map((tier) => (
+                      <DropdownMenuItem
+                        key={tier}
+                        onClick={() =>
+                          withLoading(user.id, async () => {
+                            await setUserScanTierAction(user.id, tier)
+                          })
+                        }
+                      >
+                        {SCAN_TIER_LABELS[tier]}
                       </DropdownMenuItem>
                     ))}
                   </DropdownMenuContent>

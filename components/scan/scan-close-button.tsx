@@ -35,7 +35,7 @@ export function ScanDashboardLink({
       <Link
         href="/dashboard"
         className={cn(
-          "relative z-10 inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md bg-transparent px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors outline-none hover:text-foreground",
+          "relative z-10 inline-flex cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-md bg-transparent px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors outline-none hover:text-foreground",
           className,
         )}
       >

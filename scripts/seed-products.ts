@@ -52,6 +52,7 @@ async function main() {
           ingredients: data.ingredients ?? null,
           targetConcerns: data.targetConcerns,
           imageUrl: data.imageUrl ?? null,
+          storeUrl: data.storeUrl ?? null,
           isActive: data.isActive,
         },
       })

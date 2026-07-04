@@ -4,10 +4,14 @@ import { useEffect, useState } from "react"
 
 import { AnimatedBadge } from "@/components/motion/animated-badge"
 import { ScanStepShell } from "@/components/scan/scan-step-shell"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { analyzeScanAction } from "@/lib/scan/analyze-action"
-import { blobToBase64 } from "@/lib/scan/image-bytes"
-import type { AnalysisToolCall, ScanClimateContext, SkinAssessment } from "@/lib/scan/types"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { toUserFacingScanError } from "@/lib/scan/errors"
+import type {
+  AnalysisToolCall,
+  AnalyzeScanResult,
+  ScanClimateContext,
+  SkinAssessment,
+} from "@/lib/scan/types"
 import { cn } from "@/lib/utils"
 
 const ANALYSIS_STEPS: Array<Pick<AnalysisToolCall, "id" | "name" | "label">> = [
@@ -32,6 +36,10 @@ const ANALYSIS_STEPS: Array<Pick<AnalysisToolCall, "id" | "name" | "label">> = [
 type ScanAnalyzingViewProps = {
   imageSrc: string
   imageBlob: Blob
+  livePayload?: {
+    transcript: string
+    sessionDurationMs: number
+  }
   onComplete: (result: {
     assessment: SkinAssessment
     scanId: string
@@ -43,6 +51,7 @@ type ScanAnalyzingViewProps = {
 export function ScanAnalyzingView({
   imageSrc,
   imageBlob,
+  livePayload,
   onComplete,
 }: ScanAnalyzingViewProps) {
   const [toolCalls, setToolCalls] = useState<AnalysisToolCall[]>(() =>
@@ -87,17 +96,47 @@ export function ScanAnalyzingView({
       advanceStep()
 
       try {
-        const imageBase64 = await blobToBase64(imageBlob)
         const mimeType = imageBlob.type.startsWith("image/")
-          ? (imageBlob.type as "image/jpeg" | "image/png" | "image/webp")
+          ? imageBlob.type
           : "image/jpeg"
 
-        const result = await analyzeScanAction({ imageBase64, imageMimeType: mimeType })
+        const formData = new FormData()
+        formData.append("image", imageBlob, "scan.jpg")
+        formData.append("mimeType", mimeType)
+
+        if (livePayload) {
+          formData.append("transcript", livePayload.transcript)
+          formData.append(
+            "sessionDurationMs",
+            String(livePayload.sessionDurationMs),
+          )
+        }
+
+        const endpoint = livePayload
+          ? "/api/scan/live/complete"
+          : "/api/scan/analyze"
+
+        const response = await fetch(endpoint, {
+          method: "POST",
+          body: formData,
+        })
+
+        const result = (await response.json()) as AnalyzeScanResult
         if (cancelled) return
 
-        if (!result.ok) {
-          setError(result.error)
+        if (!response.ok || !result.ok) {
+          const message = result.ok
+            ? toUserFacingScanError(new Error("Skin analysis failed"))
+            : result.error
+          setError(message)
           setActiveLabel("Analysis failed")
+          setToolCalls((current) =>
+            current.map((entry) =>
+              entry.status === "running"
+                ? { ...entry, status: "error", detail: "Failed" }
+                : entry,
+            ),
+          )
           return
         }
 
@@ -113,8 +152,15 @@ export function ScanAnalyzingView({
         })
       } catch {
         if (!cancelled) {
-          setError("Analysis failed. Please try again.")
+          setError(toUserFacingScanError(new Error("Skin analysis failed")))
           setActiveLabel("Analysis failed")
+          setToolCalls((current) =>
+            current.map((entry) =>
+              entry.status === "running"
+                ? { ...entry, status: "error", detail: "Failed" }
+                : entry,
+            ),
+          )
         }
       }
     }
@@ -123,7 +169,7 @@ export function ScanAnalyzingView({
     return () => {
       cancelled = true
     }
-  }, [imageBlob, onComplete])
+  }, [imageBlob, livePayload, onComplete])
 
   return (
     <ScanStepShell
@@ -132,8 +178,9 @@ export function ScanAnalyzingView({
     >
       <Alert>
         <AlertDescription>
-          Your photo is analyzed in memory and is not stored or included in saved
-          reports.
+          {livePayload
+            ? "Your live session is finalized in memory and is not stored or included in saved reports."
+            : "Your photo is analyzed in memory and is not stored or included in saved reports."}
         </AlertDescription>
       </Alert>
 
@@ -145,7 +192,11 @@ export function ScanAnalyzingView({
           className="mx-auto aspect-[3/4] h-[min(48svh,20rem)] w-auto max-w-full object-cover"
         />
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/60 backdrop-blur-[2px]">
-          <AnimatedBadge status="loading" size="md" aria-live="polite">
+          <AnimatedBadge
+            status={error ? "danger" : "loading"}
+            size="md"
+            aria-live="polite"
+          >
             {activeLabel}
           </AnimatedBadge>
         </div>
@@ -153,7 +204,10 @@ export function ScanAnalyzingView({
 
       {error ? (
         <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertTitle>We couldn&apos;t finish your scan</AlertTitle>
+          <AlertDescription className="text-sm leading-relaxed">
+            {error}
+          </AlertDescription>
         </Alert>
       ) : null}
 
@@ -164,6 +218,7 @@ export function ScanAnalyzingView({
             className={cn(
               "flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm",
               call.status === "running" && "bg-muted/50",
+              call.status === "error" && "border-destructive/40 bg-destructive/5",
             )}
           >
             <span className="text-foreground">{call.label}</span>
@@ -171,18 +226,22 @@ export function ScanAnalyzingView({
               status={
                 call.status === "done"
                   ? "success"
-                  : call.status === "running"
-                    ? "loading"
-                    : "neutral"
+                  :                 call.status === "error"
+                    ? "danger"
+                    : call.status === "running"
+                      ? "loading"
+                      : "neutral"
               }
               size="sm"
               showIcon
             >
               {call.status === "done"
                 ? "Done"
-                : call.status === "running"
-                  ? "Running"
-                  : "Queued"}
+                : call.status === "error"
+                  ? "Failed"
+                  : call.status === "running"
+                    ? "Running"
+                    : "Queued"}
             </AnimatedBadge>
           </li>
         ))}

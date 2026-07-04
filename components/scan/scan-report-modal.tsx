@@ -1,12 +1,14 @@
 "use client"
 
 import Link from "next/link"
-import { IconDownload } from "@tabler/icons-react"
+import { useState } from "react"
+import { IconDownload, IconLoader2 } from "@tabler/icons-react"
 
 import { ScanReportLayout } from "@/components/scan/scan-report-layout"
 import { SkinReportContent } from "@/components/scan/skin-report-content"
 import { Button } from "@/components/ui/button"
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog"
+import { downloadReportPdf } from "@/lib/reports/download-report-pdf"
 import type { ScanClimateContext, SkinAssessment } from "@/lib/scan/types"
 
 type ScanReportModalProps = {
@@ -26,7 +28,15 @@ export function ScanReportModal({
   imageSrc,
   scanId,
 }: ScanReportModalProps) {
-  const pdfHref = scanId ? `/api/reports/${scanId}/pdf` : null
+  const [downloading, setDownloading] = useState(false)
+
+  async function handleDownloadPdf() {
+    if (!scanId) return
+    setDownloading(true)
+    await downloadReportPdf(scanId, {
+      onFinish: () => setDownloading(false),
+    })
+  }
 
   return (
     <ResponsiveDialog
@@ -50,19 +60,20 @@ export function ScanReportModal({
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3 sm:px-6">
-          {pdfHref ? (
-            <Button asChild size="sm" className="rounded-full">
-              <a href={pdfHref} download>
-                <IconDownload className="size-3.5" />
-                Download PDF
-              </a>
-            </Button>
-          ) : (
-            <Button size="sm" className="rounded-full" disabled>
+          <Button
+            type="button"
+            size="sm"
+            className="rounded-full"
+            disabled={!scanId || downloading}
+            onClick={handleDownloadPdf}
+          >
+            {downloading ? (
+              <IconLoader2 className="size-3.5 animate-spin" />
+            ) : (
               <IconDownload className="size-3.5" />
-              Download PDF
-            </Button>
-          )}
+            )}
+            {downloading ? "Generating…" : "Download PDF"}
+          </Button>
           <Button asChild variant="outline" size="sm" className="rounded-full">
             <Link href="/reports">All reports</Link>
           </Button>

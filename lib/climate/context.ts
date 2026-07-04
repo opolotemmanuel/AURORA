@@ -9,69 +9,13 @@ import {
   resolveCoordinates,
   type ResolveCoordinatesInput,
 } from "@/lib/location/resolve-coordinates"
-import type { ScanClimateContext } from "@/lib/scan/types"
 
-type LocationClimateFields = Pick<
-  UserLocation,
-  | "city"
-  | "region"
-  | "country"
-  | "uvIndexBand"
-  | "humidityBand"
-  | "temperatureBand"
-  | "climateZone"
-  | "seasonBand"
-  | "lastSyncedAt"
->
-
-export function toScanClimateContext(
-  location: LocationClimateFields | null,
-): ScanClimateContext | null {
-  if (!location) return null
-
-  const hasClimate =
-    location.uvIndexBand != null ||
-    location.humidityBand != null ||
-    location.temperatureBand != null ||
-    location.climateZone != null ||
-    location.seasonBand != null
-
-  const hasPlace =
-    Boolean(location.city) ||
-    Boolean(location.region) ||
-    Boolean(location.country)
-
-  if (!hasClimate && !hasPlace) return null
-
-  return {
-    city: location.city,
-    region: location.region,
-    country: location.country,
-    uvIndexBand: location.uvIndexBand,
-    humidityBand: location.humidityBand,
-    temperatureBand: location.temperatureBand,
-    climateZone: location.climateZone,
-    seasonBand: location.seasonBand,
-    syncedAt: location.lastSyncedAt?.toISOString() ?? null,
-  }
-}
-
-export function toLocationSnapshot(location: LocationClimateFields | null) {
-  const context = toScanClimateContext(location)
-  if (!context) return undefined
-
-  return {
-    city: context.city,
-    region: context.region,
-    country: context.country,
-    uvIndexBand: context.uvIndexBand,
-    humidityBand: context.humidityBand,
-    temperatureBand: context.temperatureBand,
-    climateZone: context.climateZone,
-    seasonBand: context.seasonBand,
-    syncedAt: context.syncedAt,
-  }
-}
+export {
+  parseLocationSnapshot,
+  toLocationSnapshot,
+  toScanClimateContext,
+  type LocationClimateFields,
+} from "@/lib/climate/snapshot"
 
 export async function refreshClimateForPlace(
   input: ResolveCoordinatesInput,
@@ -99,7 +43,15 @@ function hasResolvablePlace(input: ResolveCoordinatesInput): boolean {
 export async function ensureClimateForScan(
   userId: string,
 ): Promise<UserLocation | null> {
-  const location = await prisma.userLocation.findUnique({ where: { userId } })
+  let location: UserLocation | null = null
+
+  try {
+    location = await prisma.userLocation.findUnique({ where: { userId } })
+  } catch (err) {
+    console.error("[climate] Failed to load user location:", err)
+    return null
+  }
+
   if (!location || !hasResolvablePlace(location)) return location
 
   try {
@@ -117,31 +69,5 @@ export async function ensureClimateForScan(
     })
   } catch {
     return location
-  }
-}
-
-export function parseLocationSnapshot(
-  value: unknown,
-): ScanClimateContext | null {
-  if (!value || typeof value !== "object") return null
-
-  const record = value as Record<string, unknown>
-  return {
-    city: typeof record.city === "string" ? record.city : null,
-    region: typeof record.region === "string" ? record.region : null,
-    country: typeof record.country === "string" ? record.country : null,
-    uvIndexBand:
-      typeof record.uvIndexBand === "string" ? record.uvIndexBand : null,
-    humidityBand:
-      typeof record.humidityBand === "string" ? record.humidityBand : null,
-    temperatureBand:
-      typeof record.temperatureBand === "string"
-        ? record.temperatureBand
-        : null,
-    climateZone:
-      typeof record.climateZone === "string" ? record.climateZone : null,
-    seasonBand:
-      typeof record.seasonBand === "string" ? record.seasonBand : null,
-    syncedAt: typeof record.syncedAt === "string" ? record.syncedAt : null,
   }
 }

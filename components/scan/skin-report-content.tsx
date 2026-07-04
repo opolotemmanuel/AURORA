@@ -4,6 +4,7 @@ import { motion, useReducedMotion } from "motion/react"
 
 import { BandBadge } from "@/components/scan/band-badge"
 import { ClimateContextCard } from "@/components/scan/climate-context-card"
+import { ProductCard } from "@/components/products/product-card"
 import {
   Card,
   CardContent,
@@ -100,24 +101,19 @@ export function SkinReportContent({
         <p className="font-heading text-sm font-semibold text-foreground">
           Aurora recommendations
         </p>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           {assessment.recommendations.map((item, index) => (
             <motion.div
               key={item.id}
               {...fadeIn(STAGGER * (assessment.dimensions.length + index + 1))}
             >
-              <Card size="sm" className="h-full ">
-                <CardHeader>
-                  <CardTitle className="text-base font-medium normal-case tracking-normal text-foreground">
-                    {item.name}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    {item.reason}
-                  </p>
-                </CardContent>
-              </Card>
+              <ProductCard
+                name={item.name}
+                description={item.reason}
+                imageUrl={item.imageUrl}
+                storeUrl={item.storeUrl}
+                imageAspect="portrait"
+              />
             </motion.div>
           ))}
         </div>

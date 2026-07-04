@@ -38,13 +38,19 @@ function createPgPool() {
     throw new Error("DATABASE_URL is not set")
   }
 
-  return new Pool({
+  const pool = new Pool({
     connectionString: normalizeConnectionString(connectionString),
     max: 10,
-    connectionTimeoutMillis: 20_000,
+    connectionTimeoutMillis: 30_000,
     idleTimeoutMillis: 60_000,
     keepAlive: true,
   })
+
+  pool.on("error", (error) => {
+    console.error("[db] idle pool client error:", error)
+  })
+
+  return pool
 }
 
 function createPrismaClient() {

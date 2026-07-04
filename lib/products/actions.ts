@@ -24,6 +24,7 @@ export async function createProductAction(input: unknown) {
     data: {
       ...data,
       imageUrl: data.imageUrl || null,
+      storeUrl: data.storeUrl || null,
       createdById: session.user.id,
     },
   })
@@ -58,6 +59,7 @@ export async function updateProductAction(id: string, input: unknown) {
     data: {
       ...data,
       imageUrl: data.imageUrl || null,
+      storeUrl: data.storeUrl || null,
     },
   })
 

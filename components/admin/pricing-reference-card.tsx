@@ -13,6 +13,7 @@ import {
   getCreditValueMicros,
   getPricingMarginBps,
 } from "@/lib/tokens/pricing"
+import { SCAN_TIER_LABELS } from "@/lib/models/types"
 
 function formatMicroUsdPer1M(micros: number): string {
   return `$${(micros / 1_000_000).toFixed(4)}`
@@ -70,6 +71,7 @@ export async function PricingReferenceCard() {
           <TableHeader>
             <TableRow>
               <TableHead>Model</TableHead>
+              <TableHead>Tier</TableHead>
               <TableHead>Input / 1M</TableHead>
               <TableHead>Output / 1M</TableHead>
               <TableHead>Cached / 1M</TableHead>
@@ -85,6 +87,13 @@ export async function PricingReferenceCard() {
                   <div className="text-xs text-muted-foreground">
                     {rate.provider} · {rate.modelId}
                   </div>
+                </TableCell>
+                <TableCell>
+                  {rate.assignedTier
+                    ? rate.assignedTier === "pro"
+                      ? "Pro (live)"
+                      : SCAN_TIER_LABELS[rate.assignedTier]
+                    : "—"}
                 </TableCell>
                 <TableCell>
                   {formatMicroUsdPer1M(rate.inputMicrosPer1M)}

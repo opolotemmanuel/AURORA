@@ -72,6 +72,7 @@ export async function deleteScanAction(scanId: string) {
   await prisma.scan.delete({ where: { id: scanId } })
   revalidatePath("/reports")
   revalidatePath("/dashboard/privacy")
+  revalidatePath("/dashboard/usage")
 }
 
 export async function deleteAllScansAction() {
@@ -79,6 +80,7 @@ export async function deleteAllScansAction() {
   await prisma.scan.deleteMany({ where: { userId: session.user.id } })
   revalidatePath("/reports")
   revalidatePath("/dashboard")
+  revalidatePath("/dashboard/usage")
 }
 
 export async function deleteAllPersonalDataAction() {

@@ -1,11 +1,11 @@
-import { unstable_cache } from "next/cache"
+import { cache } from "react"
 
 import { prisma } from "@/lib/db/client"
 import type { CatalogProductContext } from "@/lib/ai/types"
 
 export const CATALOG_CONTEXT_TAG = "catalog-context"
 
-export const getCatalogContext = unstable_cache(
+export const getCatalogContext = cache(
   async (): Promise<CatalogProductContext[]> => {
     const products = await prisma.product.findMany({
       where: { isActive: true },
@@ -24,6 +24,4 @@ export const getCatalogContext = unstable_cache(
 
     return products
   },
-  ["catalog-context"],
-  { tags: [CATALOG_CONTEXT_TAG] },
 )

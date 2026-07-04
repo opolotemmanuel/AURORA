@@ -44,9 +44,49 @@ ${catalogBlock}
 Analyze the attached face photo for cosmetic skin wellness guidance. Return structured JSON only.`
 }
 
+export function buildLiveTranscriptContextText(
+  userContext: UserScanContext,
+  catalog: CatalogProductContext[],
+  transcript: string,
+): string {
+  const profileBlock = userContext.profile
+    ? JSON.stringify(userContext.profile, null, 2)
+    : "No profile on file."
+  const locationBlock = userContext.location
+    ? JSON.stringify(userContext.location, null, 2)
+    : "No location on file."
+  const catalogBlock = JSON.stringify(catalog, null, 2)
+
+  return `User profile (JSON):
+${profileBlock}
+
+User location and climate (JSON):
+${locationBlock}
+
+Aurora product catalog (JSON). Use only these slugs for recommendation ids:
+${catalogBlock}
+
+Live scan session transcript (cosmetic observations gathered during real-time video):
+${transcript || "No transcript captured."}
+
+Using the live session observations and the attached best-frame photo, produce a final cosmetic skin wellness assessment. Return structured JSON only.`
+}
+
+export function buildLiveSystemPrompt(): string {
+  return `${buildSystemPrompt()}
+
+You are conducting a live cosmetic skin scan. As the user holds their face to the camera, describe visible cosmetic skin characteristics in plain language — texture, tone evenness, apparent hydration, and areas that may benefit from routine care. Never diagnose medical conditions. Keep observations concise and supportive.`
+}
+
 export function buildAnalyzeContents(input: AnalyzeSkinInput) {
   const systemInstruction = buildSystemPrompt()
-  const contextText = buildUserContextText(input.userContext, input.catalog)
+  const contextText = input.liveTranscript
+    ? buildLiveTranscriptContextText(
+        input.userContext,
+        input.catalog,
+        input.liveTranscript,
+      )
+    : buildUserContextText(input.userContext, input.catalog)
 
   return {
     systemInstruction,

@@ -1,4 +1,3 @@
-import Link from "next/link"
 import { Suspense } from "react"
 
 import { ReportsList } from "@/components/dashboard/reports-list"
@@ -10,20 +9,12 @@ export default function ReportsPage() {
     <div className="space-y-8">
       <DashboardPageHeader
         title="Reports"
-        description="Your scan history and cosmetic assessment results."
+        description="Your scan history with token usage, costs, dimension profiles, and downloadable PDF reports."
       />
 
       <Suspense fallback={<ReportsListSkeleton />}>
         <ReportsList />
       </Suspense>
-
-      <p className="text-xs text-muted-foreground">
-        Delete individual scans from{" "}
-        <Link href="/dashboard/privacy" className="underline underline-offset-4">
-          Privacy
-        </Link>
-        .
-      </p>
     </div>
   )
 }

@@ -74,10 +74,6 @@ export function buildDescription(item: FallbackProduct): string {
     lines.push(`Also: ${item.categories.slice(1).join(", ")}`)
   }
 
-  if (item.product_url) {
-    lines.push(`Store: ${item.product_url}`)
-  }
-
   return lines.join("\n\n").slice(0, 5000)
 }
 
@@ -102,6 +98,7 @@ export function mapFallbackProduct(item: FallbackProduct) {
     suitableSkinTypes: [] as string[],
     climateTags: [] as string[],
     imageUrl: item.image_url || undefined,
+    storeUrl: item.product_url || undefined,
     isActive: true,
   }
 }

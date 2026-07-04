@@ -33,6 +33,8 @@ export function ScanReportLayout({
   showActions = true,
   className,
 }: ScanReportLayoutProps) {
+  const showImageColumn = Boolean(imageSrc) || imageLoading
+
   return (
     <div className={cn("w-full max-w-5xl space-y-4", className)}>
       {showActions ? (
@@ -78,16 +80,23 @@ export function ScanReportLayout({
         </div>
       ) : null}
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,280px)_1fr] lg:gap-8">
-        <div className="mx-auto w-full max-w-[280px] self-start lg:sticky lg:top-8 lg:mx-0">
-          <ScanImagePanel
-            imageSrc={imageSrc}
-            isLoading={imageLoading}
-            loadingLabel={imageLoadingLabel}
-            overlay={imageOverlay}
-            compact
-          />
-        </div>
+      <div
+        className={cn(
+          "grid items-start gap-6",
+          showImageColumn && "lg:grid-cols-[minmax(0,280px)_1fr] lg:gap-8",
+        )}
+      >
+        {showImageColumn ? (
+          <div className="mx-auto w-full max-w-[280px] self-start lg:sticky lg:top-8 lg:mx-0">
+            <ScanImagePanel
+              imageSrc={imageSrc}
+              isLoading={imageLoading}
+              loadingLabel={imageLoadingLabel}
+              overlay={imageOverlay}
+              compact
+            />
+          </div>
+        ) : null}
         <div className="min-w-0 self-start">{children}</div>
       </div>
     </div>

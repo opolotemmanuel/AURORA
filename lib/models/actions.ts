@@ -5,7 +5,10 @@ import { revalidatePath, revalidateTag } from "next/cache"
 import { requireAdmin } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/client"
 import { ACTIVE_SCAN_MODEL_TAG } from "@/lib/models/queries"
-import { modelRateFormSchema } from "@/lib/models/schemas"
+import {
+  assignModelTierSchema,
+  modelRateFormSchema,
+} from "@/lib/models/schemas"
 
 const MODELS_PATH = "/admin/models"
 
@@ -29,6 +32,8 @@ export async function createModelRateAction(input: unknown) {
       cachedInputMicrosPer1M: data.cachedInputMicrosPer1M,
       isActive: data.isActive,
       supportsVision: data.supportsVision,
+      supportsLive: data.supportsLive,
+      thinkingLevel: data.thinkingLevel ?? null,
     },
   })
 
@@ -51,6 +56,8 @@ export async function updateModelRateAction(id: string, input: unknown) {
       cachedInputMicrosPer1M: data.cachedInputMicrosPer1M,
       isActive: data.isActive,
       supportsVision: data.supportsVision,
+      supportsLive: data.supportsLive,
+      thinkingLevel: data.thinkingLevel ?? null,
     },
   })
 
@@ -58,30 +65,57 @@ export async function updateModelRateAction(id: string, input: unknown) {
   return model
 }
 
-export async function setActiveScanModelAction(id: string) {
+export async function assignModelToTierAction(
+  modelRateId: string,
+  input: unknown,
+) {
   await requireAdmin()
+  const { tier } = assignModelTierSchema.parse(input)
 
-  const target = await prisma.aiModelRate.findUnique({ where: { id } })
+  const target = await prisma.aiModelRate.findUnique({
+    where: { id: modelRateId },
+  })
   if (!target) {
     throw new Error("Model not found")
   }
   if (!target.isActive) {
-    throw new Error("Activate the model before setting it as default for scans")
-  }
-  if (!target.supportsVision) {
-    throw new Error("Only vision-capable models can be used for scans")
+    throw new Error("Activate the model before assigning a tier")
   }
 
-  await prisma.$transaction([
-    prisma.aiModelRate.updateMany({
-      where: { isScanDefault: true },
-      data: { isScanDefault: false },
-    }),
-    prisma.aiModelRate.update({
-      where: { id },
-      data: { isScanDefault: true },
-    }),
-  ])
+  if (tier === "pro") {
+    if (!target.supportsLive) {
+      throw new Error("Pro tier requires a Live API model (supportsLive)")
+    }
+  } else if (tier !== null) {
+    if (!target.supportsVision) {
+      throw new Error("Start and Regular tiers require a vision-capable model")
+    }
+    if (target.supportsLive) {
+      throw new Error("Live models can only be assigned to the Pro tier")
+    }
+  }
+
+  await prisma.$transaction(async (tx) => {
+    if (tier !== null) {
+      await tx.aiModelRate.updateMany({
+        where: { assignedTier: tier },
+        data: { assignedTier: null },
+      })
+    }
+
+    await tx.aiModelRate.update({
+      where: { id: modelRateId },
+      data: {
+        assignedTier: tier,
+        isScanDefault: tier === "start",
+      },
+    })
+  })
 
   revalidateModelCaches()
+}
+
+/** @deprecated Use assignModelToTierAction */
+export async function setActiveScanModelAction(id: string) {
+  await assignModelToTierAction(id, { tier: "start" })
 }

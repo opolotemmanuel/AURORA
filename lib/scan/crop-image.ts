@@ -5,6 +5,35 @@ export type PixelCrop = {
   height: number
 }
 
+const MIN_OUTPUT_DIMENSION = 512
+
+function upscaleCanvasIfNeeded(
+  source: HTMLCanvasElement,
+  minDimension: number,
+): HTMLCanvasElement {
+  const { width, height } = source
+  const shortEdge = Math.min(width, height)
+  if (shortEdge >= minDimension) {
+    return source
+  }
+
+  const scale = minDimension / shortEdge
+  const outWidth = Math.round(width * scale)
+  const outHeight = Math.round(height * scale)
+  const scaled = document.createElement("canvas")
+  scaled.width = outWidth
+  scaled.height = outHeight
+  const scaledCtx = scaled.getContext("2d")
+  if (!scaledCtx) {
+    return source
+  }
+
+  scaledCtx.imageSmoothingEnabled = true
+  scaledCtx.imageSmoothingQuality = "high"
+  scaledCtx.drawImage(source, 0, 0, width, height, 0, 0, outWidth, outHeight)
+  return scaled
+}
+
 function createImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image()
@@ -68,8 +97,10 @@ export async function getCroppedImageBlob(
   canvas.height = pixelCrop.height
   ctx.putImageData(data, 0, 0)
 
+  const outputCanvas = upscaleCanvasIfNeeded(canvas, MIN_OUTPUT_DIMENSION)
+
   return new Promise((resolve, reject) => {
-    canvas.toBlob(
+    outputCanvas.toBlob(
       (blob) => {
         if (!blob) {
           reject(new Error("Failed to create image blob"))

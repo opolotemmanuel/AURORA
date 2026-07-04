@@ -1,14 +1,17 @@
 import { PrivacyControls } from "@/components/dashboard/privacy-controls"
 import { requireAuthContext } from "@/lib/auth/context"
 import { prisma } from "@/lib/db/client"
+import { withDbRetry } from "@/lib/db/retry"
 
 export async function PrivacyControlsLoader() {
   const ctx = await requireAuthContext()
-  const scans = await prisma.scan.findMany({
-    where: { userId: ctx.userId },
-    orderBy: { createdAt: "desc" },
-    select: { id: true, status: true, createdAt: true },
-  })
+  const scans = await withDbRetry(() =>
+    prisma.scan.findMany({
+      where: { userId: ctx.userId },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, status: true, createdAt: true },
+    }),
+  )
 
   return (
     <PrivacyControls

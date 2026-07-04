@@ -29,7 +29,7 @@ export default function AdminUsersPage() {
     <div className="space-y-8">
       <DashboardPageHeader
         title="Users"
-        description="Block, change roles, impersonate, or delete user accounts."
+        description="Block, change roles or scan tiers, impersonate, or delete user accounts."
         badge="Admin"
       />
       <Suspense fallback={<UsersTableSkeleton />}>

@@ -11,6 +11,7 @@ const productFields = {
   suitableSkinTypes: z.array(z.string()).default([]),
   climateTags: z.array(z.string()).default([]),
   imageUrl: z.string().url().optional().or(z.literal("")),
+  storeUrl: z.string().url().optional().or(z.literal("")),
   isActive: z.boolean().default(true),
 }
 
@@ -29,6 +30,7 @@ export const productSchema = z.object({
   suitableSkinTypes: z.array(z.string()).default([]),
   climateTags: z.array(z.string()).default([]),
   imageUrl: z.string().url().optional().or(z.literal("")),
+  storeUrl: z.string().url().optional().or(z.literal("")),
   isActive: z.boolean().default(true),
 })
 

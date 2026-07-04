@@ -28,7 +28,6 @@ import {
 } from "@/components/ui/sidebar"
 import {
   getNavSections,
-  getRoleLabel,
   type AppRole,
 } from "@/lib/dashboard/nav"
 import { cn } from "@/lib/utils"
@@ -53,13 +52,11 @@ function isNavItemActive(pathname: string, href: string) {
 }
 
 function SidebarUserFooter({
-  role,
   userName,
   userEmail,
   userImage,
   emailVerified,
 }: {
-  role: AppRole
   userName: string
   userEmail: string
   userImage: string | null
@@ -91,9 +88,6 @@ function SidebarUserFooter({
               {userName || "Member"}
             </p>
             <p className="truncate text-xs text-muted-foreground">{userEmail}</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {getRoleLabel(role)}
-            </p>
           </div>
         ) : null}
       </div>
@@ -155,7 +149,6 @@ export function DashboardSidebar({
       </SidebarContent>
 
       <SidebarUserFooter
-        role={role}
         userName={userName}
         userEmail={userEmail}
         userImage={userImage}

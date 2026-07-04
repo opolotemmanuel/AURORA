@@ -33,7 +33,7 @@ export function ScanImageEditor({
     if (!croppedArea) return
     setSubmitting(true)
     try {
-      const blob = await getCroppedImageBlob(imageSrc, croppedArea)
+      const blob = await getCroppedImageBlob(imageSrc, croppedArea, 0, "image/png")
       const previewUrl = URL.createObjectURL(blob)
       onConfirm(blob, previewUrl)
     } finally {

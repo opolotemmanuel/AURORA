@@ -1,14 +1,16 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { IconChevronDown, IconTrash } from "@tabler/icons-react"
+import { IconExternalLink, IconTrash } from "@tabler/icons-react"
 
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/motion/tabs"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
+  AURORA_STORE_ORIGIN,
   PRODUCT_CLIMATE_TAGS,
   PRODUCT_CONCERN_OPTIONS,
   PRODUCT_SKIN_TYPE_OPTIONS,
@@ -19,6 +21,7 @@ import {
   updateProductAction,
 } from "@/lib/products/actions"
 import type { ProductFormInput } from "@/lib/products/schemas"
+import { resolveStoreUrl } from "@/lib/products/store-url"
 import { cn } from "@/lib/utils"
 
 export type ProductRecord = {
@@ -33,6 +36,7 @@ export type ProductRecord = {
   suitableSkinTypes: string[]
   climateTags: string[]
   imageUrl: string | null
+  storeUrl: string | null
   isActive: boolean
 }
 
@@ -45,6 +49,7 @@ const EMPTY_FORM: ProductFormInput = {
   suitableSkinTypes: [],
   climateTags: [],
   imageUrl: "",
+  storeUrl: "",
   isActive: true,
 }
 
@@ -103,6 +108,7 @@ function mapProductToForm(product: ProductRecord): ProductFormInput {
     suitableSkinTypes: product.suitableSkinTypes,
     climateTags: product.climateTags,
     imageUrl: product.imageUrl ?? "",
+    storeUrl: product.storeUrl ?? "",
     isActive: product.isActive,
   }
 }
@@ -114,11 +120,18 @@ export function ProductEditorForm({
 }: ProductEditorProps) {
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
-  const [showOptional, setShowOptional] = useState(false)
+  const [editorTab, setEditorTab] = useState("basics")
   const [form, setForm] = useState<ProductFormInput>(
     product ? mapProductToForm(product) : EMPTY_FORM,
   )
   const isEditing = Boolean(product)
+  const previewStoreUrl =
+    isEditing && product
+      ? resolveStoreUrl({
+          storeUrl: form.storeUrl,
+          slug: product.slug,
+        })
+      : form.storeUrl?.trim() || null
 
   return (
     <form
@@ -144,120 +157,133 @@ export function ProductEditorForm({
         })
       }}
     >
-      <div className="flex-1 space-y-6 overflow-y-auto px-6 py-4">
+      <div className="flex-1 overflow-y-auto px-6 py-4">
         {isEditing && product ? (
-          <p className="text-muted-foreground font-mono text-xs">
+          <p className="text-muted-foreground mb-4 font-mono text-xs">
             {product.sku} · {product.slug}
           </p>
         ) : null}
 
-        <section className="space-y-4">
-          <div>
-            <h3 className="font-heading text-sm font-medium">
-              Recommendation profile
-            </h3>
-            <p className="text-muted-foreground mt-1 text-xs">
-              Used to match this product to scan results and skin goals.
-            </p>
-          </div>
+        <Tabs value={editorTab} onValueChange={setEditorTab} variant="underline">
+          <TabsList className="w-full flex-wrap gap-x-1 gap-y-0">
+            <TabsTrigger value="basics">Basics</TabsTrigger>
+            <TabsTrigger value="targeting">Targeting</TabsTrigger>
+            <TabsTrigger value="display">Store & display</TabsTrigger>
+          </TabsList>
 
-          <ChipSelect
-            label="Target concerns"
-            options={PRODUCT_CONCERN_OPTIONS}
-            selected={form.targetConcerns}
-            onChange={(targetConcerns) => setForm({ ...form, targetConcerns })}
-          />
+          <TabsContent value="basics">
+            <section className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Product name</Label>
+                <Input
+                  id="name"
+                  value={form.name}
+                  onChange={(event) =>
+                    setForm({ ...form, name: event.target.value })
+                  }
+                  required
+                />
+              </div>
 
-          <ChipSelect
-            label="Suitable skin types"
-            options={PRODUCT_SKIN_TYPE_OPTIONS}
-            selected={form.suitableSkinTypes}
-            onChange={(suitableSkinTypes) =>
-              setForm({ ...form, suitableSkinTypes })
-            }
-          />
+              <div className="space-y-2">
+                <Label htmlFor="description">How it helps</Label>
+                <Textarea
+                  id="description"
+                  value={form.description}
+                  onChange={(event) =>
+                    setForm({ ...form, description: event.target.value })
+                  }
+                  required
+                  rows={3}
+                  placeholder="Short cosmetic summary for recommendations"
+                />
+              </div>
 
-          <ChipSelect
-            label="Climate tags"
-            options={PRODUCT_CLIMATE_TAGS}
-            selected={form.climateTags}
-            onChange={(climateTags) => setForm({ ...form, climateTags })}
-          />
+              <div className="space-y-2">
+                <Label htmlFor="category">Product type</Label>
+                <Input
+                  id="category"
+                  value={form.category}
+                  onChange={(event) =>
+                    setForm({ ...form, category: event.target.value })
+                  }
+                  required
+                  placeholder="e.g. serum, cleanser, moisturizer"
+                />
+              </div>
+            </section>
+          </TabsContent>
 
-          <div className="space-y-2">
-            <Label htmlFor="ingredients">Key ingredients</Label>
-            <Textarea
-              id="ingredients"
-              value={form.ingredients ?? ""}
-              onChange={(event) =>
-                setForm({ ...form, ingredients: event.target.value })
-              }
-              rows={3}
-              placeholder="Optional — helps explain why it fits certain concerns"
-            />
-          </div>
-        </section>
+          <TabsContent value="targeting">
+            <section className="space-y-4">
+              <p className="text-muted-foreground text-xs">
+                Used to match this product to scan results and skin goals.
+              </p>
 
-        <section className="space-y-4 border-t border-border pt-4">
-          <h3 className="font-heading text-sm font-medium">Basics</h3>
+              <ChipSelect
+                label="Target concerns"
+                options={PRODUCT_CONCERN_OPTIONS}
+                selected={form.targetConcerns}
+                onChange={(targetConcerns) => setForm({ ...form, targetConcerns })}
+              />
 
-          <div className="space-y-2">
-            <Label htmlFor="name">Product name</Label>
-            <Input
-              id="name"
-              value={form.name}
-              onChange={(event) =>
-                setForm({ ...form, name: event.target.value })
-              }
-              required
-            />
-          </div>
+              <ChipSelect
+                label="Suitable skin types"
+                options={PRODUCT_SKIN_TYPE_OPTIONS}
+                selected={form.suitableSkinTypes}
+                onChange={(suitableSkinTypes) =>
+                  setForm({ ...form, suitableSkinTypes })
+                }
+              />
 
-          <div className="space-y-2">
-            <Label htmlFor="description">How it helps</Label>
-            <Textarea
-              id="description"
-              value={form.description}
-              onChange={(event) =>
-                setForm({ ...form, description: event.target.value })
-              }
-              required
-              rows={3}
-              placeholder="Short cosmetic summary for recommendations"
-            />
-          </div>
+              <ChipSelect
+                label="Climate tags"
+                options={PRODUCT_CLIMATE_TAGS}
+                selected={form.climateTags}
+                onChange={(climateTags) => setForm({ ...form, climateTags })}
+              />
 
-          <div className="space-y-2">
-            <Label htmlFor="category">Product type</Label>
-            <Input
-              id="category"
-              value={form.category}
-              onChange={(event) =>
-                setForm({ ...form, category: event.target.value })
-              }
-              required
-              placeholder="e.g. serum, cleanser, moisturizer"
-            />
-          </div>
-        </section>
+              <div className="space-y-2">
+                <Label htmlFor="ingredients">Key ingredients</Label>
+                <Textarea
+                  id="ingredients"
+                  value={form.ingredients ?? ""}
+                  onChange={(event) =>
+                    setForm({ ...form, ingredients: event.target.value })
+                  }
+                  rows={3}
+                  placeholder="Optional — helps explain why it fits certain concerns"
+                />
+              </div>
+            </section>
+          </TabsContent>
 
-        <section className="border-t border-border pt-2">
-          <button
-            type="button"
-            className="text-muted-foreground hover:text-foreground flex w-full items-center justify-between py-2 text-sm"
-            onClick={() => setShowOptional((open) => !open)}
-          >
-            Optional display settings
-            <IconChevronDown
-              className={cn(
-                "size-4 transition-transform",
-                showOptional && "rotate-180",
-              )}
-            />
-          </button>
+          <TabsContent value="display">
+            <section className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="storeUrl">Store page URL</Label>
+                <Input
+                  id="storeUrl"
+                  type="url"
+                  value={form.storeUrl ?? ""}
+                  onChange={(event) =>
+                    setForm({ ...form, storeUrl: event.target.value })
+                  }
+                  placeholder={`${AURORA_STORE_ORIGIN}/product/...`}
+                />
+                {previewStoreUrl ? (
+                  <a
+                    href={previewStoreUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary inline-flex items-center gap-1 text-xs hover:underline"
+                  >
+                    Open live product page
+                    <IconExternalLink className="size-3" />
+                  </a>
+                ) : null}
+              </div>
 
-          {showOptional ? (
-            <div className="space-y-4 pb-2">
               <div className="space-y-2">
                 <Label htmlFor="imageUrl">Image URL</Label>
                 <Input
@@ -280,9 +306,9 @@ export function ProductEditorForm({
                 />
                 Include in recommendations
               </label>
-            </div>
-          ) : null}
-        </section>
+            </section>
+          </TabsContent>
+        </Tabs>
 
         {message ? (
           <p

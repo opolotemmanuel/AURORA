@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai"
+import { GoogleGenAI, type ThinkingLevel } from "@google/genai"
 
 import { skinAssessmentJsonSchema } from "@/lib/ai/schemas/assessment"
 import { buildAnalyzeContents } from "@/lib/ai/prompts/system"
@@ -53,6 +53,11 @@ export async function analyzeWithGemini(
   const catalogSlugs = new Set(input.catalog.map((product) => product.slug))
   const startedAt = Date.now()
 
+  const thinkingLevel = input.model.thinkingLevel
+  const useThinking =
+    thinkingLevel &&
+    input.model.modelId.startsWith("gemini-3.")
+
   const response = await ai.models.generateContent({
     model: input.model.modelId,
     contents,
@@ -61,6 +66,13 @@ export async function analyzeWithGemini(
       responseMimeType: "application/json",
       responseJsonSchema: skinAssessmentJsonSchema,
       temperature: 0.4,
+      ...(useThinking
+        ? {
+            thinkingConfig: {
+              thinkingLevel: thinkingLevel as ThinkingLevel,
+            },
+          }
+        : {}),
     },
   })
 

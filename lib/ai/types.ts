@@ -43,9 +43,11 @@ export type AnalyzeSkinInput = {
     provider: UsageInput["provider"]
     modelId: string
     displayName: string | null
+    thinkingLevel?: string | null
   }
   catalog: CatalogProductContext[]
   userContext: UserScanContext
+  liveTranscript?: string
 }
 
 export type AnalyzeSkinResult = {

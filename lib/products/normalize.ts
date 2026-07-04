@@ -53,6 +53,7 @@ export function normalizeProductInput(
     suitableSkinTypes: input.suitableSkinTypes,
     climateTags: input.climateTags,
     imageUrl: input.imageUrl ?? "",
+    storeUrl: input.storeUrl ?? "",
     isActive: input.isActive,
   }
 }

@@ -127,7 +127,9 @@ export async function runQualityGate(
   const issues: string[] = []
 
   if (width < MIN_WIDTH || height < MIN_HEIGHT) {
-    issues.push("Image resolution is too low for a reliable scan.")
+    issues.push(
+      `Photo is too small (${width}×${height}). Use a larger crop or retake.`,
+    )
   }
 
   let faces: Awaited<ReturnType<typeof detectFaces>> = []

@@ -1,5 +1,6 @@
 import {
   Document,
+  Image,
   Page,
   StyleSheet,
   Text,
@@ -73,7 +74,27 @@ const styles = StyleSheet.create({
   meta: {
     fontSize: 9,
     color: "#888",
+    marginTop: 2,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 20,
+    gap: 12,
+  },
+  logo: {
+    width: 36,
+    height: 36,
+  },
+  brandName: {
+    fontSize: 16,
+    fontFamily: "Helvetica-Bold",
+    color: "#1a1a1a",
+  },
+  brandTagline: {
+    fontSize: 10,
+    color: "#666",
+    marginTop: 2,
   },
   privacyNote: {
     fontSize: 9,
@@ -87,6 +108,7 @@ type SkinReportDocumentProps = {
   climateContext?: ScanClimateContext | null
   userName: string
   scanDate: string
+  logoSrc: string
 }
 
 export function SkinReportDocument({
@@ -94,13 +116,21 @@ export function SkinReportDocument({
   climateContext = null,
   userName,
   scanDate,
+  logoSrc,
 }: SkinReportDocumentProps) {
   return (
-    <Document title="Aura Skin Report">
+    <Document title="Aurora Organics Skin Report">
       <Page size="A4" style={styles.page}>
-        <Text style={styles.meta}>
-          Aura · {scanDate} · Prepared for {userName}
-        </Text>
+        <View style={styles.header}>
+          <Image src={logoSrc} style={styles.logo} />
+          <View>
+            <Text style={styles.brandName}>Aurora Organics</Text>
+            <Text style={styles.brandTagline}>Skin Intelligence Report</Text>
+            <Text style={styles.meta}>
+              {scanDate} · Prepared for {userName}
+            </Text>
+          </View>
+        </View>
 
         <Text style={styles.privacyNote}>
           This report contains cosmetic guidance only. No scan photo is stored or

@@ -23,20 +23,8 @@ export function ScanImagePanel({
   compact = false,
   className,
 }: ScanImagePanelProps) {
-  if (!imageSrc) {
-    return (
-      <div
-        className={cn(
-          "flex aspect-[3/4] w-full items-center justify-center rounded-[1.5rem] border border-dashed border-border bg-muted/30",
-          compact && "max-w-[280px]",
-          className,
-        )}
-      >
-        <p className="px-4 text-center text-sm text-muted-foreground">
-          Photo not retained for this report
-        </p>
-      </div>
-    )
+  if (!imageSrc && !isLoading) {
+    return null
   }
 
   return (

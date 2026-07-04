@@ -44,7 +44,9 @@ export function ScanQualityStep({
             lightingScore: 0,
             lightingBand: "too_dark",
             isPlausibleSkin: false,
-            issues: ["Could not analyze this image. Try another photo."],
+            issues: [
+              "Face detection failed for this photo. Try better lighting, a larger crop, or retake.",
+            ],
             passed: false,
           })
         }

@@ -24,6 +24,7 @@ model User {
   banReason           String?
   banExpires          DateTime?
   onboardingCompleted Boolean?  @default(false)
+  scanTier            ScanTier  @default(start)
 
   sessions      Session[]
   accounts      Account[]
@@ -203,6 +204,17 @@ enum AiProvider {
   other
 }
 
+enum ScanTier {
+  start
+  regular
+  pro
+}
+
+enum ScanCaptureMode {
+  still
+  live
+}
+
 model AiModelRate {
   id                     String     @id @default(cuid())
   provider               AiProvider
@@ -214,11 +226,15 @@ model AiModelRate {
   isActive               Boolean    @default(true)
   isScanDefault          Boolean    @default(false)
   supportsVision         Boolean    @default(true)
+  supportsLive           Boolean    @default(false)
+  assignedTier           ScanTier?
+  thinkingLevel          String?
   effectiveFrom          DateTime   @default(now())
   createdAt              DateTime   @default(now())
   updatedAt              DateTime   @updatedAt
 
   @@unique([provider, modelId])
+  @@unique([assignedTier])
   @@index([isActive])
   @@index([isScanDefault])
   @@map("ai_model_rate")
@@ -343,6 +359,7 @@ model Product {
   suitableSkinTypes String[]      @default([])
   climateTags       String[]      @default([])
   imageUrl          String?
+  storeUrl          String?
   isActive          Boolean       @default(true)
   createdById       String
   createdBy         User          @relation("ProductCreator", fields: [createdById], references: [id])
@@ -362,7 +379,8 @@ model Scan {
   user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   organizationId   String?
   organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  status           ScanStatus    @default(pending)
+  status           ScanStatus        @default(pending)
+  captureMode      ScanCaptureMode   @default(still)
   profileSnapshot  Json?
   locationSnapshot Json?
   consentSnapshot  Json?

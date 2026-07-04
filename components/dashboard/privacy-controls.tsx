@@ -14,6 +14,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/motion/tabs"
+import { useTabSearchParam } from "@/hooks/use-tab-search-param"
 import {
   deleteAccountAction,
   deleteAllPersonalDataAction,
@@ -23,11 +25,14 @@ import {
   deleteScanAction,
 } from "@/lib/user/data-actions"
 
+const PRIVACY_TABS = ["data", "scans", "account"] as const
+
 export function PrivacyControls({
   scans,
 }: {
   scans: { id: string; status: string; createdAt: string }[]
 }) {
+  const [tab, setTab] = useTabSearchParam(PRIVACY_TABS, "data")
   const [pending, setPending] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
 
@@ -45,90 +50,111 @@ export function PrivacyControls({
   }
 
   return (
-    <div className="space-y-4">
-      <PrivacyAction
-        title="Profile & wellness data"
-        description="Clears skin profile, routine, prescriptions, and lifestyle fields. Your account stays active."
-        confirmLabel="Delete profile data"
-        pending={pending === "profile"}
-        onConfirm={() => run(deleteProfileDataAction, "profile")}
-      />
-      <PrivacyAction
-        title="Location & climate cache"
-        description="Removes city, coordinates, and cached climate bands."
-        confirmLabel="Delete location"
-        pending={pending === "location"}
-        onConfirm={() => run(deleteLocationDataAction, "location")}
-      />
-      <PrivacyAction
-        title="All scans & reports"
-        description="Permanently deletes every scan and associated results for your account."
-        confirmLabel="Delete all scans"
-        pending={pending === "scans"}
-        onConfirm={() => run(deleteAllScansAction, "scans")}
-        destructive
-      />
+    <Tabs value={tab} onValueChange={setTab} variant="underline" className="w-full">
+      <TabsList className="w-full flex-wrap gap-x-1 gap-y-0">
+        <TabsTrigger value="data">Your data</TabsTrigger>
+        <TabsTrigger value="scans">Scans</TabsTrigger>
+        <TabsTrigger value="account">Account</TabsTrigger>
+      </TabsList>
 
-      {scans.length > 0 ? (
-        <div className="rounded-xl border border-border p-4">
-          <h3 className="font-heading text-sm font-medium">Individual scans</h3>
-          <ul className="mt-3 space-y-2">
-            {scans.map((scan) => (
-              <li
-                key={scan.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm"
-              >
-                <span className="text-muted-foreground">
-                  {new Date(scan.createdAt).toLocaleDateString()} — {scan.status}
-                </span>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button size="sm" variant="outline">
-                      Delete
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete this scan?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This removes the scan and any stored results. This cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => run(() => deleteScanAction(scan.id), scan.id)}
-                      >
-                        Delete scan
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </li>
-            ))}
-          </ul>
+      <TabsContent value="data">
+        <div className="space-y-4">
+          <PrivacyAction
+            title="Profile & wellness data"
+            description="Clears skin profile, routine, prescriptions, and lifestyle fields. Your account stays active."
+            confirmLabel="Delete profile data"
+            pending={pending === "profile"}
+            onConfirm={() => run(deleteProfileDataAction, "profile")}
+          />
+          <PrivacyAction
+            title="Location & climate cache"
+            description="Removes city, coordinates, and cached climate bands."
+            confirmLabel="Delete location"
+            pending={pending === "location"}
+            onConfirm={() => run(deleteLocationDataAction, "location")}
+          />
         </div>
-      ) : null}
+      </TabsContent>
 
-      <PrivacyAction
-        title="All personal data"
-        description="Deletes profile, location, scans, and token history. Account remains for sign-in."
-        confirmLabel="Delete all personal data"
-        pending={pending === "all"}
-        onConfirm={() => run(deleteAllPersonalDataAction, "all")}
-        destructive
-      />
-      <PrivacyAction
-        title="Delete account"
-        description="Permanently deletes your account and all associated data. You will be signed out."
-        confirmLabel="Delete my account"
-        pending={pending === "account"}
-        onConfirm={() => run(deleteAccountAction, "account")}
-        destructive
-      />
+      <TabsContent value="scans">
+        <div className="space-y-4">
+          <PrivacyAction
+            title="All scans & reports"
+            description="Permanently deletes every scan and associated results for your account."
+            confirmLabel="Delete all scans"
+            pending={pending === "scans"}
+            onConfirm={() => run(deleteAllScansAction, "scans")}
+            destructive
+          />
 
-      {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
-    </div>
+          {scans.length > 0 ? (
+            <div className="rounded-xl border border-border p-4">
+              <h3 className="font-heading text-sm font-medium">Individual scans</h3>
+              <ul className="mt-3 space-y-2">
+                {scans.map((scan) => (
+                  <li
+                    key={scan.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm"
+                  >
+                    <span className="text-muted-foreground">
+                      {new Date(scan.createdAt).toLocaleDateString()} — {scan.status}
+                    </span>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="sm" variant="outline">
+                          Delete
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete this scan?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This removes the scan and any stored results. This cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => run(() => deleteScanAction(scan.id), scan.id)}
+                          >
+                            Delete scan
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">No scans to delete.</p>
+          )}
+        </div>
+      </TabsContent>
+
+      <TabsContent value="account">
+        <div className="space-y-4">
+          <PrivacyAction
+            title="All personal data"
+            description="Deletes profile, location, scans, and token history. Account remains for sign-in."
+            confirmLabel="Delete all personal data"
+            pending={pending === "all"}
+            onConfirm={() => run(deleteAllPersonalDataAction, "all")}
+            destructive
+          />
+          <PrivacyAction
+            title="Delete account"
+            description="Permanently deletes your account and all associated data. You will be signed out."
+            confirmLabel="Delete my account"
+            pending={pending === "account"}
+            onConfirm={() => run(deleteAccountAction, "account")}
+            destructive
+          />
+        </div>
+      </TabsContent>
+
+      {message ? <p className="mt-4 text-sm text-muted-foreground">{message}</p> : null}
+    </Tabs>
   )
 }
 

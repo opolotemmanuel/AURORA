@@ -1,13 +1,16 @@
 import { ProfileEditor } from "@/components/dashboard/profile-editor"
 import { requireAuthContext } from "@/lib/auth/context"
 import { prisma } from "@/lib/db/client"
+import { withDbRetry } from "@/lib/db/retry"
 
 export async function ProfileEditorLoader() {
   const ctx = await requireAuthContext()
-  const [profile, location] = await Promise.all([
-    prisma.userProfile.findUnique({ where: { userId: ctx.userId } }),
-    prisma.userLocation.findUnique({ where: { userId: ctx.userId } }),
-  ])
+  const [profile, location] = await withDbRetry(() =>
+    Promise.all([
+      prisma.userProfile.findUnique({ where: { userId: ctx.userId } }),
+      prisma.userLocation.findUnique({ where: { userId: ctx.userId } }),
+    ]),
+  )
 
   const lifestyle = (profile?.lifestyleFactors ?? {}) as Record<string, string>
   const routine = (profile?.currentRoutine ?? {}) as Record<string, string>

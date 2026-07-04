@@ -26,6 +26,8 @@ export const skinAssessmentSchema = z.object({
       id: z.string(),
       name: z.string(),
       reason: z.string(),
+      imageUrl: z.string().url().nullable().optional(),
+      storeUrl: z.string().url().nullable().optional(),
     }),
   ),
   disclaimer: z.string(),

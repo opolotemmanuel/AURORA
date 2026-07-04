@@ -12,7 +12,14 @@ export type ScanWizardStep =
   | "analyzing"
   | "results"
 
-export type CaptureMode = "upload" | "camera"
+export type CaptureMode = "upload" | "camera" | "live"
+
+export type ScanTier = "start" | "regular" | "pro"
+
+export type LiveScanPayload = {
+  transcript: string
+  sessionDurationMs: number
+}
 
 export type LightingBand = "too_dark" | "ok" | "too_bright"
 
@@ -38,6 +45,8 @@ export type ProductRecommendation = {
   id: string
   name: string
   reason: string
+  imageUrl?: string | null
+  storeUrl?: string | null
 }
 
 export type SkinAssessment = {
@@ -59,6 +68,17 @@ export type ScanClimateContext = {
   seasonBand: string | null
   syncedAt: string | null
 }
+
+export type AnalyzeScanResult =
+  | {
+      ok: true
+      assessment: SkinAssessment
+      scanId: string
+      reportId: string
+      creditsCharged: number
+      climateContext: ScanClimateContext | null
+    }
+  | { ok: false; error: string }
 
 export type AnalysisToolCallStatus = "pending" | "running" | "done" | "error"
 

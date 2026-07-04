@@ -1,29 +1,67 @@
 import { cache } from "react"
-import { unstable_cache } from "next/cache"
 
+import type { ScanTier } from "@/generated/prisma/client"
 import { prisma } from "@/lib/db/client"
 import { withDbRetry } from "@/lib/db/retry"
 
 export const ACTIVE_SCAN_MODEL_TAG = "active-scan-model"
 
-export const getActiveScanModel = unstable_cache(
-  async () => {
-    return withDbRetry(() =>
-      prisma.aiModelRate.findFirst({
-        where: {
-          isScanDefault: true,
-          isActive: true,
-          supportsVision: true,
-        },
-      }),
-    )
-  },
-  ["active-scan-model"],
-  { tags: [ACTIVE_SCAN_MODEL_TAG] },
-)
+export const getUserScanTier = cache(async (userId: string): Promise<ScanTier> => {
+  const user = await withDbRetry(() =>
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { scanTier: true },
+    }),
+  )
+  return user?.scanTier ?? "start"
+})
+
+export const getScanModelForTier = cache(async (tier: ScanTier) => {
+  const stillTier: ScanTier = tier === "pro" ? "regular" : tier
+
+  return withDbRetry(() =>
+    prisma.aiModelRate.findFirst({
+      where: {
+        assignedTier: stillTier,
+        isActive: true,
+        supportsVision: true,
+        supportsLive: false,
+      },
+    }),
+  )
+})
+
+export const getLiveScanModel = cache(async () => {
+  return withDbRetry(() =>
+    prisma.aiModelRate.findFirst({
+      where: {
+        assignedTier: "pro",
+        isActive: true,
+        supportsLive: true,
+      },
+    }),
+  )
+})
+
+/** @deprecated Use getScanModelForTier with getUserScanTier instead */
+export const getActiveScanModel = cache(async () => {
+  return withDbRetry(() =>
+    prisma.aiModelRate.findFirst({
+      where: {
+        assignedTier: "start",
+        isActive: true,
+        supportsVision: true,
+      },
+    }),
+  )
+})
 
 export const listModelRates = cache(async () => {
   return prisma.aiModelRate.findMany({
-    orderBy: [{ isScanDefault: "desc" }, { displayName: "asc" }, { modelId: "asc" }],
+    orderBy: [
+      { assignedTier: "asc" },
+      { displayName: "asc" },
+      { modelId: "asc" },
+    ],
   })
 })

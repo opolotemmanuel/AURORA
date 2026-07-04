@@ -8,10 +8,11 @@ import {
   ProductEditorForm,
   type ProductRecord,
 } from "@/components/admin/product-editor"
+import { ProductCard } from "@/components/products/product-card"
+import { resolveStoreUrl } from "@/lib/products/store-url"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog"
-import { cn } from "@/lib/utils"
 
 function formatCatalogSubtitle(product: ProductRecord) {
   const concern = product.targetConcerns[0]?.replace(/_/g, " ")
@@ -50,7 +51,7 @@ export function ProductsAdminClient({ products }: ProductsAdminClientProps) {
 
   return (
     <>
-      <div className="rounded-xl border border-border p-5">
+      <div className="rounded-xl  ">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-heading text-sm font-medium">Catalog</h2>
           <Button type="button" size="sm" onClick={openCreate}>
@@ -59,36 +60,32 @@ export function ProductsAdminClient({ products }: ProductsAdminClientProps) {
           </Button>
         </div>
 
-        <ul className="mt-4 max-h-[32rem] space-y-2 overflow-y-auto text-sm">
-          {products.length === 0 ? (
-            <li className="text-muted-foreground">No products yet.</li>
-          ) : (
-            products.map((product) => (
-              <li key={product.id}>
-                <button
-                  type="button"
-                  onClick={() => openEdit(product.id)}
-                  className={cn(
-                    "w-full rounded-xl border px-3 py-2 text-left transition-colors",
-                    selectedId === product.id && editorOpen
-                      ? "border-primary bg-muted/50"
-                      : "border-border hover:bg-muted/30",
-                  )}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="font-medium">{product.name}</span>
-                    {!product.isActive ? (
-                      <Badge variant="secondary">Inactive</Badge>
-                    ) : null}
-                  </div>
-                  <span className="text-muted-foreground capitalize">
-                    {formatCatalogSubtitle(product)}
-                  </span>
-                </button>
-              </li>
-            ))
-          )}
-        </ul>
+        {products.length === 0 ? (
+          <p className="text-muted-foreground mt-4 text-sm">No products yet.</p>
+        ) : (
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {products.map((product) => (
+              <ProductCard
+                key={product.id}
+                name={product.name}
+                subtitle={formatCatalogSubtitle(product)}
+                imageUrl={product.imageUrl}
+                storeUrl={resolveStoreUrl({
+                  storeUrl: product.storeUrl,
+                  slug: product.slug,
+                })}
+                imageAspect="square"
+                selected={selectedId === product.id && editorOpen}
+                onClick={() => openEdit(product.id)}
+                badge={
+                  !product.isActive ? (
+                    <Badge variant="secondary">Inactive</Badge>
+                  ) : null
+                }
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       <ResponsiveDialog

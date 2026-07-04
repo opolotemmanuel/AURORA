@@ -16,7 +16,7 @@ export function TokenGrantForm() {
 
   return (
     <form
-      className="max-w-md space-y-4 rounded-lg border border-border p-4"
+      className="w-full space-y-4 rounded-lg border border-border p-4"
       onSubmit={(e) => {
         e.preventDefault()
         startTransition(async () => {

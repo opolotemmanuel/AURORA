@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { FITZPATRICK_OPTIONS, formatSkinOptionLabel } from "@/lib/onboarding/constants"
 import {
   updateBasicsAction,
   updateLocationAction,
@@ -113,11 +114,21 @@ export function ProfileEditor({ profile }: ProfileFormProps) {
               ))}
             </SelectContent>
           </Select>
-          <Select value={skin.fitzpatrickBand} onValueChange={(v) => setSkin({ ...skin, fitzpatrickBand: v })}>
-            <SelectTrigger><SelectValue placeholder="Fitzpatrick" /></SelectTrigger>
+          <Select
+            value={skin.fitzpatrickBand || "unsure"}
+            onValueChange={(v) =>
+              setSkin({ ...skin, fitzpatrickBand: v === "unsure" ? "" : v })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Sun sensitivity (optional)" />
+            </SelectTrigger>
             <SelectContent>
-              {["I", "II", "III", "IV", "V", "VI"].map((b) => (
-                <SelectItem key={b} value={b}>Type {b}</SelectItem>
+              <SelectItem value="unsure">I&apos;m not sure — skip</SelectItem>
+              {FITZPATRICK_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label} — {option.hint}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -125,14 +136,14 @@ export function ProfileEditor({ profile }: ProfileFormProps) {
         <div className="flex flex-wrap gap-2">
           {CONCERNS.map((c) => (
             <Button key={c} type="button" size="sm" variant={skin.primaryConcerns.includes(c) ? "default" : "outline"} onClick={() => setSkin({ ...skin, primaryConcerns: toggle(skin.primaryConcerns, c) })}>
-              {c}
+              {formatSkinOptionLabel(c)}
             </Button>
           ))}
         </div>
         <div className="flex flex-wrap gap-2">
           {GOALS.map((g) => (
             <Button key={g} type="button" size="sm" variant={skin.skinGoals.includes(g) ? "default" : "outline"} onClick={() => setSkin({ ...skin, skinGoals: toggle(skin.skinGoals, g) })}>
-              {g}
+              {formatSkinOptionLabel(g)}
             </Button>
           ))}
         </div>

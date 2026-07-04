@@ -30,5 +30,7 @@ export const config = {
     "/admin/:path*",
     "/onboarding",
     "/onboarding/:path*",
+    "/scan",
+    "/scan/:path*",
   ],
 }

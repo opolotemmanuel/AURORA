@@ -10,8 +10,7 @@ import { PasswordInput } from "@/components/auth/password-input"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ensureUserRecordsAction } from "@/lib/auth/post-sign-in"
-import { getPostAuthRedirect } from "@/lib/auth/post-auth-redirect"
+import { completeSignInAction, ensureUserRecordsAction } from "@/lib/auth/post-sign-in"
 import { authClient } from "@/lib/auth/client"
 import { PLACEHOLDER_IMAGES } from "@/lib/marketing/placeholder-images"
 import { EASE_OUT, SPRING_SWAP } from "@/lib/ease"
@@ -155,14 +154,14 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
     }
 
     if (data?.user) {
-      await ensureUserRecordsAction(data.user.id, data.user.email, data.user.name)
-      const destination =
-        callbackUrl !== "/onboarding"
-          ? callbackUrl
-          : await getPostAuthRedirect(data.user.id)
+      const destination = await completeSignInAction(
+        data.user.id,
+        data.user.email,
+        data.user.name,
+        callbackUrl,
+      )
       setLoading(false)
-      router.push(destination)
-      router.refresh()
+      router.replace(destination)
       return
     }
 

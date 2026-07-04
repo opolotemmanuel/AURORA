@@ -21,7 +21,7 @@ export function DashboardPageHeader({
         ) : null}
       </div>
       {description ? (
-        <p className="max-w-2xl text-sm text-muted-foreground">{description}</p>
+        <p className="text-sm text-muted-foreground">{description}</p>
       ) : null}
     </div>
   )

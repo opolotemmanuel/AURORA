@@ -3,8 +3,7 @@
 import { Suspense, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 
-import { ensureUserRecordsAction } from "@/lib/auth/post-sign-in"
-import { getPostAuthRedirect } from "@/lib/auth/post-auth-redirect"
+import { completeSignInAction } from "@/lib/auth/post-sign-in"
 import { authClient } from "@/lib/auth/client"
 
 function SocialCompleteInner() {
@@ -23,21 +22,16 @@ function SocialCompleteInner() {
         return
       }
 
-      await ensureUserRecordsAction(
+      const destination = await completeSignInAction(
         data.user.id,
         data.user.email,
         data.user.name,
+        callbackUrl,
       )
 
       if (cancelled) return
 
-      const destination =
-        callbackUrl !== "/onboarding"
-          ? callbackUrl
-          : await getPostAuthRedirect(data.user.id)
-
       router.replace(destination)
-      router.refresh()
     }
 
     void complete()

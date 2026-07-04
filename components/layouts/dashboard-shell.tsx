@@ -1,8 +1,13 @@
 "use client"
 
-import { usePathname } from "next/navigation"
-
+import { DashboardContent } from "@/components/layouts/dashboard-content"
 import { DashboardSidebar } from "@/components/layouts/dashboard-sidebar"
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import type { AppRole } from "@/lib/dashboard/nav"
 
 export function DashboardShell({
@@ -10,25 +15,34 @@ export function DashboardShell({
   role,
   userName,
   userEmail,
+  userImage,
+  emailVerified,
 }: {
   children: React.ReactNode
   role: AppRole
   userName: string
   userEmail: string
+  userImage: string | null
+  emailVerified: boolean
 }) {
-  const pathname = usePathname()
-
   return (
-    <div className="flex min-h-svh bg-background">
+    <TooltipProvider delayDuration={0}>
+      <SidebarProvider className="h-svh overflow-hidden">
       <DashboardSidebar
-        pathname={pathname}
         role={role}
         userName={userName}
         userEmail={userEmail}
+        userImage={userImage}
+        emailVerified={emailVerified}
       />
-      <main className="flex-1 overflow-auto">
-        <div className="mx-auto max-w-6xl px-6 py-8 lg:px-10">{children}</div>
-      </main>
-    </div>
+      <SidebarInset className="min-h-0 overflow-y-auto">
+        <header className="sticky top-0 z-20 flex h-12 items-center gap-2 border-b border-border bg-background/90 px-4 backdrop-blur-sm md:hidden">
+          <SidebarTrigger />
+          <span className="font-heading text-sm font-medium">Aura</span>
+        </header>
+        <DashboardContent>{children}</DashboardContent>
+      </SidebarInset>
+    </SidebarProvider>
+    </TooltipProvider>
   )
 }

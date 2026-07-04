@@ -1,14 +1,20 @@
-import { prisma } from "@/lib/db/client"
+import { cache } from "react"
 
-export async function getUserDashboardStats(userId: string) {
-  const [wallet, scanCount, ledgerAgg, recentLedger, profile, location] =
-    await Promise.all([
+import { prisma } from "@/lib/db/client"
+import { withDbRetry } from "@/lib/db/retry"
+
+export const getUserDashboardStats = cache(async (userId: string) => {
+  return withDbRetry(async () => {
+    const [wallet, scanCount, ledgerAgg] = await Promise.all([
       prisma.tokenWallet.findUnique({ where: { userId } }),
       prisma.scan.count({ where: { userId } }),
       prisma.tokenLedger.aggregate({
         where: { userId, delta: { lt: 0 } },
         _sum: { delta: true },
       }),
+    ])
+
+    const [recentLedger, profile, location] = await Promise.all([
       prisma.tokenLedger.findMany({
         where: { userId },
         orderBy: { createdAt: "desc" },
@@ -17,7 +23,11 @@ export async function getUserDashboardStats(userId: string) {
       }),
       prisma.userProfile.findUnique({
         where: { userId },
-        select: { skinType: true, primaryConcerns: true, onboardingCompletedAt: true },
+        select: {
+          skinType: true,
+          primaryConcerns: true,
+          onboardingCompletedAt: true,
+        },
       }),
       prisma.userLocation.findUnique({
         where: { userId },
@@ -25,98 +35,103 @@ export async function getUserDashboardStats(userId: string) {
       }),
     ])
 
-  const dailyUsage = bucketByDay(
-    recentLedger.filter((e) => e.delta < 0),
-    14
-  )
+    const dailyUsage = bucketByDay(
+      recentLedger.filter((e) => e.delta < 0),
+      14,
+    )
 
-  return {
-    balance: wallet?.balance ?? 0,
-    lifetimeUsed: wallet?.lifetimeUsed ?? 0,
-    lifetimeGranted: wallet?.lifetimeGranted ?? 0,
-    scanCount,
-    totalDebited: Math.abs(ledgerAgg._sum.delta ?? 0),
-    profile,
-    location,
-    dailyUsage,
-    recentActivity: recentLedger,
-  }
-}
+    return {
+      balance: wallet?.balance ?? 0,
+      lifetimeUsed: wallet?.lifetimeUsed ?? 0,
+      lifetimeGranted: wallet?.lifetimeGranted ?? 0,
+      scanCount,
+      totalDebited: Math.abs(ledgerAgg._sum.delta ?? 0),
+      profile,
+      location,
+      dailyUsage,
+      recentActivity: recentLedger,
+    }
+  })
+})
 
-export async function getAdminDashboardStats() {
-  const thirtyDaysAgo = daysAgo(30)
+export const getAdminDashboardStats = cache(async () => {
+  return withDbRetry(async () => {
+    const thirtyDaysAgo = daysAgo(30)
 
-  const [
-    userCount,
-    scanCount,
-    productCount,
-    totalGranted,
-    totalUsed,
-    usersByRole,
-    scansByStatus,
-    recentUsers,
-    tokenActivity,
-  ] = await Promise.all([
-    prisma.user.count(),
-    prisma.scan.count(),
-    prisma.product.count({ where: { isActive: true } }),
-    prisma.tokenLedger.aggregate({
-      where: { delta: { gt: 0 } },
-      _sum: { delta: true },
-    }),
-    prisma.tokenLedger.aggregate({
-      where: { delta: { lt: 0 } },
-      _sum: { delta: true },
-    }),
-    prisma.user.groupBy({
-      by: ["role"],
-      _count: { role: true },
-    }),
-    prisma.scan.groupBy({
-      by: ["status"],
-      _count: { status: true },
-    }),
-    prisma.user.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 5,
-      select: { id: true, name: true, email: true, role: true, createdAt: true },
-    }),
-    prisma.tokenLedger.findMany({
-      where: { createdAt: { gte: thirtyDaysAgo } },
-      orderBy: { createdAt: "desc" },
-      take: 100,
-      select: { delta: true, reason: true, createdAt: true },
-    }),
-  ])
+    const [userCount, scanCount, productCount] = await Promise.all([
+      prisma.user.count(),
+      prisma.scan.count(),
+      prisma.product.count({ where: { isActive: true } }),
+    ])
 
-  const grantsByDay = bucketLedgerByDay(
-    tokenActivity.filter((e) => e.delta > 0),
-    14
-  )
-  const usageByDay = bucketLedgerByDay(
-    tokenActivity.filter((e) => e.delta < 0),
-    14
-  )
+    const [totalGranted, totalUsed, usersByRole] = await Promise.all([
+      prisma.tokenLedger.aggregate({
+        where: { delta: { gt: 0 } },
+        _sum: { delta: true },
+      }),
+      prisma.tokenLedger.aggregate({
+        where: { delta: { lt: 0 } },
+        _sum: { delta: true },
+      }),
+      prisma.user.groupBy({
+        by: ["role"],
+        _count: { role: true },
+      }),
+    ])
 
-  return {
-    userCount,
-    scanCount,
-    productCount,
-    totalGranted: totalGranted._sum.delta ?? 0,
-    totalUsed: Math.abs(totalUsed._sum.delta ?? 0),
-    usersByRole: usersByRole.map((r) => ({
-      role: r.role ?? "user",
-      count: r._count.role,
-    })),
-    scansByStatus: scansByStatus.map((s) => ({
-      status: s.status,
-      count: s._count.status,
-    })),
-    recentUsers,
-    grantsByDay,
-    usageByDay,
-  }
-}
+    const [scansByStatus, recentUsers, tokenActivity] = await Promise.all([
+      prisma.scan.groupBy({
+        by: ["status"],
+        _count: { status: true },
+      }),
+      prisma.user.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          createdAt: true,
+        },
+      }),
+      prisma.tokenLedger.findMany({
+        where: { createdAt: { gte: thirtyDaysAgo } },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+        select: { delta: true, reason: true, createdAt: true },
+      }),
+    ])
+
+    const grantsByDay = bucketLedgerByDay(
+      tokenActivity.filter((e) => e.delta > 0),
+      14,
+    )
+    const usageByDay = bucketLedgerByDay(
+      tokenActivity.filter((e) => e.delta < 0),
+      14,
+    )
+
+    return {
+      userCount,
+      scanCount,
+      productCount,
+      totalGranted: totalGranted._sum.delta ?? 0,
+      totalUsed: Math.abs(totalUsed._sum.delta ?? 0),
+      usersByRole: usersByRole.map((r) => ({
+        role: r.role ?? "user",
+        count: r._count.role,
+      })),
+      scansByStatus: scansByStatus.map((s) => ({
+        status: s.status,
+        count: s._count.status,
+      })),
+      recentUsers,
+      grantsByDay,
+      usageByDay,
+    }
+  })
+})
 
 function daysAgo(n: number) {
   const d = new Date()
@@ -126,7 +141,7 @@ function daysAgo(n: number) {
 
 function bucketByDay(
   entries: { delta: number; createdAt: Date }[],
-  days: number
+  days: number,
 ): { label: string; value: number }[] {
   const buckets = new Map<string, number>()
   for (let i = days - 1; i >= 0; i--) {
@@ -148,7 +163,7 @@ function bucketByDay(
 
 function bucketLedgerByDay(
   entries: { delta: number; createdAt: Date }[],
-  days: number
+  days: number,
 ) {
   return bucketByDay(entries, days)
 }

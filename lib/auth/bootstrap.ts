@@ -3,37 +3,47 @@ import { getSignupTokenBonus } from "@/lib/onboarding/constants"
 import { grantTokens } from "@/lib/tokens/wallet"
 
 export async function ensureUserRecords(userId: string, email: string, name?: string) {
-  await prisma.userProfile.upsert({
-    where: { userId },
-    create: { userId },
-    update: {},
-  })
-
-  await prisma.userLocation.upsert({
-    where: { userId },
-    create: { userId },
-    update: {},
-  })
-
-  await prisma.tokenWallet.upsert({
-    where: { userId },
-    create: { userId, balance: 0 },
-    update: {},
-  })
+  await Promise.all([
+    prisma.userProfile.upsert({
+      where: { userId },
+      create: { userId },
+      update: {},
+    }),
+    prisma.userLocation.upsert({
+      where: { userId },
+      create: { userId },
+      update: {},
+    }),
+    prisma.tokenWallet.upsert({
+      where: { userId },
+      create: { userId, balance: 0 },
+      update: {},
+    }),
+  ])
 
   const bootstrapEmail = process.env.BOOTSTRAP_ADMIN_EMAIL?.toLowerCase()
+  const updates: Promise<unknown>[] = []
+
   if (bootstrapEmail && email.toLowerCase() === bootstrapEmail) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { role: "admin" },
-    })
+    updates.push(
+      prisma.user.update({
+        where: { id: userId },
+        data: { role: "admin" },
+      }),
+    )
   }
 
   if (name) {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { name },
-    })
+    updates.push(
+      prisma.user.update({
+        where: { id: userId },
+        data: { name },
+      }),
+    )
+  }
+
+  if (updates.length > 0) {
+    await Promise.all(updates)
   }
 }
 

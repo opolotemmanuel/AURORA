@@ -8,6 +8,9 @@ import { grantSignupBonusIfNeeded } from "@/lib/auth/bootstrap"
 import { requireSession } from "@/lib/auth/session"
 import { fetchClimateSnapshot, shouldSyncClimate } from "@/lib/climate/sync"
 import { prisma } from "@/lib/db/client"
+import { withDbRetry } from "@/lib/db/retry"
+import { reverseGeocode } from "@/lib/location/reverse-geocode"
+import { getOnboardingContext } from "@/lib/onboarding/context"
 import {
   CONSENT_VERSION,
   deriveAgeBand,
@@ -23,35 +26,55 @@ import {
   skinSchema,
 } from "@/lib/onboarding/schemas"
 
-async function getProfileForUser(userId: string) {
-  return prisma.userProfile.upsert({
-    where: { userId },
-    create: { userId },
-    update: {},
-  })
-}
-
 export async function getOnboardingState() {
-  const session = await requireSession()
-  const profile = await getProfileForUser(session.user.id)
-  const location = await prisma.userLocation.findUnique({
-    where: { userId: session.user.id },
-  })
+  const context = await getOnboardingContext()
+  if (!context) {
+    throw new Error("Unauthorized")
+  }
 
   return {
-    step: profile.onboardingStep as OnboardingStep,
-    profile,
-    location,
-    user: session.user,
+    step: context.step,
+    profile: context.profile,
+    location: context.location,
+    user: context.user,
   }
 }
 
 async function advanceStep(userId: string, step: OnboardingStep) {
-  await prisma.userProfile.update({
-    where: { userId },
-    data: { onboardingStep: step },
-  })
-  revalidatePath("/onboarding")
+  await withDbRetry(() =>
+    prisma.userProfile.update({
+      where: { userId },
+      data: { onboardingStep: step },
+    }),
+  )
+}
+
+export async function resolveBrowserLocationAction(
+  latitude: number,
+  longitude: number,
+) {
+  await requireSession()
+
+  const place = await reverseGeocode(latitude, longitude)
+  if (!place) {
+    return {
+      ok: false as const,
+      error:
+        "Could not resolve your location. Enter your city and country manually.",
+    }
+  }
+
+  return {
+    ok: true as const,
+    data: {
+      city: place.city,
+      region: place.region,
+      country: place.country,
+      latitude,
+      longitude,
+      locationSource: "geocode" as const,
+    },
+  }
 }
 
 export async function saveConsentAction(input: {
@@ -72,7 +95,6 @@ export async function saveConsentAction(input: {
     },
   })
 
-  revalidatePath("/onboarding")
 }
 
 export async function saveBasicsAction(input: unknown) {
@@ -95,7 +117,6 @@ export async function saveBasicsAction(input: unknown) {
     },
   })
 
-  revalidatePath("/onboarding")
 }
 
 export async function saveSkinAction(input: unknown) {
@@ -105,8 +126,8 @@ export async function saveSkinAction(input: unknown) {
   await prisma.userProfile.update({
     where: { userId: session.user.id },
     data: {
-      skinType: data.skinType,
-      fitzpatrickBand: data.fitzpatrickBand,
+      skinType: data.skinType ?? null,
+      fitzpatrickBand: data.fitzpatrickBand ?? null,
       primaryConcerns: data.primaryConcerns,
       skinGoals: data.skinGoals,
       allergies: data.allergies ?? null,
@@ -115,7 +136,6 @@ export async function saveSkinAction(input: unknown) {
     },
   })
 
-  revalidatePath("/onboarding")
 }
 
 export async function saveRoutineAction(input: unknown) {
@@ -132,7 +152,6 @@ export async function saveRoutineAction(input: unknown) {
     },
   })
 
-  revalidatePath("/onboarding")
 }
 
 export async function saveLifestyleAction(input: unknown) {
@@ -147,44 +166,53 @@ export async function saveLifestyleAction(input: unknown) {
     },
   })
 
-  revalidatePath("/onboarding")
 }
 
 export async function saveLocationAction(input: unknown) {
   const session = await requireSession()
-  const data = locationSchema.parse(input)
-
-  let climate = null
-  if (data.latitude != null && data.longitude != null) {
-    climate = await fetchClimateSnapshot(data.latitude, data.longitude)
+  const parsed = locationSchema.safeParse(input)
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Invalid location")
   }
+  const data = parsed.data
 
-  await prisma.userLocation.upsert({
-    where: { userId: session.user.id },
-    create: {
-      userId: session.user.id,
-      city: data.city,
-      region: data.region,
-      country: data.country,
-      postalCode: data.postalCode,
-      latitude: data.latitude,
-      longitude: data.longitude,
-      locationSource: data.locationSource,
-      ...climate,
-      lastSyncedAt: climate ? new Date() : undefined,
-    },
-    update: {
-      city: data.city,
-      region: data.region,
-      country: data.country,
-      postalCode: data.postalCode,
-      latitude: data.latitude,
-      longitude: data.longitude,
-      locationSource: data.locationSource,
-      ...climate,
-      lastSyncedAt: climate ? new Date() : undefined,
-    },
-  })
+  const hasLocation =
+    Boolean(data.city || data.region || data.country) ||
+    (data.latitude != null && data.longitude != null)
+
+  if (hasLocation) {
+    let climate = null
+    if (data.latitude != null && data.longitude != null) {
+      climate = await fetchClimateSnapshot(data.latitude, data.longitude)
+    }
+
+    await prisma.userLocation.upsert({
+      where: { userId: session.user.id },
+      create: {
+        userId: session.user.id,
+        city: data.city ?? null,
+        region: data.region ?? null,
+        country: data.country ?? null,
+        postalCode: data.postalCode ?? null,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        locationSource: data.locationSource,
+        ...climate,
+        lastSyncedAt: climate ? new Date() : undefined,
+      },
+      update: {
+        city: data.city ?? null,
+        region: data.region ?? null,
+        country: data.country ?? null,
+        postalCode: data.postalCode ?? null,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        locationSource: data.locationSource,
+        ...climate,
+        lastSyncedAt: climate ? new Date() : undefined,
+      },
+    })
+  }
 
   await advanceStep(session.user.id, "password")
 }
@@ -230,25 +258,35 @@ export async function skipPasswordAction() {
 export async function completeOnboardingAction() {
   const session = await requireSession()
 
-  await prisma.userProfile.update({
-    where: { userId: session.user.id },
-    data: {
-      onboardingCompletedAt: new Date(),
-      onboardingStep: "complete",
-    },
-  })
+  await withDbRetry(() =>
+    prisma.userProfile.update({
+      where: { userId: session.user.id },
+      data: {
+        onboardingCompletedAt: new Date(),
+        onboardingStep: "complete",
+      },
+    }),
+  )
 
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { onboardingCompleted: true },
-  })
+  await withDbRetry(() =>
+    prisma.user.update({
+      where: { id: session.user.id },
+      data: { onboardingCompleted: true },
+    }),
+  )
 
   await grantSignupBonusIfNeeded(session.user.id)
   revalidatePath("/onboarding")
+  revalidatePath("/scan")
   revalidatePath("/dashboard")
 }
 
 export async function setWelcomeStepAction() {
   const session = await requireSession()
   await advanceStep(session.user.id, "consent")
+}
+
+export async function skipToOnboardingStepAction(nextStep: OnboardingStep) {
+  const session = await requireSession()
+  await advanceStep(session.user.id, nextStep)
 }

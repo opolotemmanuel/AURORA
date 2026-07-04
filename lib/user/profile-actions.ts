@@ -43,8 +43,8 @@ export async function updateSkinAction(input: unknown) {
   await prisma.userProfile.update({
     where: { userId: session.user.id },
     data: {
-      skinType: data.skinType,
-      fitzpatrickBand: data.fitzpatrickBand,
+      skinType: data.skinType ?? null,
+      fitzpatrickBand: data.fitzpatrickBand ?? null,
       primaryConcerns: data.primaryConcerns,
       skinGoals: data.skinGoals,
       allergies: data.allergies ?? null,

@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache"
 
 import { requireAdmin } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/client"
-import { productSchema } from "@/lib/onboarding/schemas"
+import { normalizeProductInput } from "@/lib/products/normalize"
+import { productFormSchema, productSchema } from "@/lib/products/schemas"
 
 export async function listProductsAction() {
   await requireAdmin()
@@ -15,7 +16,8 @@ export async function listProductsAction() {
 
 export async function createProductAction(input: unknown) {
   const session = await requireAdmin()
-  const data = productSchema.parse(input)
+  const form = productFormSchema.parse(input)
+  const data = productSchema.parse(normalizeProductInput(form))
 
   const product = await prisma.product.create({
     data: {
@@ -26,12 +28,28 @@ export async function createProductAction(input: unknown) {
   })
 
   revalidatePath("/admin")
+  revalidatePath("/admin/products")
   return product
 }
 
 export async function updateProductAction(id: string, input: unknown) {
   await requireAdmin()
-  const data = productSchema.parse(input)
+  const form = productFormSchema.parse(input)
+
+  const existing = await prisma.product.findUnique({
+    where: { id },
+    select: { sku: true, slug: true },
+  })
+  if (!existing) {
+    throw new Error("Product not found")
+  }
+
+  const data = productSchema.parse(
+    normalizeProductInput(form, {
+      existingSku: existing.sku,
+      existingSlug: existing.slug,
+    }),
+  )
 
   const product = await prisma.product.update({
     where: { id },
@@ -42,6 +60,7 @@ export async function updateProductAction(id: string, input: unknown) {
   })
 
   revalidatePath("/admin")
+  revalidatePath("/admin/products")
   return product
 }
 
@@ -49,4 +68,5 @@ export async function deleteProductAction(id: string) {
   await requireAdmin()
   await prisma.product.delete({ where: { id } })
   revalidatePath("/admin")
+  revalidatePath("/admin/products")
 }

@@ -16,10 +16,20 @@ export const basicsSchema = z.object({
 })
 
 export const skinSchema = z.object({
-  skinType: z.enum(["oily", "dry", "combination", "sensitive", "normal"]),
-  fitzpatrickBand: z.enum(["I", "II", "III", "IV", "V", "VI"]),
-  primaryConcerns: z.array(z.string()).min(1, "Select at least one concern"),
-  skinGoals: z.array(z.string()).min(1, "Select at least one goal"),
+  skinType: z.preprocess(
+    (value) =>
+      value === "" || value === null || value === undefined ? undefined : value,
+    z.enum(["oily", "dry", "combination", "sensitive", "normal"]).optional(),
+  ),
+  fitzpatrickBand: z.preprocess(
+    (value) =>
+      value === "" || value === "unsure" || value === null || value === undefined
+        ? undefined
+        : value,
+    z.enum(["I", "II", "III", "IV", "V", "VI"]).optional(),
+  ),
+  primaryConcerns: z.array(z.string()).default([]),
+  skinGoals: z.array(z.string()).default([]),
   allergies: z.string().max(2000).optional(),
   expertReviewRequested: z.boolean().optional(),
 })
@@ -58,11 +68,17 @@ export const lifestyleSchema = z.object({
   }),
 })
 
+const optionalLocationField = z.preprocess(
+  (value) =>
+    typeof value === "string" && value.trim() === "" ? undefined : value,
+  z.string().max(120).optional(),
+)
+
 export const locationSchema = z.object({
-  city: z.string().min(1, "City is required"),
-  region: z.string().min(1, "Region is required"),
-  country: z.string().min(1, "Country is required"),
-  postalCode: z.string().optional(),
+  city: optionalLocationField,
+  region: optionalLocationField,
+  country: optionalLocationField,
+  postalCode: z.string().max(32).optional(),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
   locationSource: z.enum(["manual", "geocode", "browser"]).default("manual"),
@@ -77,20 +93,6 @@ export const passwordSchema = z
     message: "Passwords do not match",
     path: ["confirmPassword"],
   })
-
-export const productSchema = z.object({
-  sku: z.string().min(1).max(64),
-  name: z.string().min(1).max(200),
-  slug: z.string().min(1).max(200),
-  description: z.string().min(1).max(5000),
-  category: z.string().min(1).max(120),
-  ingredients: z.string().max(5000).optional(),
-  targetConcerns: z.array(z.string()).default([]),
-  suitableSkinTypes: z.array(z.string()).default([]),
-  climateTags: z.array(z.string()).default([]),
-  imageUrl: z.string().url().optional().or(z.literal("")),
-  isActive: z.boolean().default(true),
-})
 
 export const tokenGrantSchema = z.object({
   userId: z.string().min(1),

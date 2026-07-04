@@ -5,8 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 
 import { OTPInput } from "@/components/motion/otp-input"
 import { Button } from "@/components/ui/button"
-import { ensureUserRecordsAction } from "@/lib/auth/post-sign-in"
-import { getPostAuthRedirect } from "@/lib/auth/post-auth-redirect"
+import { completeSignInAction } from "@/lib/auth/post-sign-in"
 import { authClient } from "@/lib/auth/client"
 
 export function VerifyOtpForm() {
@@ -45,22 +44,21 @@ export function VerifyOtpForm() {
     }
 
     if (data?.user) {
-      await ensureUserRecordsAction(data.user.id, data.user.email, data.user.name)
-      const destination =
-        callbackUrl !== "/onboarding"
-          ? callbackUrl
-          : await getPostAuthRedirect(data.user.id)
+      const destination = await completeSignInAction(
+        data.user.id,
+        data.user.email,
+        data.user.name,
+        callbackUrl,
+      )
       setStatus("success")
       setLoading(false)
-      router.push(destination)
-      router.refresh()
+      router.replace(destination)
       return
     }
 
     setStatus("success")
     setLoading(false)
-    router.push(callbackUrl)
-    router.refresh()
+    router.replace("/onboarding")
   }
 
   async function resend() {
@@ -97,26 +95,29 @@ export function VerifyOtpForm() {
         onComplete={verifyCode}
         status={status}
         errorMessage={error ?? undefined}
-        disabled={loading}
+        successMessage="Code verified. Redirecting…"
+        disabled={loading || status === "success"}
         autoFocus
         label="Verification code"
         hint="Cosmetic wellness guidance only — not a medical diagnosis."
       />
 
-      <div className="flex flex-col gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full"
-          disabled={loading || otp.length !== 6}
-          onClick={() => verifyCode(otp)}
-        >
-          {loading ? "Verifying…" : "Verify"}
-        </Button>
-        <Button type="button" variant="ghost" className="w-full" onClick={resend}>
-          Resend code
-        </Button>
-      </div>
+      {status === "success" ? null : (
+        <div className="flex flex-col gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            disabled={loading || otp.length !== 6}
+            onClick={() => verifyCode(otp)}
+          >
+            {loading ? "Verifying…" : "Verify"}
+          </Button>
+          <Button type="button" variant="ghost" className="w-full" onClick={resend}>
+            Resend code
+          </Button>
+        </div>
+      )}
     </div>
   )
 }

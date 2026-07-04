@@ -16,6 +16,60 @@ export const ONBOARDING_STEPS = [
 
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number]
 
+export const ONBOARDING_STEP_LABELS: Record<OnboardingStep, string> = {
+  welcome: "Welcome",
+  consent: "Consent",
+  basics: "About you",
+  skin: "Skin profile",
+  routine: "Routine",
+  lifestyle: "Lifestyle",
+  location: "Location",
+  password: "Password",
+  complete: "Finish",
+}
+
+/** Plain-language sun-sensitivity options (Fitzpatrick I–VI). Optional in onboarding. */
+export const FITZPATRICK_OPTIONS = [
+  {
+    value: "I",
+    label: "Very fair",
+    hint: "Burns easily, rarely tans",
+  },
+  {
+    value: "II",
+    label: "Fair",
+    hint: "Usually burns, tans a little",
+  },
+  {
+    value: "III",
+    label: "Medium",
+    hint: "Sometimes burns, gradually tans",
+  },
+  {
+    value: "IV",
+    label: "Olive or light brown",
+    hint: "Rarely burns, tans easily",
+  },
+  {
+    value: "V",
+    label: "Brown",
+    hint: "Very rarely burns, tans deeply",
+  },
+  {
+    value: "VI",
+    label: "Deep brown or black",
+    hint: "Almost never burns",
+  },
+] as const
+
+/** Human-readable labels for snake_case skin profile values. */
+export function formatSkinOptionLabel(value: string): string {
+  const [first = "", ...rest] = value.split("_")
+  const head = first ? `${first.charAt(0).toUpperCase()}${first.slice(1)}` : ""
+  const tail = rest.map((word) => word.toLowerCase()).join(" ")
+  return tail ? `${head} ${tail}` : head
+}
+
 export function deriveAgeBand(dateOfBirth: Date): AgeBand {
   const today = new Date()
   let age = today.getFullYear() - dateOfBirth.getFullYear()

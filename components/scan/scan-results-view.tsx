@@ -3,10 +3,11 @@
 import { ScanReportLayout } from "@/components/scan/scan-report-layout"
 import { SkinReportContent } from "@/components/scan/skin-report-content"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import type { SkinAssessment } from "@/lib/scan/types"
+import type { ScanClimateContext, SkinAssessment } from "@/lib/scan/types"
 
 type ScanResultsViewProps = {
   assessment: SkinAssessment
+  climateContext?: ScanClimateContext | null
   imageSrc: string
   onNewScan: () => void
   onReEdit: () => void
@@ -16,6 +17,7 @@ type ScanResultsViewProps = {
 
 export function ScanResultsView({
   assessment,
+  climateContext = null,
   imageSrc,
   onNewScan,
   onReEdit,
@@ -38,7 +40,10 @@ export function ScanResultsView({
             : null}
         </AlertDescription>
       </Alert>
-      <SkinReportContent assessment={assessment} />
+      <SkinReportContent
+        assessment={assessment}
+        climateContext={climateContext}
+      />
     </ScanReportLayout>
   )
 }

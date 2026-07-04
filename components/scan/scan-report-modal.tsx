@@ -7,12 +7,13 @@ import { ScanReportLayout } from "@/components/scan/scan-report-layout"
 import { SkinReportContent } from "@/components/scan/skin-report-content"
 import { Button } from "@/components/ui/button"
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog"
-import type { SkinAssessment } from "@/lib/scan/types"
+import type { ScanClimateContext, SkinAssessment } from "@/lib/scan/types"
 
 type ScanReportModalProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   assessment: SkinAssessment
+  climateContext?: ScanClimateContext | null
   imageSrc?: string | null
   scanId?: string | null
 }
@@ -21,6 +22,7 @@ export function ScanReportModal({
   open,
   onOpenChange,
   assessment,
+  climateContext = null,
   imageSrc,
   scanId,
 }: ScanReportModalProps) {
@@ -40,7 +42,10 @@ export function ScanReportModal({
             imageSrc={imageSrc}
             showActions={false}
           >
-            <SkinReportContent assessment={assessment} />
+            <SkinReportContent
+              assessment={assessment}
+              climateContext={climateContext}
+            />
           </ScanReportLayout>
         </div>
 

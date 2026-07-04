@@ -24,8 +24,9 @@ type NominatimResponse = {
   display_name?: string
 }
 
+import { NOMINATIM_USER_AGENT } from "@/lib/location/nominatim"
+
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/reverse"
-const USER_AGENT = "Aura/1.0 (https://aurora-organics.com; onboarding location)"
 
 function placeFromAddress(address: NominatimAddress): ReverseGeocodeResult | null {
   const city =
@@ -82,7 +83,7 @@ export async function reverseGeocode(
   let response: Response
   try {
     response = await fetch(url.toString(), {
-      headers: { "User-Agent": USER_AGENT },
+      headers: { "User-Agent": NOMINATIM_USER_AGENT },
       cache: "no-store",
     })
   } catch {

@@ -3,6 +3,7 @@
 import { motion, useReducedMotion } from "motion/react"
 
 import { BandBadge } from "@/components/scan/band-badge"
+import { ClimateContextCard } from "@/components/scan/climate-context-card"
 import {
   Card,
   CardContent,
@@ -12,11 +13,12 @@ import {
 import { EASE_OUT } from "@/lib/ease"
 import { formatSkinHeadline } from "@/lib/scan/format"
 import { getBandCardAccentClass } from "@/lib/scan/band-styles"
-import type { SkinAssessment } from "@/lib/scan/types"
+import type { ScanClimateContext, SkinAssessment } from "@/lib/scan/types"
 import { cn } from "@/lib/utils"
 
 type SkinReportContentProps = {
   assessment: SkinAssessment
+  climateContext?: ScanClimateContext | null
   className?: string
 }
 
@@ -24,6 +26,7 @@ const STAGGER = 0.06
 
 export function SkinReportContent({
   assessment,
+  climateContext = null,
   className,
 }: SkinReportContentProps) {
   const reduceMotion = useReducedMotion()
@@ -51,6 +54,10 @@ export function SkinReportContent({
             </p>
           </CardContent>
         </Card>
+      </motion.div>
+
+      <motion.div {...fadeIn(STAGGER * 0.5)}>
+        <ClimateContextCard climateContext={climateContext} />
       </motion.div>
 
       <div className="space-y-2">

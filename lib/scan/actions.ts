@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache"
 
-import { CONSENT_VERSION } from "@/lib/onboarding/constants"
+import { toLocationSnapshot } from "@/lib/climate/context"
 import { requireSession } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/client"
 import { withDbRetry } from "@/lib/db/retry"
+import { CONSENT_VERSION } from "@/lib/onboarding/constants"
 import { REPORT_FORMAT_VERSION } from "@/lib/scan/constants"
 import { toScanResultData } from "@/lib/scan/persist"
 import { saveScanResultSchema } from "@/lib/scan/schemas"
@@ -76,15 +77,7 @@ export async function saveScanResultAction(
                   skinGoals: profile.skinGoals,
                 }
               : undefined,
-            locationSnapshot: location
-              ? {
-                  city: location.city,
-                  region: location.region,
-                  country: location.country,
-                  uvIndexBand: location.uvIndexBand,
-                  humidityBand: location.humidityBand,
-                }
-              : undefined,
+            locationSnapshot: toLocationSnapshot(location),
             consentSnapshot: profile
               ? {
                   consentVersion: profile.consentVersion ?? CONSENT_VERSION,

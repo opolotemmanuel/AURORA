@@ -5,14 +5,16 @@ import { IconDownload, IconFileText } from "@tabler/icons-react"
 
 import { ScanReportModal } from "@/components/scan/scan-report-modal"
 import { Button } from "@/components/ui/button"
+import { parseLocationSnapshot } from "@/lib/climate/context"
 import { fromScanResult } from "@/lib/scan/persist"
-import type { SkinAssessment } from "@/lib/scan/types"
+import type { ScanClimateContext, SkinAssessment } from "@/lib/scan/types"
 import { formatBand } from "@/lib/scan/format"
 
 type ReportListItem = {
   id: string
   createdAt: string
   status: string
+  locationSnapshot: unknown
   result: {
     overallBand: string
     dimensions: unknown
@@ -31,12 +33,14 @@ export function ReportsListClient({ scans }: ReportsListClientProps) {
   const [selected, setSelected] = useState<{
     scanId: string
     assessment: SkinAssessment
+    climateContext: ScanClimateContext | null
   } | null>(null)
 
   function openReport(scan: ReportListItem) {
     if (!scan.result) return
     setSelected({
       scanId: scan.id,
+      climateContext: parseLocationSnapshot(scan.locationSnapshot),
       assessment: fromScanResult({
         overallBand: scan.result.overallBand as SkinAssessment["overallBand"],
         dimensions: scan.result.dimensions as Parameters<
@@ -115,6 +119,7 @@ export function ReportsListClient({ scans }: ReportsListClientProps) {
           open={open}
           onOpenChange={setOpen}
           assessment={selected.assessment}
+          climateContext={selected.climateContext}
           scanId={selected.scanId}
         />
       ) : null}

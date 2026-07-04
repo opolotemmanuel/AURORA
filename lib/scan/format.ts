@@ -23,3 +23,48 @@ export function formatBand(band: AssessmentBand) {
 export function formatSkinHeadline(band: AssessmentBand) {
   return SKIN_HEADLINE[band]
 }
+
+const CLIMATE_BAND_LABEL: Record<string, string> = {
+  low: "Low",
+  moderate: "Moderate",
+  high: "High",
+  extreme: "Extreme",
+}
+
+const CLIMATE_ZONE_LABEL: Record<string, string> = {
+  humid_subtropical: "Humid subtropical",
+  arid: "Arid",
+  cold: "Cold",
+  temperate_humid: "Temperate humid",
+  temperate: "Temperate",
+}
+
+const SEASON_LABEL: Record<string, string> = {
+  spring: "Spring",
+  summer: "Summer",
+  autumn: "Autumn",
+  winter: "Winter",
+}
+
+export function formatClimateBand(band: string | null | undefined) {
+  if (!band) return "—"
+  return CLIMATE_BAND_LABEL[band] ?? band
+}
+
+export function formatClimateZone(zone: string | null | undefined) {
+  if (!zone) return "—"
+  return CLIMATE_ZONE_LABEL[zone] ?? zone.replaceAll("_", " ")
+}
+
+export function formatSeasonBand(season: string | null | undefined) {
+  if (!season) return "—"
+  return SEASON_LABEL[season] ?? season
+}
+
+export function formatLocationLabel(input: {
+  city?: string | null
+  region?: string | null
+  country?: string | null
+}) {
+  return [input.city, input.region, input.country].filter(Boolean).join(", ")
+}

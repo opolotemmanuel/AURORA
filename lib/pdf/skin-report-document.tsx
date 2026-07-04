@@ -6,8 +6,15 @@ import {
   View,
 } from "@react-pdf/renderer"
 
-import { formatBand, formatSkinHeadline } from "@/lib/scan/format"
-import type { SkinAssessment } from "@/lib/scan/types"
+import {
+  formatBand,
+  formatClimateBand,
+  formatClimateZone,
+  formatLocationLabel,
+  formatSeasonBand,
+  formatSkinHeadline,
+} from "@/lib/scan/format"
+import type { ScanClimateContext, SkinAssessment } from "@/lib/scan/types"
 
 const styles = StyleSheet.create({
   page: {
@@ -77,12 +84,14 @@ const styles = StyleSheet.create({
 
 type SkinReportDocumentProps = {
   assessment: SkinAssessment
+  climateContext?: ScanClimateContext | null
   userName: string
   scanDate: string
 }
 
 export function SkinReportDocument({
   assessment,
+  climateContext = null,
   userName,
   scanDate,
 }: SkinReportDocumentProps) {
@@ -105,6 +114,30 @@ export function SkinReportDocument({
           Overall: {formatBand(assessment.overallBand)}
         </Text>
         <Text style={styles.subtitle}>{assessment.summary}</Text>
+
+        {climateContext &&
+        (climateContext.uvIndexBand ||
+          climateContext.humidityBand ||
+          climateContext.temperatureBand ||
+          climateContext.city) ? (
+          <>
+            <Text style={styles.sectionTitle}>Local climate context</Text>
+            {formatLocationLabel(climateContext) ? (
+              <Text style={styles.rowNote}>
+                {formatLocationLabel(climateContext)}
+              </Text>
+            ) : null}
+            <Text style={styles.rowNote}>
+              UV: {formatClimateBand(climateContext.uvIndexBand)} · Humidity:{" "}
+              {formatClimateBand(climateContext.humidityBand)} · Temperature:{" "}
+              {formatClimateBand(climateContext.temperatureBand)}
+            </Text>
+            <Text style={styles.rowNote}>
+              Zone: {formatClimateZone(climateContext.climateZone)} · Season:{" "}
+              {formatSeasonBand(climateContext.seasonBand)}
+            </Text>
+          </>
+        ) : null}
 
         <Text style={styles.sectionTitle}>Dimensions</Text>
         {assessment.dimensions.map((dimension) => (

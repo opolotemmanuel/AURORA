@@ -7,10 +7,15 @@ import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { analyzeScanAction } from "@/lib/scan/analyze-action"
 import { blobToBase64 } from "@/lib/scan/image-bytes"
-import type { AnalysisToolCall, SkinAssessment } from "@/lib/scan/types"
+import type { AnalysisToolCall, ScanClimateContext, SkinAssessment } from "@/lib/scan/types"
 import { cn } from "@/lib/utils"
 
 const ANALYSIS_STEPS: Array<Pick<AnalysisToolCall, "id" | "name" | "label">> = [
+  {
+    id: "sync_climate",
+    name: "sync_climate",
+    label: "Checking local climate",
+  },
   { id: "locate_face", name: "locate_face", label: "Locating facial regions" },
   {
     id: "assess_texture",
@@ -31,6 +36,7 @@ type ScanAnalyzingViewProps = {
     assessment: SkinAssessment
     scanId: string
     creditsCharged: number
+    climateContext: ScanClimateContext | null
   }) => void
 }
 
@@ -103,6 +109,7 @@ export function ScanAnalyzingView({
           assessment: result.assessment,
           scanId: result.scanId,
           creditsCharged: result.creditsCharged,
+          climateContext: result.climateContext,
         })
       } catch {
         if (!cancelled) {

@@ -12,6 +12,7 @@ import { ScanResultsView } from "@/components/scan/scan-results-view"
 import { EASE_OUT } from "@/lib/ease"
 import type {
   CaptureMode,
+  ScanClimateContext,
   ScanWizardStep,
   SkinAssessment,
 } from "@/lib/scan/types"
@@ -26,6 +27,8 @@ export function ScanWizard() {
   )
   const [imageBlob, setImageBlob] = useState<Blob | null>(null)
   const [assessment, setAssessment] = useState<SkinAssessment | null>(null)
+  const [climateContext, setClimateContext] =
+    useState<ScanClimateContext | null>(null)
   const [scanId, setScanId] = useState<string | null>(null)
   const [creditsCharged, setCreditsCharged] = useState<number | null>(null)
   const [reportOpen, setReportOpen] = useState(false)
@@ -52,6 +55,7 @@ export function ScanWizard() {
     setCroppedPreviewUrl(null)
     setImageBlob(null)
     setAssessment(null)
+    setClimateContext(null)
     setScanId(null)
     setCreditsCharged(null)
     setReportOpen(false)
@@ -65,6 +69,7 @@ export function ScanWizard() {
     setCroppedPreviewUrl(null)
     setImageBlob(null)
     setAssessment(null)
+    setClimateContext(null)
     setScanId(null)
     setCreditsCharged(null)
     setReportOpen(false)
@@ -100,8 +105,10 @@ export function ScanWizard() {
       assessment: SkinAssessment
       scanId: string
       creditsCharged: number
+      climateContext: ScanClimateContext | null
     }) => {
       setAssessment(result.assessment)
+      setClimateContext(result.climateContext)
       setScanId(result.scanId)
       setCreditsCharged(result.creditsCharged)
       setStep("results")
@@ -165,6 +172,7 @@ export function ScanWizard() {
             {step === "results" && assessment && croppedPreviewUrl ? (
               <ScanResultsView
                 assessment={assessment}
+                climateContext={climateContext}
                 imageSrc={croppedPreviewUrl}
                 onNewScan={resetScan}
                 onReEdit={handleBackToEdit}
@@ -181,6 +189,7 @@ export function ScanWizard() {
           open={reportOpen}
           onOpenChange={setReportOpen}
           assessment={assessment}
+          climateContext={climateContext}
           imageSrc={croppedPreviewUrl}
           scanId={scanId}
         />

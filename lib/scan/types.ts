@@ -48,6 +48,18 @@ export type SkinAssessment = {
   disclaimer: string
 }
 
+export type ScanClimateContext = {
+  city: string | null
+  region: string | null
+  country: string | null
+  uvIndexBand: string | null
+  humidityBand: string | null
+  temperatureBand: string | null
+  climateZone: string | null
+  seasonBand: string | null
+  syncedAt: string | null
+}
+
 export type AnalysisToolCallStatus = "pending" | "running" | "done" | "error"
 
 export type AnalysisToolCall = {

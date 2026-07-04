@@ -6,7 +6,8 @@ import { headers } from "next/headers"
 import { auth } from "@/lib/auth/server"
 import { grantSignupBonusIfNeeded } from "@/lib/auth/bootstrap"
 import { requireSession } from "@/lib/auth/session"
-import { fetchClimateSnapshot, shouldSyncClimate } from "@/lib/climate/sync"
+import { shouldSyncClimate } from "@/lib/climate/sync"
+import { refreshClimateForPlace } from "@/lib/climate/context"
 import { prisma } from "@/lib/db/client"
 import { withDbRetry } from "@/lib/db/retry"
 import { reverseGeocode } from "@/lib/location/reverse-geocode"
@@ -182,8 +183,18 @@ export async function saveLocationAction(input: unknown) {
 
   if (hasLocation) {
     let climate = null
-    if (data.latitude != null && data.longitude != null) {
-      climate = await fetchClimateSnapshot(data.latitude, data.longitude)
+    let latitude = data.latitude
+    let longitude = data.longitude
+
+    try {
+      const refreshed = await refreshClimateForPlace(data)
+      if (refreshed) {
+        climate = refreshed.climate
+        latitude = refreshed.latitude
+        longitude = refreshed.longitude
+      }
+    } catch {
+      // Keep saved place even if weather lookup fails.
     }
 
     await prisma.userLocation.upsert({
@@ -194,8 +205,8 @@ export async function saveLocationAction(input: unknown) {
         region: data.region ?? null,
         country: data.country ?? null,
         postalCode: data.postalCode ?? null,
-        latitude: data.latitude,
-        longitude: data.longitude,
+        latitude,
+        longitude,
         locationSource: data.locationSource,
         ...climate,
         lastSyncedAt: climate ? new Date() : undefined,
@@ -205,8 +216,8 @@ export async function saveLocationAction(input: unknown) {
         region: data.region ?? null,
         country: data.country ?? null,
         postalCode: data.postalCode ?? null,
-        latitude: data.latitude,
-        longitude: data.longitude,
+        latitude,
+        longitude,
         locationSource: data.locationSource,
         ...climate,
         lastSyncedAt: climate ? new Date() : undefined,
@@ -223,18 +234,27 @@ export async function syncUserClimateAction() {
     where: { userId: session.user.id },
   })
 
-  if (!location?.latitude || !location.longitude) {
-    throw new Error("Location coordinates are required")
+  if (!location) {
+    throw new Error("No location on file")
   }
 
   if (!shouldSyncClimate(location.lastSyncedAt)) {
     return location
   }
 
-  const climate = await fetchClimateSnapshot(location.latitude, location.longitude)
+  const refreshed = await refreshClimateForPlace(location)
+  if (!refreshed) {
+    throw new Error("Could not resolve location for climate sync")
+  }
+
   return prisma.userLocation.update({
     where: { userId: session.user.id },
-    data: { ...climate, lastSyncedAt: new Date() },
+    data: {
+      ...refreshed.climate,
+      latitude: refreshed.latitude,
+      longitude: refreshed.longitude,
+      lastSyncedAt: new Date(),
+    },
   })
 }
 

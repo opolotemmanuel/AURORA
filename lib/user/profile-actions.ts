@@ -12,7 +12,7 @@ import {
   routineSchema,
   skinSchema,
 } from "@/lib/onboarding/schemas"
-import { fetchClimateSnapshot } from "@/lib/climate/sync"
+import { refreshClimateForPlace } from "@/lib/climate/context"
 
 export async function updateBasicsAction(input: unknown) {
   const session = await requireSession()
@@ -88,8 +88,18 @@ export async function updateLocationAction(input: unknown) {
   const data = locationSchema.parse(input)
 
   let climate = null
-  if (data.latitude != null && data.longitude != null) {
-    climate = await fetchClimateSnapshot(data.latitude, data.longitude)
+  let latitude = data.latitude
+  let longitude = data.longitude
+
+  try {
+    const refreshed = await refreshClimateForPlace(data)
+    if (refreshed) {
+      climate = refreshed.climate
+      latitude = refreshed.latitude
+      longitude = refreshed.longitude
+    }
+  } catch {
+    // Keep saved place even if weather lookup fails.
   }
 
   await prisma.userLocation.upsert({
@@ -100,8 +110,8 @@ export async function updateLocationAction(input: unknown) {
       region: data.region,
       country: data.country,
       postalCode: data.postalCode,
-      latitude: data.latitude,
-      longitude: data.longitude,
+      latitude,
+      longitude,
       locationSource: data.locationSource,
       ...climate,
       lastSyncedAt: climate ? new Date() : undefined,
@@ -111,8 +121,8 @@ export async function updateLocationAction(input: unknown) {
       region: data.region,
       country: data.country,
       postalCode: data.postalCode,
-      latitude: data.latitude,
-      longitude: data.longitude,
+      latitude,
+      longitude,
       locationSource: data.locationSource,
       ...climate,
       lastSyncedAt: climate ? new Date() : undefined,

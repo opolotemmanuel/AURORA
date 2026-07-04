@@ -4,6 +4,11 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
 import { analyzeSkin } from "@/lib/ai/adapter"
+import {
+  ensureClimateForScan,
+  toLocationSnapshot,
+  toScanClimateContext,
+} from "@/lib/climate/context"
 import { CONSENT_VERSION } from "@/lib/onboarding/constants"
 import { requireSession } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/client"
@@ -12,7 +17,7 @@ import { getActiveScanModel } from "@/lib/models/queries"
 import { parseScanImageBase64 } from "@/lib/scan/image-bytes"
 import { REPORT_FORMAT_VERSION } from "@/lib/scan/constants"
 import { toScanResultData } from "@/lib/scan/persist"
-import type { SkinAssessment } from "@/lib/scan/types"
+import type { ScanClimateContext, SkinAssessment } from "@/lib/scan/types"
 import { getMinScanCredits } from "@/lib/scan/constants"
 import {
   computeScanCreditCost,
@@ -34,6 +39,7 @@ export type AnalyzeScanResult =
       scanId: string
       reportId: string
       creditsCharged: number
+      climateContext: ScanClimateContext | null
     }
   | { ok: false; error: string }
 
@@ -57,6 +63,9 @@ export async function analyzeScanAction(
   if (balance < getMinScanCredits()) {
     return { ok: false, error: "Insufficient credits" }
   }
+
+  const location = await ensureClimateForScan(session.user.id)
+  const climateContext = toScanClimateContext(location)
 
   let analysis
   try {
@@ -83,10 +92,9 @@ export async function analyzeScanAction(
 
   const resultData = toScanResultData(analysis.assessment)
 
-  const [profile, location] = await Promise.all([
-    prisma.userProfile.findUnique({ where: { userId: session.user.id } }),
-    prisma.userLocation.findUnique({ where: { userId: session.user.id } }),
-  ])
+  const profile = await prisma.userProfile.findUnique({
+    where: { userId: session.user.id },
+  })
 
   try {
     const saved = await withDbRetry(() =>
@@ -105,15 +113,7 @@ export async function analyzeScanAction(
                   skinGoals: profile.skinGoals,
                 }
               : undefined,
-            locationSnapshot: location
-              ? {
-                  city: location.city,
-                  region: location.region,
-                  country: location.country,
-                  uvIndexBand: location.uvIndexBand,
-                  humidityBand: location.humidityBand,
-                }
-              : undefined,
+            locationSnapshot: toLocationSnapshot(location),
             consentSnapshot: profile
               ? {
                   consentVersion: profile.consentVersion ?? CONSENT_VERSION,
@@ -187,6 +187,7 @@ export async function analyzeScanAction(
       scanId: saved.scan.id,
       reportId: saved.report.id,
       creditsCharged: pricing.credits,
+      climateContext,
     }
   } catch (err) {
     if (

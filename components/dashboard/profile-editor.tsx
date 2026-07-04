@@ -1,0 +1,163 @@
+"use client"
+
+import { useState, useTransition } from "react"
+
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  updateBasicsAction,
+  updateLocationAction,
+  updateRoutineAction,
+  updateSkinAction,
+} from "@/lib/user/profile-actions"
+
+type ProfileFormProps = {
+  profile: {
+    name: string
+    dateOfBirth: string
+    biologicalSex: string
+    skinType: string
+    fitzpatrickBand: string
+    primaryConcerns: string[]
+    skinGoals: string[]
+    allergies: string
+    routineAm: string
+    routinePm: string
+    sunExposure: string
+    smoking: string
+    sleepHours: string
+    waterIntake: string
+    city: string
+    region: string
+    country: string
+  }
+}
+
+const CONCERNS = ["acne", "aging", "dryness", "redness", "hyperpigmentation", "sensitivity", "texture", "oiliness"]
+const GOALS = ["hydration", "even_tone", "clear_skin", "barrier_support", "sun_protection", "gentle_routine"]
+
+export function ProfileEditor({ profile }: ProfileFormProps) {
+  const [message, setMessage] = useState<string | null>(null)
+  const [pending, startTransition] = useTransition()
+  const [basics, setBasics] = useState({
+    name: profile.name,
+    dateOfBirth: profile.dateOfBirth,
+    biologicalSex: profile.biologicalSex,
+  })
+  const [skin, setSkin] = useState({
+    skinType: profile.skinType,
+    fitzpatrickBand: profile.fitzpatrickBand,
+    primaryConcerns: profile.primaryConcerns,
+    skinGoals: profile.skinGoals,
+    allergies: profile.allergies,
+  })
+  const [routine, setRoutine] = useState({ am: profile.routineAm, pm: profile.routinePm })
+  const [location, setLocation] = useState({
+    city: profile.city,
+    region: profile.region,
+    country: profile.country,
+    locationSource: "manual" as const,
+  })
+
+  function toggle(list: string[], item: string) {
+    return list.includes(item) ? list.filter((i) => i !== item) : [...list, item]
+  }
+
+  function save(section: string, action: () => Promise<void>) {
+    startTransition(async () => {
+      try {
+        await action()
+        setMessage(`${section} saved.`)
+      } catch (err) {
+        setMessage(err instanceof Error ? err.message : "Save failed")
+      }
+    })
+  }
+
+  return (
+    <div className="space-y-8">
+      <section className="space-y-4 rounded-xl border border-border p-5">
+        <h2 className="font-heading text-sm font-medium">Basics</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="name">Name</Label>
+            <Input id="name" value={basics.name} onChange={(e) => setBasics({ ...basics, name: e.target.value })} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="dob">Date of birth</Label>
+            <Input id="dob" type="date" value={basics.dateOfBirth} onChange={(e) => setBasics({ ...basics, dateOfBirth: e.target.value })} />
+          </div>
+        </div>
+        <Button disabled={pending} onClick={() => save("Basics", () => updateBasicsAction({ ...basics, biologicalSex: basics.biologicalSex || undefined }))}>
+          Save basics
+        </Button>
+      </section>
+
+      <section className="space-y-4 rounded-xl border border-border p-5">
+        <h2 className="font-heading text-sm font-medium">Skin profile</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Select value={skin.skinType} onValueChange={(v) => setSkin({ ...skin, skinType: v })}>
+            <SelectTrigger><SelectValue placeholder="Skin type" /></SelectTrigger>
+            <SelectContent>
+              {["oily", "dry", "combination", "sensitive", "normal"].map((t) => (
+                <SelectItem key={t} value={t}>{t}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={skin.fitzpatrickBand} onValueChange={(v) => setSkin({ ...skin, fitzpatrickBand: v })}>
+            <SelectTrigger><SelectValue placeholder="Fitzpatrick" /></SelectTrigger>
+            <SelectContent>
+              {["I", "II", "III", "IV", "V", "VI"].map((b) => (
+                <SelectItem key={b} value={b}>Type {b}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {CONCERNS.map((c) => (
+            <Button key={c} type="button" size="sm" variant={skin.primaryConcerns.includes(c) ? "default" : "outline"} onClick={() => setSkin({ ...skin, primaryConcerns: toggle(skin.primaryConcerns, c) })}>
+              {c}
+            </Button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {GOALS.map((g) => (
+            <Button key={g} type="button" size="sm" variant={skin.skinGoals.includes(g) ? "default" : "outline"} onClick={() => setSkin({ ...skin, skinGoals: toggle(skin.skinGoals, g) })}>
+              {g}
+            </Button>
+          ))}
+        </div>
+        <Textarea value={skin.allergies} onChange={(e) => setSkin({ ...skin, allergies: e.target.value })} placeholder="Allergies" />
+        <Button disabled={pending} onClick={() => save("Skin profile", () => updateSkinAction(skin))}>Save skin profile</Button>
+      </section>
+
+      <section className="space-y-4 rounded-xl border border-border p-5">
+        <h2 className="font-heading text-sm font-medium">Routine</h2>
+        <Textarea value={routine.am} onChange={(e) => setRoutine({ ...routine, am: e.target.value })} placeholder="Morning routine" />
+        <Textarea value={routine.pm} onChange={(e) => setRoutine({ ...routine, pm: e.target.value })} placeholder="Evening routine" />
+        <Button disabled={pending} onClick={() => save("Routine", () => updateRoutineAction({ currentRoutine: routine }))}>Save routine</Button>
+      </section>
+
+      <section className="space-y-4 rounded-xl border border-border p-5">
+        <h2 className="font-heading text-sm font-medium">Location</h2>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Input value={location.city} onChange={(e) => setLocation({ ...location, city: e.target.value })} placeholder="City" />
+          <Input value={location.region} onChange={(e) => setLocation({ ...location, region: e.target.value })} placeholder="Region" />
+          <Input value={location.country} onChange={(e) => setLocation({ ...location, country: e.target.value })} placeholder="Country" />
+        </div>
+        <Button disabled={pending} onClick={() => save("Location", () => updateLocationAction(location))}>Save location</Button>
+      </section>
+
+      {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
+    </div>
+  )
+}

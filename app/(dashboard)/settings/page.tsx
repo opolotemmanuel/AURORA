@@ -1,14 +1,18 @@
+import Link from "next/link"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
+import { DashboardPageHeader } from "@/components/dashboard/page-header"
 import { Button } from "@/components/ui/button"
 import { auth } from "@/lib/auth/server"
 import { requireSession } from "@/lib/auth/session"
+import { getRoleLabel, type AppRole } from "@/lib/dashboard/nav"
 import { syncUserClimateAction } from "@/lib/onboarding/actions"
 import { prisma } from "@/lib/db/client"
 
 export default async function SettingsPage() {
   const session = await requireSession()
+  const role = ((session.user as { role?: string }).role ?? "user") as AppRole
   const location = await prisma.userLocation.findUnique({
     where: { userId: session.user.id },
   })
@@ -19,52 +23,66 @@ export default async function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
-      <div className="space-y-2">
-        <h1 className="font-heading text-2xl font-medium">Settings</h1>
-        <p className="text-sm text-muted-foreground">Account and location preferences.</p>
+    <div className="space-y-8">
+      <DashboardPageHeader
+        title="Settings"
+        description="Account preferences and session."
+        badge={getRoleLabel(role)}
+      />
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="rounded-xl border border-border p-5">
+          <h2 className="font-heading text-sm font-medium">Account</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{session.user.email}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <form
+              action={async () => {
+                "use server"
+                await auth.api.signOut({ headers: await headers() })
+                redirect("/login")
+              }}
+            >
+              <Button type="submit" variant="outline">
+                Sign out
+              </Button>
+            </form>
+            <Button asChild variant="secondary">
+              <Link href="/forgot-password">Reset password</Link>
+            </Button>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-border p-5">
+          <h2 className="font-heading text-sm font-medium">Climate cache</h2>
+          {location?.city ? (
+            <p className="mt-2 text-sm text-muted-foreground">
+              {location.city}, {location.region} — {location.climateZone ?? "unknown"}
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-muted-foreground">No location on file.</p>
+          )}
+          <form action={syncClimate} className="mt-4">
+            <Button type="submit" variant="secondary">
+              Refresh climate bands
+            </Button>
+          </form>
+        </section>
       </div>
 
-      <section className="space-y-3 rounded-lg border border-border p-4">
-        <h2 className="font-heading text-sm font-medium">Account</h2>
-        <p className="text-sm text-muted-foreground">{session.user.email}</p>
-        <form
-          action={async () => {
-            "use server"
-            await auth.api.signOut({ headers: await headers() })
-            redirect("/login")
-          }}
-        >
-          <Button type="submit" variant="outline">
-            Sign out
+      <section className="rounded-xl border border-border p-5">
+        <h2 className="font-heading text-sm font-medium">Manage your data</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Edit profile fields or delete personal data.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Button asChild variant="outline">
+            <Link href="/dashboard/profile">Edit profile</Link>
           </Button>
-        </form>
-      </section>
-
-      <section className="space-y-3 rounded-lg border border-border p-4">
-        <h2 className="font-heading text-sm font-medium">Climate cache</h2>
-        {location ? (
-          <p className="text-sm text-muted-foreground">
-            {location.city}, {location.region} — zone {location.climateZone ?? "unknown"}
-            {location.lastSyncedAt
-              ? ` (synced ${location.lastSyncedAt.toLocaleDateString()})`
-              : ""}
-          </p>
-        ) : (
-          <p className="text-sm text-muted-foreground">No location on file.</p>
-        )}
-        <form action={syncClimate}>
-          <Button type="submit" variant="secondary">
-            Refresh climate bands
+          <Button asChild variant="outline">
+            <Link href="/dashboard/privacy">Privacy & deletion</Link>
           </Button>
-        </form>
+        </div>
       </section>
-
-      <p className="text-sm text-muted-foreground">
-        <a href="/forgot-password" className="underline underline-offset-4">
-          Reset password via email
-        </a>
-      </p>
     </div>
   )
 }

@@ -1,0 +1,154 @@
+import { prisma } from "@/lib/db/client"
+
+export async function getUserDashboardStats(userId: string) {
+  const [wallet, scanCount, ledgerAgg, recentLedger, profile, location] =
+    await Promise.all([
+      prisma.tokenWallet.findUnique({ where: { userId } }),
+      prisma.scan.count({ where: { userId } }),
+      prisma.tokenLedger.aggregate({
+        where: { userId, delta: { lt: 0 } },
+        _sum: { delta: true },
+      }),
+      prisma.tokenLedger.findMany({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+        take: 14,
+        select: { delta: true, reason: true, createdAt: true },
+      }),
+      prisma.userProfile.findUnique({
+        where: { userId },
+        select: { skinType: true, primaryConcerns: true, onboardingCompletedAt: true },
+      }),
+      prisma.userLocation.findUnique({
+        where: { userId },
+        select: { city: true, region: true, climateZone: true },
+      }),
+    ])
+
+  const dailyUsage = bucketByDay(
+    recentLedger.filter((e) => e.delta < 0),
+    14
+  )
+
+  return {
+    balance: wallet?.balance ?? 0,
+    lifetimeUsed: wallet?.lifetimeUsed ?? 0,
+    lifetimeGranted: wallet?.lifetimeGranted ?? 0,
+    scanCount,
+    totalDebited: Math.abs(ledgerAgg._sum.delta ?? 0),
+    profile,
+    location,
+    dailyUsage,
+    recentActivity: recentLedger,
+  }
+}
+
+export async function getAdminDashboardStats() {
+  const thirtyDaysAgo = daysAgo(30)
+
+  const [
+    userCount,
+    scanCount,
+    productCount,
+    totalGranted,
+    totalUsed,
+    usersByRole,
+    scansByStatus,
+    recentUsers,
+    tokenActivity,
+  ] = await Promise.all([
+    prisma.user.count(),
+    prisma.scan.count(),
+    prisma.product.count({ where: { isActive: true } }),
+    prisma.tokenLedger.aggregate({
+      where: { delta: { gt: 0 } },
+      _sum: { delta: true },
+    }),
+    prisma.tokenLedger.aggregate({
+      where: { delta: { lt: 0 } },
+      _sum: { delta: true },
+    }),
+    prisma.user.groupBy({
+      by: ["role"],
+      _count: { role: true },
+    }),
+    prisma.scan.groupBy({
+      by: ["status"],
+      _count: { status: true },
+    }),
+    prisma.user.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      select: { id: true, name: true, email: true, role: true, createdAt: true },
+    }),
+    prisma.tokenLedger.findMany({
+      where: { createdAt: { gte: thirtyDaysAgo } },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      select: { delta: true, reason: true, createdAt: true },
+    }),
+  ])
+
+  const grantsByDay = bucketLedgerByDay(
+    tokenActivity.filter((e) => e.delta > 0),
+    14
+  )
+  const usageByDay = bucketLedgerByDay(
+    tokenActivity.filter((e) => e.delta < 0),
+    14
+  )
+
+  return {
+    userCount,
+    scanCount,
+    productCount,
+    totalGranted: totalGranted._sum.delta ?? 0,
+    totalUsed: Math.abs(totalUsed._sum.delta ?? 0),
+    usersByRole: usersByRole.map((r) => ({
+      role: r.role ?? "user",
+      count: r._count.role,
+    })),
+    scansByStatus: scansByStatus.map((s) => ({
+      status: s.status,
+      count: s._count.status,
+    })),
+    recentUsers,
+    grantsByDay,
+    usageByDay,
+  }
+}
+
+function daysAgo(n: number) {
+  const d = new Date()
+  d.setDate(d.getDate() - n)
+  return d
+}
+
+function bucketByDay(
+  entries: { delta: number; createdAt: Date }[],
+  days: number
+): { label: string; value: number }[] {
+  const buckets = new Map<string, number>()
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    buckets.set(d.toISOString().slice(0, 10), 0)
+  }
+  for (const entry of entries) {
+    const key = entry.createdAt.toISOString().slice(0, 10)
+    if (buckets.has(key)) {
+      buckets.set(key, (buckets.get(key) ?? 0) + Math.abs(entry.delta))
+    }
+  }
+  return Array.from(buckets.entries()).map(([label, value]) => ({
+    label: label.slice(5),
+    value,
+  }))
+}
+
+function bucketLedgerByDay(
+  entries: { delta: number; createdAt: Date }[],
+  days: number
+) {
+  return bucketByDay(entries, days)
+}

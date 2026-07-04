@@ -2,7 +2,24 @@
 
 import { useState } from "react"
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Table,
   TableBody,
@@ -11,6 +28,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { ASSIGNABLE_ROLES, type AppRole } from "@/lib/dashboard/nav"
+import { setUserRoleAction } from "@/lib/admin/actions"
 import { authClient } from "@/lib/auth/client"
 
 type AdminUser = {
@@ -30,28 +49,15 @@ export function UsersTable({ initialUsers }: { initialUsers: AdminUser[] }) {
     if (data?.users) setUsers(data.users as AdminUser[])
   }
 
-  async function banUser(userId: string) {
+  async function withLoading(userId: string, fn: () => Promise<void>) {
     setLoadingId(userId)
-    await authClient.admin.banUser({ userId, banReason: "Blocked by admin" })
+    await fn()
     await refresh()
     setLoadingId(null)
-  }
-
-  async function unbanUser(userId: string) {
-    setLoadingId(userId)
-    await authClient.admin.unbanUser({ userId })
-    await refresh()
-    setLoadingId(null)
-  }
-
-  async function impersonate(userId: string) {
-    setLoadingId(userId)
-    await authClient.admin.impersonateUser({ userId })
-    window.location.href = "/dashboard"
   }
 
   return (
-    <div className="space-y-4">
+    <div className="rounded-xl border border-border">
       <Table>
         <TableHeader>
           <TableRow>
@@ -65,38 +71,105 @@ export function UsersTable({ initialUsers }: { initialUsers: AdminUser[] }) {
         <TableBody>
           {users.map((user) => (
             <TableRow key={user.id}>
-              <TableCell>{user.name}</TableCell>
-              <TableCell>{user.email}</TableCell>
-              <TableCell>{user.role ?? "user"}</TableCell>
+              <TableCell className="font-medium">{user.name}</TableCell>
+              <TableCell className="text-muted-foreground">{user.email}</TableCell>
+              <TableCell>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" disabled={loadingId === user.id}>
+                      {user.role ?? "user"}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {ASSIGNABLE_ROLES.map((role) => (
+                      <DropdownMenuItem
+                        key={role}
+                        onClick={() =>
+                          withLoading(user.id, async () => {
+                            await setUserRoleAction(user.id, role as AppRole)
+                          })
+                        }
+                      >
+                        {role}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
               <TableCell>{user.banned ? "Banned" : "Active"}</TableCell>
-              <TableCell className="space-x-2 text-right">
-                {user.banned ? (
+              <TableCell className="text-right">
+                <div className="flex justify-end gap-2">
+                  {user.banned ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={loadingId === user.id}
+                      onClick={() =>
+                        withLoading(user.id, async () => {
+                          await authClient.admin.unbanUser({ userId: user.id })
+                        })
+                      }
+                    >
+                      Unban
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={loadingId === user.id}
+                      onClick={() =>
+                        withLoading(user.id, async () => {
+                          await authClient.admin.banUser({
+                            userId: user.id,
+                            banReason: "Blocked by admin",
+                          })
+                        })
+                      }
+                    >
+                      Block
+                    </Button>
+                  )}
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="secondary"
                     disabled={loadingId === user.id}
-                    onClick={() => unbanUser(user.id)}
+                    onClick={() =>
+                      withLoading(user.id, async () => {
+                        await authClient.admin.impersonateUser({ userId: user.id })
+                        window.location.href = "/dashboard"
+                      })
+                    }
                   >
-                    Unban
+                    Impersonate
                   </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    disabled={loadingId === user.id}
-                    onClick={() => banUser(user.id)}
-                  >
-                    Ban
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={loadingId === user.id}
-                  onClick={() => impersonate(user.id)}
-                >
-                  Impersonate
-                </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button size="sm" variant="destructive" disabled={loadingId === user.id}>
+                        Delete
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete {user.email}?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Permanently removes this user account. This cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() =>
+                            withLoading(user.id, async () => {
+                              await authClient.admin.removeUser({ userId: user.id })
+                            })
+                          }
+                        >
+                          Delete user
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </TableCell>
             </TableRow>
           ))}

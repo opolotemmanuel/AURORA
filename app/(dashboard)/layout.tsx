@@ -5,6 +5,7 @@ import { ImpersonationBanner } from "@/components/admin/impersonation-banner"
 import { DashboardShell } from "@/components/layouts/dashboard-shell"
 import { auth } from "@/lib/auth/server"
 import { getOnboardingStatus } from "@/lib/auth/session"
+import type { AppRole } from "@/lib/dashboard/nav"
 
 export default async function DashboardLayout({
   children,
@@ -21,18 +22,23 @@ export default async function DashboardLayout({
     redirect("/onboarding")
   }
 
-  const sessionData = await auth.api.getSession({
-    headers: await headers(),
-  })
-
+  const role = ((session.user as { role?: string }).role ?? "user") as AppRole
   const isImpersonating = Boolean(
-    sessionData?.session && "impersonatedBy" in sessionData.session && sessionData.session.impersonatedBy
+    session.session &&
+      "impersonatedBy" in session.session &&
+      session.session.impersonatedBy
   )
 
   return (
     <>
       {isImpersonating ? <ImpersonationBanner /> : null}
-      <DashboardShell>{children}</DashboardShell>
+      <DashboardShell
+        role={role}
+        userName={session.user.name}
+        userEmail={session.user.email}
+      >
+        {children}
+      </DashboardShell>
     </>
   )
 }

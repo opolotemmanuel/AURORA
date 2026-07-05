@@ -35,6 +35,8 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar"
@@ -199,7 +201,8 @@ export function DashboardSidebar({
   emailVerified: boolean
 }) {
   const pathname = usePathname()
-  const { isMobile, setOpenMobile } = useSidebar()
+  const { state, isMobile, setOpenMobile, toggleSidebar } = useSidebar()
+  const collapsed = state === "collapsed"
   const sections = getNavSections(role)
 
   useEffect(() => {
@@ -211,28 +214,44 @@ export function DashboardSidebar({
   return (
     <Sidebar collapsible="icon" variant="sidebar">
       <SidebarHeader className="border-b border-sidebar-border">
-        <div className="flex h-12 items-center px-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2">
-          <Link
-            href="/"
-            className="flex min-w-0 items-center gap-2.5 text-sidebar-foreground transition-colors hover:text-sidebar-accent-foreground"
-            onClick={() => {
-              if (isMobile) {
-                setOpenMobile(false)
-              }
-            }}
-          >
-            <Image
-              src={brandIcon}
-              alt=""
-              width={28}
-              height={28}
-              className="size-7 shrink-0 rounded-md"
-            />
-            <span className="font-heading truncate text-sm font-medium tracking-wide group-data-[collapsible=icon]:hidden">
-              Aurora Organics
-            </span>
-          </Link>
-        </div>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              size="lg"
+              asChild
+              tooltip={collapsed ? "Expand sidebar" : "Aurora Organics"}
+            >
+              <Link
+                href="/"
+                className="text-sidebar-foreground transition-colors hover:text-sidebar-accent-foreground"
+                onClick={(event) => {
+                  if (collapsed && !isMobile) {
+                    event.preventDefault()
+                    toggleSidebar()
+                    return
+                  }
+                  if (isMobile) {
+                    setOpenMobile(false)
+                  }
+                }}
+              >
+                <span className="flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-md">
+                  <Image
+                    src={brandIcon}
+                    alt=""
+                    width={32}
+                    height={32}
+                    className="size-7 object-contain group-data-[collapsible=icon]:size-4"
+                    style={{ width: "auto", height: "auto" }}
+                  />
+                </span>
+                <span className="font-heading truncate text-sm font-medium tracking-wide">
+                  Aurora Organics
+                </span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
 
       <SidebarContent>

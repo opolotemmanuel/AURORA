@@ -47,9 +47,10 @@ export function ReportDocumentHeader({
           <Image
             src={brandIcon}
             alt=""
-            width={36}
-            height={36}
+            width={32}
+            height={32}
             className="size-9 shrink-0 rounded-md"
+            style={{ width: "auto", height: "auto" }}
           />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-foreground">

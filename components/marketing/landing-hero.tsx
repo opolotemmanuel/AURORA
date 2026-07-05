@@ -34,6 +34,15 @@ const itemVariants: Variants = {
   },
 }
 
+function HeroBackground() {
+  return (
+    <div className="pointer-events-none absolute inset-0" aria-hidden>
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,var(--primary)_0%,transparent_55%)] opacity-[0.08]" />
+      <div className="text-primary absolute inset-0 bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-size-[24px_24px] opacity-[0.16] mask-[radial-gradient(ellipse_75%_65%_at_50%_55%,black,transparent)] dark:opacity-[0.10] md:mask-[radial-gradient(ellipse_60%_70%_at_72%_50%,black,transparent)]" />
+    </div>
+  )
+}
+
 export function LandingHero() {
   return (
     <section
@@ -41,10 +50,7 @@ export function LandingHero() {
       aria-label="Hero"
       className="relative overflow-hidden bg-background"
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,var(--primary)_0%,transparent_55%)] opacity-[0.08]"
-      />
+      <HeroBackground />
 
       <motion.div
         variants={containerVariants}

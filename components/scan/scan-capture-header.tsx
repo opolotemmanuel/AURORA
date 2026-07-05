@@ -23,9 +23,10 @@ export function ScanCaptureHeader({ isPro }: ScanCaptureHeaderProps) {
         <Image
           src={brandIcon}
           alt=""
-          width={28}
-          height={28}
+          width={32}
+          height={32}
           className="size-7 shrink-0 rounded-md"
+          style={{ width: "auto", height: "auto" }}
         />
         <span className="font-heading truncate text-sm font-medium tracking-wide">
           Aurora Organics

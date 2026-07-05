@@ -183,7 +183,7 @@ export function MarketingDock() {
           transition={spring}
           className={cn(
             "flex items-center",
-            collapsed ? "gap-2 px-3 py-0" : "gap-1.5 px-2 py-1",
+            collapsed ? "gap-1 px-2 py-0" : "gap-1.5 px-2 py-1",
           )}
         >
           {SECTIONS.map(({ id, label, icon: Icon }) => {

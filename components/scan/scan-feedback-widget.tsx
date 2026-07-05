@@ -16,6 +16,8 @@ type ScanFeedbackWidgetProps = {
   scanId: string
   existingFeedback?: ScanFeedbackRecord | null
   position?: "bottom-right" | "bottom-left"
+  /** When true, skip viewport-corner positioning — parent controls placement. */
+  anchored?: boolean
   className?: string
 }
 
@@ -65,6 +67,7 @@ export function ScanFeedbackWidget({
   scanId,
   existingFeedback = null,
   position = "bottom-right",
+  anchored = false,
   className,
 }: ScanFeedbackWidgetProps) {
   const [rating, setRating] = useState(existingFeedback?.rating ?? 0)
@@ -74,8 +77,13 @@ export function ScanFeedbackWidget({
     return (
       <div
         className={cn(
-          "pointer-events-none absolute bottom-4 z-30 rounded-full border border-border bg-background/90 px-3 py-1.5 text-xs text-muted-foreground shadow-sm backdrop-blur-sm",
-          position === "bottom-left" ? "left-4" : "right-4",
+          "pointer-events-none z-30 rounded-full border border-border bg-background/90 px-3 py-1.5 text-xs text-muted-foreground shadow-sm backdrop-blur-sm",
+          anchored
+            ? "relative"
+            : cn(
+                "absolute bottom-4",
+                position === "bottom-left" ? "left-4" : "right-4",
+              ),
           className,
         )}
       >
@@ -87,6 +95,7 @@ export function ScanFeedbackWidget({
   return (
     <FeedbackWidget
       position={position}
+      anchored={anchored}
       className={className}
       title="How was your scan?"
       placeholder="Optional comments about your results…"

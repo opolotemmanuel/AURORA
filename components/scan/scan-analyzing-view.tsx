@@ -33,6 +33,13 @@ const ANALYSIS_STEPS: Array<Pick<AnalysisToolCall, "id" | "name" | "label">> = [
   },
 ]
 
+const WAIT_DESCRIPTIONS = [
+  "Please wait while we review your photo...",
+  "Hang tight as we assess your skin profile...",
+  "Just a moment while we tailor your recommendations...",
+  "Almost there — putting your report together...",
+] as const
+
 type ScanAnalyzingViewProps = {
   imageSrc: string
   imageBlob: Blob
@@ -58,8 +65,27 @@ export function ScanAnalyzingView({
     ANALYSIS_STEPS.map((step) => ({ ...step, status: "pending" as const })),
   )
   const [activeLabel, setActiveLabel] = useState("Preparing analysis")
+  const [waitDescriptionIndex, setWaitDescriptionIndex] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [isComplete, setIsComplete] = useState(false)
+
+  useEffect(() => {
+    if (error || isComplete) return
+
+    const intervalId = window.setInterval(() => {
+      setWaitDescriptionIndex((current) => (current + 1) % WAIT_DESCRIPTIONS.length)
+    }, 3200)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [error, isComplete])
+
+  const description = error
+    ? "Something went wrong — see details below."
+    : isComplete
+      ? "Your personalized report is ready."
+      : WAIT_DESCRIPTIONS[waitDescriptionIndex]
 
   useEffect(() => {
     let cancelled = false
@@ -179,7 +205,7 @@ export function ScanAnalyzingView({
   return (
     <ScanStepShell
       title="Analyzing your scan"
-      description="Cosmetic assessment only — not a medical diagnosis"
+      description={description}
     >
       <Alert>
         <AlertDescription>

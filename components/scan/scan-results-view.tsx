@@ -61,7 +61,7 @@ export function ScanResultsView({
         onReEdit={onReEdit}
         onViewReport={onViewReport}
       >
-        <div className="mx-auto max-w-3xl space-y-6">
+        <div className="mx-auto max-w-3xl space-y-6 pb-20">
           <ReportDocumentHeader
             scanDate={formattedDate}
             creditsCharged={creditsCharged}
@@ -99,7 +99,21 @@ export function ScanResultsView({
           ) : null}
         </div>
       </ScanReportLayout>
-      {scanId ? <ScanFeedbackWidget scanId={scanId} /> : null}
+
+      {scanId ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-30 px-4">
+          <div className="mx-auto grid w-full max-w-5xl lg:grid-cols-[minmax(0,280px)_1fr] lg:gap-8">
+            <div className="hidden lg:block" aria-hidden />
+            <div className="pointer-events-auto justify-self-end">
+              <ScanFeedbackWidget
+                scanId={scanId}
+                position="bottom-right"
+                anchored
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

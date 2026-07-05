@@ -47,6 +47,8 @@ export interface FeedbackWidgetProps {
   /** Called on submit. May be async; the button shows a sending state until it resolves. */
   onSubmit?: (data: FeedbackData) => void | Promise<void>;
   position?: "bottom-right" | "bottom-left";
+  /** When true, skip viewport-corner positioning — parent controls placement. */
+  anchored?: boolean;
   title?: string;
   placeholder?: string;
   icon?: ReactNode;
@@ -62,6 +64,7 @@ export interface FeedbackWidgetProps {
 export function FeedbackWidget({
   onSubmit,
   position = "bottom-right",
+  anchored = false,
   title = "Help us improve",
   placeholder = "Share an idea or report a bug",
   icon,
@@ -225,8 +228,10 @@ export function FeedbackWidget({
     <div
       ref={rootRef}
       className={cn(
-        "pointer-events-none absolute bottom-4 z-30",
-        left ? "left-4" : "right-4",
+        "pointer-events-none z-30",
+        anchored
+          ? "relative"
+          : cn("absolute bottom-4", left ? "left-4" : "right-4"),
         className,
       )}
     >

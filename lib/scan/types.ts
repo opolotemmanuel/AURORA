@@ -41,16 +41,33 @@ export type SkinDimension = {
   note: string
 }
 
+export type ApplicationTime =
+  | "morning"
+  | "evening"
+  | "anytime"
+  | "morning_and_evening"
+
+export type ApplicationFrequency =
+  | "once_daily"
+  | "twice_daily"
+  | "as_needed"
+  | "few_times_weekly"
+  | "weekly"
+
 export type NaturalRecommendation = {
   id: string
   title: string
   description: string
+  applicationTime?: ApplicationTime
+  applicationFrequency?: ApplicationFrequency
 }
 
 export type ProductRecommendation = {
   id: string
   name: string
   reason: string
+  applicationTime?: ApplicationTime
+  applicationFrequency?: ApplicationFrequency
   imageUrl?: string | null
   storeUrl?: string | null
 }

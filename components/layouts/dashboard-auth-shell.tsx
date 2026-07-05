@@ -15,7 +15,7 @@ export async function DashboardAuthShell({
   }
 
   if (!ctx.onboardingCompleted) {
-    redirect("/onboarding")
+    redirect("/onboarding?callbackUrl=%2Fdashboard")
   }
 
   const isImpersonating = Boolean(

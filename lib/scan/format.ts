@@ -1,4 +1,4 @@
-import type { AssessmentBand } from "@/lib/scan/types"
+import type { AssessmentBand, ApplicationFrequency, ApplicationTime } from "@/lib/scan/types"
 
 const BAND_LABEL: Record<AssessmentBand, string> = {
   minimal: "Minimal",
@@ -67,4 +67,35 @@ export function formatLocationLabel(input: {
   country?: string | null
 }) {
   return [input.city, input.region, input.country].filter(Boolean).join(", ")
+}
+
+const APPLICATION_TIME_LABEL: Record<ApplicationTime, string> = {
+  morning: "Morning",
+  evening: "Evening",
+  anytime: "Anytime",
+  morning_and_evening: "Morning & evening",
+}
+
+const APPLICATION_FREQUENCY_LABEL: Record<ApplicationFrequency, string> = {
+  once_daily: "Once daily",
+  twice_daily: "Twice daily",
+  as_needed: "As needed",
+  few_times_weekly: "Few times weekly",
+  weekly: "Weekly",
+}
+
+export function formatApplicationTime(time: ApplicationTime) {
+  return APPLICATION_TIME_LABEL[time]
+}
+
+export function formatApplicationFrequency(frequency: ApplicationFrequency) {
+  return APPLICATION_FREQUENCY_LABEL[frequency]
+}
+
+export function formatApplicationSchedule(
+  time: ApplicationTime | undefined,
+  frequency: ApplicationFrequency | undefined,
+) {
+  if (!time || !frequency) return null
+  return `${formatApplicationTime(time)} · ${formatApplicationFrequency(frequency)}`
 }

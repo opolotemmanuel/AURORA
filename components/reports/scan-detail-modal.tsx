@@ -8,8 +8,9 @@ import {
   IconTrash,
 } from "@tabler/icons-react"
 
+import { ReportDocumentHeader } from "@/components/reports/report-document-header"
+import { SkinReportDocument } from "@/components/reports/skin-report-document"
 import { ScanFeedbackWidget } from "@/components/scan/scan-feedback-widget"
-import { SkinReportContent } from "@/components/scan/skin-report-content"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,16 +21,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog"
-import { formatMicroUsd } from "@/lib/scan/band-score"
 import { parseLocationSnapshot } from "@/lib/climate/snapshot"
 import { downloadReportPdf } from "@/lib/reports/download-report-pdf"
 import { fromScanResult } from "@/lib/scan/persist"
-import { formatBand } from "@/lib/scan/format"
 import type { ScanClimateContext, SkinAssessment } from "@/lib/scan/types"
-import { formatCreditUsdValue } from "@/lib/tokens/format"
 import { deleteScanAction } from "@/lib/user/data-actions"
 import { cn } from "@/lib/utils"
 
@@ -39,15 +36,6 @@ type ScanDetailModalProps = {
   scan: ReportListItem | null
   open: boolean
   onOpenChange: (open: boolean) => void
-}
-
-function StatRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-start justify-between gap-4 text-sm">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="text-right font-medium tabular-nums">{value}</span>
-    </div>
-  )
 }
 
 export function ScanDetailModal({
@@ -81,6 +69,12 @@ export function ScanDetailModal({
     scan.locationSnapshot,
   )
 
+  const scanDate = new Date(scan.createdAt).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  })
+
   async function handleDownloadPdf() {
     setDownloading(true)
     await downloadReportPdf(scan!.id, {
@@ -102,83 +96,34 @@ export function ScanDetailModal({
     }
   }
 
-  const creditsLabel =
-    scan.creditsCharged != null
-      ? `${scan.creditsCharged.toLocaleString()} credits`
-      : "—"
-
-  const costLabel =
-    scan.creditsCharged != null
-      ? formatCreditUsdValue(scan.creditsCharged)
-      : "—"
-
-  const providerCostLabel =
-    scan.usage?.estimatedCostMicros != null
-      ? formatMicroUsd(scan.usage.estimatedCostMicros)
-      : "—"
-
   return (
     <>
       <ResponsiveDialog
         open={open}
         onOpenChange={onOpenChange}
-        title="Scan details"
         description="Cosmetic assessment — not a medical diagnosis"
         className="sm:max-w-5xl"
       >
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="relative min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-4 sm:px-6">
-            <div className="rounded-xl border border-border bg-card p-4 space-y-3 sm:max-w-md">
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="font-heading text-sm font-medium">Scan stats</h3>
-                <Badge variant="secondary" className="font-normal capitalize">
-                  {scan.captureMode}
-                </Badge>
-              </div>
-              <div className="space-y-2">
-                <StatRow
-                  label="Date"
-                  value={new Date(scan.createdAt).toLocaleString()}
-                />
-                <StatRow
-                  label="Overall band"
-                  value={formatBand(
-                    scan.result.overallBand as SkinAssessment["overallBand"],
-                  )}
-                />
-                <StatRow label="Credits used" value={creditsLabel} />
-                <StatRow label="Credit value" value={costLabel} />
-                <StatRow label="Provider cost" value={providerCostLabel} />
-                {scan.usage ? (
-                  <>
-                    <StatRow label="Model" value={scan.usage.modelId} />
-                    <StatRow
-                      label="Tokens"
-                      value={`${scan.usage.inputTokens.toLocaleString()} in / ${scan.usage.outputTokens.toLocaleString()} out`}
-                    />
-                    <StatRow
-                      label="Total tokens"
-                      value={scan.usage.totalTokens.toLocaleString()}
-                    />
-                    {scan.usage.latencyMs != null ? (
-                      <StatRow
-                        label="Latency"
-                        value={`${(scan.usage.latencyMs / 1000).toFixed(1)}s`}
-                      />
-                    ) : null}
-                  </>
-                ) : null}
-              </div>
-            </div>
+          <div className="relative min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+            <div className="mx-auto max-w-3xl space-y-6">
+              <ReportDocumentHeader
+                scanDate={scanDate}
+                captureMode={scan.captureMode}
+                creditsCharged={scan.creditsCharged}
+                usage={scan.usage}
+              />
 
-            <SkinReportContent
-              assessment={assessment}
-              climateContext={climateContext}
-            />
-            <ScanFeedbackWidget
-              scanId={scan.id}
-              existingFeedback={scan.feedback}
-            />
+              <SkinReportDocument
+                assessment={assessment}
+                climateContext={climateContext}
+              />
+
+              <ScanFeedbackWidget
+                scanId={scan.id}
+                existingFeedback={scan.feedback}
+              />
+            </div>
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3 sm:px-6">

@@ -14,6 +14,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
+import { MAX_BAND_SCORE } from "@/lib/scan/dimension-chart-geometry"
 import { bandToScore } from "@/lib/scan/band-score"
 import { formatBand } from "@/lib/scan/format"
 import type { AssessmentBand, SkinDimension } from "@/lib/scan/types"
@@ -22,9 +23,8 @@ import { cn } from "@/lib/utils"
 type DimensionRadarChartProps = {
   dimensions: SkinDimension[]
   className?: string
+  variant?: "app" | "document"
 }
-
-const MAX_BAND_SCORE = 4
 
 const config = {
   score: { label: "Band level", color: "var(--chart-1)" },
@@ -33,6 +33,7 @@ const config = {
 export function DimensionRadarChart({
   dimensions,
   className,
+  variant = "document",
 }: DimensionRadarChartProps) {
   const data = dimensions.map((dimension) => ({
     axis: dimension.label,
@@ -44,7 +45,9 @@ export function DimensionRadarChart({
     return (
       <div
         className={cn(
-          "flex h-56 items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground",
+          "flex h-48 items-center justify-center text-sm text-muted-foreground",
+          variant === "app" &&
+            "rounded-xl border border-dashed border-border",
           className,
         )}
       >
@@ -53,27 +56,46 @@ export function DimensionRadarChart({
     )
   }
 
+  const isDocument = variant === "document"
+
   return (
     <ChartContainer
       config={config}
-      className={cn("mx-auto aspect-square max-h-[250px] w-full", className)}
+      className={cn(
+        "mx-auto aspect-square w-full font-sans",
+        isDocument ? "max-h-[220px]" : "max-h-[250px]",
+        className,
+      )}
     >
-      <RadarChart data={data} cx="50%" cy="50%" outerRadius="80%">
-        <ChartTooltip
-          cursor={false}
-          content={
-            <ChartTooltipContent
-              formatter={(value, _name, item) => {
-                const band = (item.payload as { band?: AssessmentBand }).band
-                return band
-                  ? `${formatBand(band)} (${value}/${MAX_BAND_SCORE})`
-                  : String(value)
-              }}
-            />
-          }
+      <RadarChart data={data} cx="50%" cy="50%" outerRadius="78%">
+        {!isDocument ? (
+          <ChartTooltip
+            cursor={false}
+            content={
+              <ChartTooltipContent
+                formatter={(value, _name, item) => {
+                  const band = (item.payload as { band?: AssessmentBand }).band
+                  return band
+                    ? `${formatBand(band)} (${value}/${MAX_BAND_SCORE})`
+                    : String(value)
+                }}
+              />
+            }
+          />
+        ) : null}
+        <PolarGrid
+          stroke="var(--border)"
+          strokeOpacity={0.8}
+          gridType="polygon"
         />
-        <PolarGrid />
-        <PolarAngleAxis dataKey="axis" tick={{ fontSize: 11 }} />
+        <PolarAngleAxis
+          dataKey="axis"
+          tick={{
+            fontSize: 11,
+            fill: "var(--muted-foreground)",
+            fontFamily: "var(--font-sans)",
+          }}
+        />
         <PolarRadiusAxis
           domain={[0, MAX_BAND_SCORE]}
           tick={false}
@@ -83,12 +105,10 @@ export function DimensionRadarChart({
           name="score"
           dataKey="score"
           fill="var(--color-score)"
-          fillOpacity={0.6}
-          dot={{
-            r: 4,
-            fillOpacity: 1,
-            fill: "var(--color-score)",
-          }}
+          fillOpacity={isDocument ? 0.22 : 0.6}
+          stroke="var(--color-score)"
+          strokeWidth={isDocument ? 1.5 : 2}
+          dot={isDocument ? false : { r: 4, fillOpacity: 1, fill: "var(--color-score)" }}
         />
       </RadarChart>
     </ChartContainer>

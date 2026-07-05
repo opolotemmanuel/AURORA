@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils"
 type ResponsiveDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  title: string
+  title?: string
   description?: string
   children: ReactNode
   className?: string
@@ -46,6 +46,7 @@ export function ResponsiveDialog({
   className,
 }: ResponsiveDialogProps) {
   const isMobile = useIsMobile()
+  const showHeader = Boolean(title?.trim() || description?.trim())
 
   if (isMobile) {
     return (
@@ -58,14 +59,18 @@ export function ResponsiveDialog({
           )}
         >
           <DrawerHandle />
-          <SheetHeader className="shrink-0 border-b border-border px-6 pt-4 pb-3 text-left">
-            <SheetTitle className="font-heading text-lg font-medium normal-case tracking-normal">
-              {title}
-            </SheetTitle>
-            {description ? (
-              <SheetDescription>{description}</SheetDescription>
-            ) : null}
-          </SheetHeader>
+          {showHeader ? (
+            <SheetHeader className="shrink-0 border-b border-border px-6 pt-4 pb-3 text-left">
+              {title?.trim() ? (
+                <SheetTitle className="font-heading text-lg font-medium normal-case tracking-normal">
+                  {title}
+                </SheetTitle>
+              ) : null}
+              {description ? (
+                <SheetDescription>{description}</SheetDescription>
+              ) : null}
+            </SheetHeader>
+          ) : null}
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {children}
           </div>
@@ -82,14 +87,18 @@ export function ResponsiveDialog({
           className,
         )}
       >
-        <DialogHeader className="shrink-0 border-b border-border px-6 pt-6 pb-4">
-          <DialogTitle className="font-heading text-lg font-medium normal-case tracking-normal">
-            {title}
-          </DialogTitle>
-          {description ? (
-            <DialogDescription>{description}</DialogDescription>
-          ) : null}
-        </DialogHeader>
+        {showHeader ? (
+          <DialogHeader className="shrink-0 border-b border-border px-6 pt-6 pb-4">
+            {title?.trim() ? (
+              <DialogTitle className="font-heading text-lg font-medium normal-case tracking-normal">
+                {title}
+              </DialogTitle>
+            ) : null}
+            {description ? (
+              <DialogDescription>{description}</DialogDescription>
+            ) : null}
+          </DialogHeader>
+        ) : null}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {children}
         </div>

@@ -1,9 +1,15 @@
 "use client"
 
+import { useState } from "react"
+import { IconDownload, IconLoader2 } from "@tabler/icons-react"
+
+import { ReportDocumentHeader } from "@/components/reports/report-document-header"
+import { SkinReportDocument } from "@/components/reports/skin-report-document"
 import { ScanFeedbackWidget } from "@/components/scan/scan-feedback-widget"
 import { ScanReportLayout } from "@/components/scan/scan-report-layout"
-import { SkinReportContent } from "@/components/scan/skin-report-content"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import { downloadReportPdf } from "@/lib/reports/download-report-pdf"
 import type { ScanClimateContext, SkinAssessment } from "@/lib/scan/types"
 
 type ScanResultsViewProps = {
@@ -15,6 +21,7 @@ type ScanResultsViewProps = {
   onReEdit: () => void
   onViewReport: () => void
   creditsCharged?: number | null
+  scanDate?: string
 }
 
 export function ScanResultsView({
@@ -26,7 +33,26 @@ export function ScanResultsView({
   onReEdit,
   onViewReport,
   creditsCharged,
+  scanDate,
 }: ScanResultsViewProps) {
+  const [downloading, setDownloading] = useState(false)
+
+  const formattedDate =
+    scanDate ??
+    new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
+
+  async function handleDownloadPdf() {
+    if (!scanId) return
+    setDownloading(true)
+    await downloadReportPdf(scanId, {
+      onFinish: () => setDownloading(false),
+    })
+  }
+
   return (
     <div className="relative mx-auto w-full max-w-5xl">
       <ScanReportLayout
@@ -35,19 +61,43 @@ export function ScanResultsView({
         onReEdit={onReEdit}
         onViewReport={onViewReport}
       >
-        <Alert className="mb-4">
-          <AlertDescription>
-            Your photo is shown only for this session. It is not stored or included
-            in saved reports or PDFs.
-            {creditsCharged != null
-              ? ` This scan used ${creditsCharged.toLocaleString()} credits.`
-              : null}
-          </AlertDescription>
-        </Alert>
-        <SkinReportContent
-          assessment={assessment}
-          climateContext={climateContext}
-        />
+        <div className="mx-auto max-w-3xl space-y-6">
+          <ReportDocumentHeader
+            scanDate={formattedDate}
+            creditsCharged={creditsCharged}
+          />
+
+          <Alert>
+            <AlertDescription>
+              Your photo is shown only for this session. It is not stored or
+              included in saved reports or PDFs.
+            </AlertDescription>
+          </Alert>
+
+          <SkinReportDocument
+            assessment={assessment}
+            climateContext={climateContext}
+          />
+
+          {scanId ? (
+            <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+              <Button
+                type="button"
+                size="sm"
+                className="rounded-full"
+                disabled={downloading}
+                onClick={handleDownloadPdf}
+              >
+                {downloading ? (
+                  <IconLoader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <IconDownload className="size-3.5" />
+                )}
+                {downloading ? "Generating…" : "Download PDF"}
+              </Button>
+            </div>
+          ) : null}
+        </div>
       </ScanReportLayout>
       {scanId ? <ScanFeedbackWidget scanId={scanId} /> : null}
     </div>

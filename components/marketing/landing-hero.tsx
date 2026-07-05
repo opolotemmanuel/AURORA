@@ -6,7 +6,6 @@ import { motion, type Variants } from "motion/react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { useSession } from "@/lib/auth/client"
 import { EASE_OUT } from "@/lib/ease"
 import { PLACEHOLDER_IMAGES } from "@/lib/marketing/placeholder-images"
 import {
@@ -36,11 +35,6 @@ const itemVariants: Variants = {
 }
 
 export function LandingHero() {
-  const { data: session } = useSession()
-  const dashboardHref = session
-    ? "/dashboard"
-    : "/login?callbackUrl=%2Fdashboard"
-
   return (
     <section
       id="top"
@@ -93,7 +87,7 @@ export function LandingHero() {
               <Link href="/scan">Start your scan</Link>
             </Button>
             <Button asChild variant="outline" size="lg">
-              <Link href={dashboardHref}>Dashboard</Link>
+              <Link href="/dashboard">Dashboard</Link>
             </Button>
           </motion.div>
 

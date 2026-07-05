@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { requireAuthContext } from "@/lib/auth/context"
 import { prisma } from "@/lib/db/client"
 import { enrichManyRecommendationsWithImages } from "@/lib/products/enrich-recommendations"
+import { REPORTS_PAGE_SIZE } from "@/lib/reports/constants"
 import type { ProductRecommendation } from "@/lib/scan/types"
 
 type ScanDebitMetadata = {
@@ -24,22 +25,36 @@ function getCreditsCharged(
   return Math.abs(ledger.delta)
 }
 
-export async function ReportsList() {
+type ReportsListProps = {
+  page?: number
+}
+
+export async function ReportsList({ page = 1 }: ReportsListProps) {
   const ctx = await requireAuthContext()
-  const scans = await prisma.scan.findMany({
-    where: { userId: ctx.userId },
-    orderBy: { createdAt: "desc" },
-    include: {
-      result: true,
-      usage: true,
-      feedback: true,
-      tokenLedgers: {
-        where: { reason: "scan_debit" },
-        take: 1,
-        orderBy: { createdAt: "desc" },
+  const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
+  const skip = (safePage - 1) * REPORTS_PAGE_SIZE
+
+  const where = { userId: ctx.userId }
+
+  const [scans, totalCount] = await Promise.all([
+    prisma.scan.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: REPORTS_PAGE_SIZE,
+      include: {
+        result: true,
+        usage: true,
+        feedback: true,
+        tokenLedgers: {
+          where: { reason: "scan_debit" },
+          take: 1,
+          orderBy: { createdAt: "desc" },
+        },
       },
-    },
-  })
+    }),
+    prisma.scan.count({ where }),
+  ])
 
   const recommendationGroups = scans.map((scan) =>
     scan.result && Array.isArray(scan.result.recommendations)
@@ -88,7 +103,9 @@ export async function ReportsList() {
     }
   })
 
-  if (scans.length === 0) {
+  const totalPages = Math.max(1, Math.ceil(totalCount / REPORTS_PAGE_SIZE))
+
+  if (totalCount === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border p-8 text-center">
         <p className="text-sm text-muted-foreground">No scans yet.</p>
@@ -99,5 +116,12 @@ export async function ReportsList() {
     )
   }
 
-  return <ReportsListClient scans={serialized} />
+  return (
+    <ReportsListClient
+      scans={serialized}
+      page={safePage}
+      totalPages={totalPages}
+      totalCount={totalCount}
+    />
+  )
 }

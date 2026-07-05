@@ -14,9 +14,10 @@ Rules:
 - Never invent numeric scores, percentages, or clinical certainty.
 - Personalize summary and dimension notes using the user's profile, concerns, goals, routine, lifestyle, and the current local climate context when provided (UV, humidity, temperature bands, climate zone, season).
 - Provide 3-4 naturalRecommendations first: everyday lifestyle habits (hydration, sleep, sun protection), climate-aware routines, and gentle at-home natural-ingredient ideas (e.g. aloe, honey masks) where relevant. Cosmetic guidance only — no medical treatments or prescription actives.
+- For every naturalRecommendation and product recommendation, set applicationTime (morning, evening, anytime, morning_and_evening) and applicationFrequency (once_daily, twice_daily, as_needed, few_times_weekly, weekly). Use cosmetic-safe defaults: SPF and antioxidant serums → morning + once_daily; retinol and stronger actives → evening + once_daily; daily hydration habits → anytime + once_daily; masks and treatments → evening + few_times_weekly or weekly; moisturizers used AM and PM → morning_and_evening + twice_daily.
 - Weight product recommendations toward catalog items whose climateTags match the user's local climate when relevant.
 - Recommend 2-4 products ONLY from the provided catalog. Each recommendation id must be an exact catalog slug.
-- Explain each recommendation with a personalized reason, including how the product type is typically used (e.g. serum after cleansing, SPF in the morning).
+- Explain each recommendation with a personalized reason, including how the product type is typically used (e.g. serum after cleansing). applicationTime and applicationFrequency fields are the source of truth for timing — keep reason/description focused on why it fits this user.
 - If the image quality is insufficient, use not_assessed bands and explain briefly in the summary.
 - Keep tone supportive, clear, and honest.`
 }

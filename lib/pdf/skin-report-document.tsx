@@ -1,107 +1,32 @@
+import type { ReactNode } from "react"
+
 import {
   Document,
   Image,
+  Link,
   Page,
-  StyleSheet,
   Text,
   View,
 } from "@react-pdf/renderer"
 
+import { DimensionRadarSvg } from "@/lib/pdf/dimension-radar-svg"
+import { reportStyles, sectionMinPresence } from "@/lib/pdf/report-styles"
 import {
+  formatApplicationSchedule,
   formatBand,
   formatClimateBand,
   formatClimateZone,
   formatLocationLabel,
   formatSeasonBand,
-  formatSkinHeadline,
 } from "@/lib/scan/format"
 import type { ScanClimateContext, SkinAssessment } from "@/lib/scan/types"
 
-const styles = StyleSheet.create({
-  page: {
-    padding: 40,
-    fontSize: 11,
-    fontFamily: "Helvetica",
-    color: "#1a1a1a",
-  },
-  title: {
-    fontSize: 20,
-    marginBottom: 8,
-    fontFamily: "Helvetica-Bold",
-  },
-  subtitle: {
-    fontSize: 12,
-    marginBottom: 16,
-    color: "#555",
-  },
-  band: {
-    fontSize: 12,
-    marginBottom: 12,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    backgroundColor: "#f0ebe6",
-    alignSelf: "flex-start",
-    borderRadius: 12,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontFamily: "Helvetica-Bold",
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  row: {
-    marginBottom: 8,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e0db",
-  },
-  rowLabel: {
-    fontFamily: "Helvetica-Bold",
-    marginBottom: 2,
-  },
-  rowNote: {
-    fontSize: 10,
-    color: "#555",
-    marginBottom: 4,
-  },
-  disclaimer: {
-    marginTop: 20,
-    padding: 10,
-    backgroundColor: "#f7f4f1",
-    fontSize: 9,
-    color: "#555",
-  },
-  meta: {
-    fontSize: 9,
-    color: "#888",
-    marginTop: 2,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
-    gap: 12,
-  },
-  logo: {
-    width: 36,
-    height: 36,
-  },
-  brandName: {
-    fontSize: 16,
-    fontFamily: "Helvetica-Bold",
-    color: "#1a1a1a",
-  },
-  brandTagline: {
-    fontSize: 10,
-    color: "#666",
-    marginTop: 2,
-  },
-  privacyNote: {
-    fontSize: 9,
-    color: "#666",
-    marginBottom: 16,
-  },
-})
+type ReportUsage = {
+  modelId: string
+  totalTokens: number
+  inputTokens: number
+  outputTokens: number
+}
 
 type SkinReportDocumentProps = {
   assessment: SkinAssessment
@@ -109,6 +34,39 @@ type SkinReportDocumentProps = {
   userName: string
   scanDate: string
   logoSrc: string
+  captureMode?: string
+  creditsCharged?: number | null
+  usage?: ReportUsage | null
+  productImageDataUris?: Map<string, string>
+}
+
+function ReportSection({
+  title,
+  first = false,
+  keepTogether = false,
+  minPresenceAhead,
+  children,
+}: {
+  title: string
+  first?: boolean
+  keepTogether?: boolean
+  minPresenceAhead?: number
+  children: ReactNode
+}) {
+  return (
+    <View
+      wrap={keepTogether ? false : undefined}
+      style={first ? reportStyles.sectionFirst : reportStyles.section}
+    >
+      <Text
+        style={reportStyles.sectionTitle}
+        minPresenceAhead={minPresenceAhead}
+      >
+        {title}
+      </Text>
+      {children}
+    </View>
+  )
 }
 
 export function SkinReportDocument({
@@ -117,89 +75,249 @@ export function SkinReportDocument({
   userName,
   scanDate,
   logoSrc,
+  captureMode,
+  creditsCharged,
+  usage,
+  productImageDataUris,
 }: SkinReportDocumentProps) {
+  const metaLines = [
+    scanDate,
+    userName ? `Prepared for ${userName}` : null,
+    captureMode ?? null,
+  ].filter(Boolean) as string[]
+
+  const tokenParts: string[] = []
+  if (creditsCharged != null) {
+    tokenParts.push(`${creditsCharged.toLocaleString()} credits`)
+  }
+  if (usage) {
+    tokenParts.push(`${usage.totalTokens.toLocaleString()} tokens`)
+    tokenParts.push(usage.modelId)
+  }
+
+  const locationLabel = climateContext
+    ? formatLocationLabel(climateContext)
+    : ""
+  const hasClimateBands =
+    climateContext?.uvIndexBand != null ||
+    climateContext?.humidityBand != null ||
+    climateContext?.temperatureBand != null
+
   return (
     <Document title="Aurora Organics Skin Report">
-      <Page size="A4" style={styles.page}>
-        <View style={styles.header}>
-          <Image src={logoSrc} style={styles.logo} />
-          <View>
-            <Text style={styles.brandName}>Aurora Organics</Text>
-            <Text style={styles.brandTagline}>Skin Intelligence Report</Text>
-            <Text style={styles.meta}>
-              {scanDate} · Prepared for {userName}
-            </Text>
+      <Page size="A4" style={reportStyles.page} wrap>
+        <View style={reportStyles.header}>
+          <View style={reportStyles.headerLeft}>
+            <Image src={logoSrc} style={reportStyles.logo} />
+            <View>
+              <Text style={reportStyles.brandName}>Aurora Organics</Text>
+              <Text style={reportStyles.brandTagline}>
+                Skin Intelligence Report
+              </Text>
+            </View>
           </View>
+          {metaLines.length > 0 ? (
+            <View>
+              {metaLines.map((line) => (
+                <Text key={line} style={reportStyles.headerRight}>
+                  {line}
+                </Text>
+              ))}
+            </View>
+          ) : null}
         </View>
 
-        <Text style={styles.privacyNote}>
-          This report contains cosmetic guidance only. No scan photo is stored or
-          included in this document.
-        </Text>
-
-        <Text style={styles.title}>
-          Your skin is {formatSkinHeadline(assessment.overallBand)}
-        </Text>
-        <Text style={styles.band}>
-          Overall: {formatBand(assessment.overallBand)}
-        </Text>
-        <Text style={styles.subtitle}>{assessment.summary}</Text>
-
-        {climateContext &&
-        (climateContext.uvIndexBand ||
-          climateContext.humidityBand ||
-          climateContext.temperatureBand ||
-          climateContext.city) ? (
-          <>
-            <Text style={styles.sectionTitle}>Local climate context</Text>
-            {formatLocationLabel(climateContext) ? (
-              <Text style={styles.rowNote}>
-                {formatLocationLabel(climateContext)}
-              </Text>
-            ) : null}
-            <Text style={styles.rowNote}>
-              UV: {formatClimateBand(climateContext.uvIndexBand)} · Humidity:{" "}
-              {formatClimateBand(climateContext.humidityBand)} · Temperature:{" "}
-              {formatClimateBand(climateContext.temperatureBand)}
-            </Text>
-            <Text style={styles.rowNote}>
-              Zone: {formatClimateZone(climateContext.climateZone)} · Season:{" "}
-              {formatSeasonBand(climateContext.seasonBand)}
-            </Text>
-          </>
+        {tokenParts.length > 0 ? (
+          <Text style={reportStyles.tokenStrip}>{tokenParts.join(" · ")}</Text>
         ) : null}
 
-        <Text style={styles.sectionTitle}>Dimensions</Text>
-        {assessment.dimensions.map((dimension) => (
-          <View key={dimension.id} style={styles.row}>
-            <Text style={styles.rowLabel}>
-              {dimension.label} — {formatBand(dimension.band)}
-            </Text>
-            <Text style={styles.rowNote}>{dimension.note}</Text>
-          </View>
-        ))}
+        <Text style={[reportStyles.meta, { marginBottom: 12 }]}>
+          Cosmetic guidance only. No scan photo is stored or included.
+        </Text>
 
-        {assessment.naturalRecommendations.length > 0 ? (
-          <>
-            <Text style={styles.sectionTitle}>Natural steps first</Text>
-            {assessment.naturalRecommendations.map((item) => (
-              <View key={item.id} style={styles.row}>
-                <Text style={styles.rowLabel}>{item.title}</Text>
-                <Text style={styles.rowNote}>{item.description}</Text>
+        <ReportSection
+          title="Overall assessment"
+          first
+          keepTogether
+          minPresenceAhead={sectionMinPresence.compact}
+        >
+          <Text style={reportStyles.bodyStrong}>
+            {formatBand(assessment.overallBand)}
+          </Text>
+          <Text style={[reportStyles.body, { marginTop: 6 }]}>
+            {assessment.summary}
+          </Text>
+        </ReportSection>
+
+        <ReportSection
+          title="Local climate context"
+          keepTogether
+          minPresenceAhead={sectionMinPresence.standard}
+        >
+          {!climateContext || (!locationLabel && !hasClimateBands) ? (
+            <Text style={reportStyles.body}>
+              Climate data was not available for this scan.
+            </Text>
+          ) : (
+            <View>
+              {locationLabel ? (
+                <Text style={[reportStyles.bodyStrong, { marginBottom: 6 }]}>
+                  {locationLabel}
+                </Text>
+              ) : null}
+              {hasClimateBands ? (
+                <View style={reportStyles.climateGrid}>
+                  <View style={reportStyles.climateCell}>
+                    <Text style={reportStyles.climateLabel}>UV exposure</Text>
+                    <Text style={reportStyles.climateValue}>
+                      {formatClimateBand(climateContext.uvIndexBand)}
+                    </Text>
+                  </View>
+                  <View style={reportStyles.climateCell}>
+                    <Text style={reportStyles.climateLabel}>Humidity</Text>
+                    <Text style={reportStyles.climateValue}>
+                      {formatClimateBand(climateContext.humidityBand)}
+                    </Text>
+                  </View>
+                  <View style={reportStyles.climateCell}>
+                    <Text style={reportStyles.climateLabel}>Temperature</Text>
+                    <Text style={reportStyles.climateValue}>
+                      {formatClimateBand(climateContext.temperatureBand)}
+                    </Text>
+                  </View>
+                  <View style={reportStyles.climateCell}>
+                    <Text style={reportStyles.climateLabel}>Climate zone</Text>
+                    <Text style={reportStyles.climateValue}>
+                      {formatClimateZone(climateContext.climateZone)}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+              {climateContext.seasonBand ? (
+                <Text style={[reportStyles.meta, { marginTop: 6 }]}>
+                  Season: {formatSeasonBand(climateContext.seasonBand)}
+                </Text>
+              ) : null}
+            </View>
+          )}
+        </ReportSection>
+
+        <ReportSection
+          title="Dimensions"
+          keepTogether
+          minPresenceAhead={sectionMinPresence.dimensions}
+        >
+          <View wrap={false}>
+            <Text style={reportStyles.chartCaption}>
+              Band levels from minimal (center) to elevated (outer edge)
+            </Text>
+            <DimensionRadarSvg dimensions={assessment.dimensions} />
+          </View>
+          <View style={reportStyles.twoColumnGrid}>
+            {assessment.dimensions.map((dimension) => (
+              <View key={dimension.id} wrap={false} style={reportStyles.gridCell}>
+                <View style={reportStyles.gridCellHeader}>
+                  <Text style={reportStyles.rowLabel}>{dimension.label}</Text>
+                  <Text style={reportStyles.rowValue}>
+                    {formatBand(dimension.band)}
+                  </Text>
+                </View>
+                {dimension.note ? (
+                  <Text style={reportStyles.rowNote}>{dimension.note}</Text>
+                ) : null}
               </View>
             ))}
-          </>
+          </View>
+        </ReportSection>
+
+        {assessment.naturalRecommendations.length > 0 ? (
+          <ReportSection
+            title="Natural steps first"
+            keepTogether
+            minPresenceAhead={sectionMinPresence.standard}
+          >
+            <Text style={[reportStyles.body, { marginBottom: 8 }]}>
+              Everyday habits and gentle natural routines to try before
+              formulated products.
+            </Text>
+            {assessment.naturalRecommendations.map((item) => {
+              const scheduleLabel = formatApplicationSchedule(
+                item.applicationTime,
+                item.applicationFrequency,
+              )
+
+              return (
+              <View key={item.id} wrap={false} style={reportStyles.bulletRow}>
+                <View style={reportStyles.bullet} />
+                <View style={{ flex: 1 }}>
+                  <Text style={reportStyles.rowLabel}>{item.title}</Text>
+                  {scheduleLabel ? (
+                    <Text style={[reportStyles.meta, { marginBottom: 2 }]}>
+                      {scheduleLabel}
+                    </Text>
+                  ) : null}
+                  <Text style={reportStyles.rowNote}>{item.description}</Text>
+                </View>
+              </View>
+              )
+            })}
+          </ReportSection>
         ) : null}
 
-        <Text style={styles.sectionTitle}>Recommended Aurora products</Text>
-        {assessment.recommendations.map((item) => (
-          <View key={item.id} style={styles.row}>
-            <Text style={styles.rowLabel}>{item.name}</Text>
-            <Text style={styles.rowNote}>{item.reason}</Text>
-          </View>
-        ))}
+        <ReportSection
+          title="Recommended Aurora products"
+          minPresenceAhead={sectionMinPresence.products}
+        >
+          <View style={reportStyles.twoColumnGrid}>
+            {assessment.recommendations.map((item) => {
+              const imageSrc = item.imageUrl?.trim()
+                ? productImageDataUris?.get(item.imageUrl)
+                : null
+              const scheduleLabel = formatApplicationSchedule(
+                item.applicationTime,
+                item.applicationFrequency,
+              )
 
-        <Text style={styles.disclaimer}>{assessment.disclaimer}</Text>
+              return (
+                <View key={item.id} wrap={false} style={reportStyles.productCell}>
+                  {imageSrc ? (
+                    <Image src={imageSrc} style={reportStyles.productImage} />
+                  ) : null}
+                  <View style={reportStyles.productBody}>
+                    <Text style={reportStyles.rowLabel}>{item.name}</Text>
+                    {scheduleLabel ? (
+                      <Text style={[reportStyles.meta, { marginBottom: 2 }]}>
+                        {scheduleLabel}
+                      </Text>
+                    ) : null}
+                    <Text style={reportStyles.rowNote}>{item.reason}</Text>
+                    {item.storeUrl ? (
+                      <Link src={item.storeUrl} style={reportStyles.productLink}>
+                        View on Aurora Organics
+                      </Link>
+                    ) : null}
+                  </View>
+                </View>
+              )
+            })}
+          </View>
+        </ReportSection>
+
+        <Text wrap={false} style={reportStyles.disclaimer}>
+          {assessment.disclaimer}
+        </Text>
+
+        <View style={reportStyles.pageFooter} fixed>
+          <Text style={reportStyles.pageFooterText}>
+            Aurora Organics · Skin Intelligence Report
+          </Text>
+          <Text
+            style={reportStyles.pageFooterText}
+            render={({ pageNumber, totalPages }) =>
+              `Page ${pageNumber} of ${totalPages}`
+            }
+          />
+        </View>
       </Page>
     </Document>
   )

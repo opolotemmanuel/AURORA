@@ -50,7 +50,13 @@ export const skinAssessmentJsonSchema = {
         "3-4 personalized natural-care steps before products: lifestyle habits, climate-aware routines, and gentle at-home natural-ingredient ideas. Cosmetic guidance only.",
       items: {
         type: Type.OBJECT,
-        required: ["id", "title", "description"],
+        required: [
+          "id",
+          "title",
+          "description",
+          "applicationTime",
+          "applicationFrequency",
+        ],
         properties: {
           id: {
             type: Type.STRING,
@@ -63,7 +69,25 @@ export const skinAssessmentJsonSchema = {
           description: {
             type: Type.STRING,
             description:
-              "1-2 sentences explaining the step and why it fits this user.",
+              "1-2 sentences explaining the step and why it fits this user. Do not repeat applicationTime or applicationFrequency here.",
+          },
+          applicationTime: {
+            type: Type.STRING,
+            enum: ["morning", "evening", "anytime", "morning_and_evening"],
+            description:
+              "When during the day to do this step or apply this product.",
+          },
+          applicationFrequency: {
+            type: Type.STRING,
+            enum: [
+              "once_daily",
+              "twice_daily",
+              "as_needed",
+              "few_times_weekly",
+              "weekly",
+            ],
+            description:
+              "How often per day or week (e.g. once daily, twice daily, as needed).",
           },
         },
       },
@@ -74,7 +98,13 @@ export const skinAssessmentJsonSchema = {
         "2-4 Aurora product recommendations. id must be an exact catalog slug.",
       items: {
         type: Type.OBJECT,
-        required: ["id", "name", "reason"],
+        required: [
+          "id",
+          "name",
+          "reason",
+          "applicationTime",
+          "applicationFrequency",
+        ],
         properties: {
           id: {
             type: Type.STRING,
@@ -84,7 +114,25 @@ export const skinAssessmentJsonSchema = {
           reason: {
             type: Type.STRING,
             description:
-              "Why this product fits the scan and user context, including how to use it.",
+              "Why this product fits the scan and user context, including how to use it. Do not repeat applicationTime or applicationFrequency here.",
+          },
+          applicationTime: {
+            type: Type.STRING,
+            enum: ["morning", "evening", "anytime", "morning_and_evening"],
+            description:
+              "When during the day to apply this product.",
+          },
+          applicationFrequency: {
+            type: Type.STRING,
+            enum: [
+              "once_daily",
+              "twice_daily",
+              "as_needed",
+              "few_times_weekly",
+              "weekly",
+            ],
+            description:
+              "How often per day or week to apply this product.",
           },
         },
       },

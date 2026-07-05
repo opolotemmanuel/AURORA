@@ -4,7 +4,14 @@ import { ReportsList } from "@/components/dashboard/reports-list"
 import { DashboardPageHeader } from "@/components/dashboard/page-header"
 import { ReportsListSkeleton } from "@/components/dashboard/skeletons/reports-list-skeleton"
 
-export default function ReportsPage() {
+type ReportsPageProps = {
+  searchParams: Promise<{ page?: string }>
+}
+
+export default async function ReportsPage({ searchParams }: ReportsPageProps) {
+  const params = await searchParams
+  const page = params.page ? Number.parseInt(params.page, 10) : 1
+
   return (
     <div className="space-y-8">
       <DashboardPageHeader
@@ -13,7 +20,7 @@ export default function ReportsPage() {
       />
 
       <Suspense fallback={<ReportsListSkeleton />}>
-        <ReportsList />
+        <ReportsList page={page} />
       </Suspense>
     </div>
   )

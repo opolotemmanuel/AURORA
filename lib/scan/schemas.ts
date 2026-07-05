@@ -10,6 +10,21 @@ const assessmentBandSchema = z.enum([
   "not_assessed",
 ])
 
+const applicationTimeSchema = z.enum([
+  "morning",
+  "evening",
+  "anytime",
+  "morning_and_evening",
+])
+
+const applicationFrequencySchema = z.enum([
+  "once_daily",
+  "twice_daily",
+  "as_needed",
+  "few_times_weekly",
+  "weekly",
+])
+
 export const skinAssessmentSchema = z.object({
   overallBand: assessmentBandSchema,
   dimensions: z.array(
@@ -26,6 +41,8 @@ export const skinAssessmentSchema = z.object({
       id: z.string(),
       title: z.string(),
       description: z.string(),
+      applicationTime: applicationTimeSchema,
+      applicationFrequency: applicationFrequencySchema,
     }),
   ),
   recommendations: z.array(
@@ -33,6 +50,8 @@ export const skinAssessmentSchema = z.object({
       id: z.string(),
       name: z.string(),
       reason: z.string(),
+      applicationTime: applicationTimeSchema,
+      applicationFrequency: applicationFrequencySchema,
       imageUrl: z.string().url().nullable().optional(),
       storeUrl: z.string().url().nullable().optional(),
     }),

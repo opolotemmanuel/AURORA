@@ -4,8 +4,9 @@ import Link from "next/link"
 import { useState } from "react"
 import { IconDownload, IconLoader2 } from "@tabler/icons-react"
 
+import { ReportDocumentHeader } from "@/components/reports/report-document-header"
+import { SkinReportDocument } from "@/components/reports/skin-report-document"
 import { ScanReportLayout } from "@/components/scan/scan-report-layout"
-import { SkinReportContent } from "@/components/scan/skin-report-content"
 import { Button } from "@/components/ui/button"
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog"
 import { downloadReportPdf } from "@/lib/reports/download-report-pdf"
@@ -18,6 +19,8 @@ type ScanReportModalProps = {
   climateContext?: ScanClimateContext | null
   imageSrc?: string | null
   scanId?: string | null
+  creditsCharged?: number | null
+  scanDate?: string
 }
 
 export function ScanReportModal({
@@ -27,8 +30,18 @@ export function ScanReportModal({
   climateContext = null,
   imageSrc,
   scanId,
+  creditsCharged,
+  scanDate,
 }: ScanReportModalProps) {
   const [downloading, setDownloading] = useState(false)
+
+  const formattedDate =
+    scanDate ??
+    new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
 
   async function handleDownloadPdf() {
     if (!scanId) return
@@ -42,20 +55,22 @@ export function ScanReportModal({
     <ResponsiveDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Your skin report"
       description="Cosmetic assessment — not a medical diagnosis"
       className="sm:max-w-5xl"
     >
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
-          <ScanReportLayout
-            imageSrc={imageSrc}
-            showActions={false}
-          >
-            <SkinReportContent
-              assessment={assessment}
-              climateContext={climateContext}
-            />
+          <ScanReportLayout imageSrc={imageSrc} showActions={false}>
+            <div className="mx-auto max-w-3xl space-y-6">
+              <ReportDocumentHeader
+                scanDate={formattedDate}
+                creditsCharged={creditsCharged}
+              />
+              <SkinReportDocument
+                assessment={assessment}
+                climateContext={climateContext}
+              />
+            </div>
           </ScanReportLayout>
         </div>
 

@@ -227,6 +227,7 @@ export function ScanWizard({ userScanTier }: ScanWizardProps) {
           climateContext={climateContext}
           imageSrc={croppedPreviewUrl}
           scanId={scanId}
+          creditsCharged={creditsCharged}
         />
       ) : null}
     </div>

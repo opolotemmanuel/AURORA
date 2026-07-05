@@ -8,6 +8,7 @@ import {
 } from "@tabler/icons-react"
 
 import { ScanDetailModal } from "@/components/reports/scan-detail-modal"
+import { ReportsPagination } from "@/components/reports/reports-pagination"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { downloadReportPdf } from "@/lib/reports/download-report-pdf"
@@ -46,9 +47,17 @@ export type ReportListItem = {
 
 type ReportsListClientProps = {
   scans: ReportListItem[]
+  page: number
+  totalPages: number
+  totalCount: number
 }
 
-export function ReportsListClient({ scans }: ReportsListClientProps) {
+export function ReportsListClient({
+  scans,
+  page,
+  totalPages,
+  totalCount,
+}: ReportsListClientProps) {
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState<ReportListItem | null>(null)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
@@ -68,7 +77,11 @@ export function ReportsListClient({ scans }: ReportsListClientProps) {
 
   return (
     <>
-      <div className="grid gap-4 md:grid-cols-2">
+      <p className="text-sm text-muted-foreground">
+        {totalCount.toLocaleString()} report{totalCount === 1 ? "" : "s"}
+      </p>
+
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
         {scans.map((scan) => {
           const isDownloading = downloadingId === scan.id
 
@@ -177,6 +190,8 @@ export function ReportsListClient({ scans }: ReportsListClientProps) {
           )
         })}
       </div>
+
+      <ReportsPagination page={page} totalPages={totalPages} className="mt-6" />
 
       <ScanDetailModal scan={selected} open={open} onOpenChange={setOpen} />
     </>

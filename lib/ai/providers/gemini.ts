@@ -25,16 +25,26 @@ function mapUsage(
   }
 }
 
-function sanitizeRecommendations(
+function sanitizeAssessment(
   assessment: ReturnType<typeof skinAssessmentSchema.parse>,
   catalogSlugs: Set<string>,
 ) {
+  const naturalRecommendations = assessment.naturalRecommendations.slice(0, 4)
+
+  if (naturalRecommendations.length < 3) {
+    throw new Error("Model returned insufficient natural recommendations")
+  }
+
   const valid = assessment.recommendations.filter((rec) =>
     catalogSlugs.has(rec.id),
   )
 
   if (valid.length >= 2) {
-    return { ...assessment, recommendations: valid.slice(0, 4) }
+    return {
+      ...assessment,
+      naturalRecommendations,
+      recommendations: valid.slice(0, 4),
+    }
   }
 
   throw new Error("Model returned invalid product recommendations")
@@ -89,7 +99,7 @@ export async function analyzeWithGemini(
     throw new Error("Invalid JSON from Gemini")
   }
 
-  const assessment = sanitizeRecommendations(
+  const assessment = sanitizeAssessment(
     skinAssessmentSchema.parse({
       ...(parsed as object),
       disclaimer: SKIN_DISCLAIMER,

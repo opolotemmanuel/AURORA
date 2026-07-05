@@ -41,6 +41,12 @@ export type SkinDimension = {
   note: string
 }
 
+export type NaturalRecommendation = {
+  id: string
+  title: string
+  description: string
+}
+
 export type ProductRecommendation = {
   id: string
   name: string
@@ -53,6 +59,7 @@ export type SkinAssessment = {
   overallBand: AssessmentBand
   dimensions: SkinDimension[]
   summary: string
+  naturalRecommendations: NaturalRecommendation[]
   recommendations: ProductRecommendation[]
   disclaimer: string
 }

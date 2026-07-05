@@ -161,7 +161,10 @@ export function ScanWizard({ userScanTier }: ScanWizardProps) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.22, ease: EASE_OUT }}
-            className="flex w-full justify-center"
+            className={cn(
+              "w-full",
+              isReportPhase ? "mx-auto max-w-5xl" : "flex justify-center",
+            )}
           >
             {step === "capture" ? (
               <ScanCapturePanel
@@ -205,6 +208,7 @@ export function ScanWizard({ userScanTier }: ScanWizardProps) {
                 assessment={assessment}
                 climateContext={climateContext}
                 imageSrc={croppedPreviewUrl}
+                scanId={scanId}
                 onNewScan={resetScan}
                 onReEdit={handleBackToEdit}
                 onViewReport={() => setReportOpen(true)}

@@ -6,6 +6,7 @@ import {
   SKIN_DISCLAIMER,
 } from "@/lib/scan/constants"
 import type {
+  NaturalRecommendation,
   ProductRecommendation,
   SkinAssessment,
   SkinDimension,
@@ -16,6 +17,8 @@ export function toScanResultData(assessment: SkinAssessment) {
     overallBand: assessment.overallBand,
     dimensions: assessment.dimensions as unknown as Prisma.InputJsonValue,
     summary: assessment.summary,
+    naturalRecommendations:
+      assessment.naturalRecommendations as unknown as Prisma.InputJsonValue,
     recommendations:
       assessment.recommendations as unknown as Prisma.InputJsonValue,
     disclaimerVersion: DISCLAIMER_VERSION,
@@ -28,12 +31,17 @@ export function fromScanResult(
     | "overallBand"
     | "dimensions"
     | "summary"
+    | "naturalRecommendations"
     | "recommendations"
     | "disclaimerVersion"
   >,
 ): SkinAssessment {
   const dimensions = Array.isArray(result.dimensions)
     ? (result.dimensions as SkinDimension[])
+    : []
+
+  const naturalRecommendations = Array.isArray(result.naturalRecommendations)
+    ? (result.naturalRecommendations as NaturalRecommendation[])
     : []
 
   const recommendations = Array.isArray(result.recommendations)
@@ -44,6 +52,7 @@ export function fromScanResult(
     overallBand: result.overallBand as SkinAssessment["overallBand"],
     dimensions,
     summary: result.summary ?? "",
+    naturalRecommendations,
     recommendations,
     disclaimer: SKIN_DISCLAIMER,
   }

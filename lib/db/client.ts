@@ -38,6 +38,7 @@ function createPgPool() {
     throw new Error("DATABASE_URL is not set")
   }
 
+  // Use Neon's pooled host (*-pooler.*.neon.tech) in DATABASE_URL for serverless.
   const pool = new Pool({
     connectionString: normalizeConnectionString(connectionString),
     max: 10,

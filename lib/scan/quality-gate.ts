@@ -145,12 +145,16 @@ export async function runQualityGate(
     (face) => face.confidence >= minConfidence,
   )
   const faceDetected = trustCrop
-    ? confidentFaces.length <= 1
+    ? confidentFaces.length >= 1
     : confidentFaces.length === 1
   const primaryFace = confidentFaces[0]
 
   if (confidentFaces.length === 0 && !trustCrop) {
     issues.push("No face detected. Center your face in the guide.")
+  } else if (confidentFaces.length === 0 && trustCrop) {
+    issues.push(
+      "No face detected in this crop. Expand the crop around your face or retake.",
+    )
   } else if (confidentFaces.length > 1) {
     issues.push("Multiple faces detected. Only one person should be in frame.")
   }
@@ -195,13 +199,18 @@ export async function runQualityGate(
     (primaryFace?.confidence ?? 0) >= MIN_FACE_CONFIDENCE
 
   const isPlausibleSkin =
-    strictFaceOk || (trustCrop && lightingOk && resolutionOk && singleOrNoFace)
+    strictFaceOk ||
+    (trustCrop &&
+      lightingOk &&
+      resolutionOk &&
+      singleOrNoFace &&
+      confidentFaces.length >= 1)
 
   const passed =
     lightingOk &&
     resolutionOk &&
     singleOrNoFace &&
-    (strictFaceOk || trustCrop)
+    (strictFaceOk || (trustCrop && confidentFaces.length >= 1))
 
   return {
     faceDetected,

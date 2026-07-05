@@ -21,6 +21,13 @@ export const skinAssessmentSchema = z.object({
     }),
   ),
   summary: z.string(),
+  naturalRecommendations: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      description: z.string(),
+    }),
+  ),
   recommendations: z.array(
     z.object({
       id: z.string(),

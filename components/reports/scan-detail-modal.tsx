@@ -8,6 +8,7 @@ import {
   IconTrash,
 } from "@tabler/icons-react"
 
+import { ScanFeedbackWidget } from "@/components/scan/scan-feedback-widget"
 import { SkinReportContent } from "@/components/scan/skin-report-content"
 import {
   AlertDialog,
@@ -67,6 +68,9 @@ export function ScanDetailModal({
       typeof fromScanResult
     >[0]["dimensions"],
     summary: scan.result.summary,
+    naturalRecommendations: scan.result.naturalRecommendations as Parameters<
+      typeof fromScanResult
+    >[0]["naturalRecommendations"],
     recommendations: scan.result.recommendations as Parameters<
       typeof fromScanResult
     >[0]["recommendations"],
@@ -123,7 +127,7 @@ export function ScanDetailModal({
         className="sm:max-w-5xl"
       >
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-4 sm:px-6">
+          <div className="relative min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-4 sm:px-6">
             <div className="rounded-xl border border-border bg-card p-4 space-y-3 sm:max-w-md">
               <div className="flex flex-wrap items-center gap-2">
                 <h3 className="font-heading text-sm font-medium">Scan stats</h3>
@@ -170,6 +174,10 @@ export function ScanDetailModal({
             <SkinReportContent
               assessment={assessment}
               climateContext={climateContext}
+            />
+            <ScanFeedbackWidget
+              scanId={scan.id}
+              existingFeedback={scan.feedback}
             />
           </div>
 

@@ -5,7 +5,7 @@ export type PixelCrop = {
   height: number
 }
 
-const MIN_OUTPUT_DIMENSION = 512
+const MIN_OUTPUT_DIMENSION = 1024
 
 function upscaleCanvasIfNeeded(
   source: HTMLCanvasElement,

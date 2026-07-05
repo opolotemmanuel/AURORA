@@ -13,16 +13,13 @@ import { AnimatePresence, motion } from "motion/react"
 
 import { AnimatedBadge } from "@/components/motion/animated-badge"
 import { Button } from "@/components/ui/button"
+import { ScanCameraPicker } from "@/components/scan/scan-camera-picker"
 import { ScanDashboardLink } from "@/components/scan/scan-close-button"
 import {
   SCAN_CAMERA_HEIGHT,
   useScanCameraHeight,
 } from "@/hooks/use-scan-camera-height"
-import { resetVideoFaceDetector } from "@/lib/scan/mediapipe"
-import {
-  getCameraAccessError,
-  getCameraPermissionError,
-} from "@/lib/scan/camera-access"
+import { useScanCameraDevices } from "@/hooks/use-scan-camera-devices"
 import { runQualityGate } from "@/lib/scan/quality-gate"
 import type { QualityCheckResult } from "@/lib/scan/types"
 import { cn } from "@/lib/utils"
@@ -66,17 +63,37 @@ export function ScanCameraView({
   const isMobile = useIsMobile()
   const isFullscreen = fullscreen ?? isMobile
   const videoRef = useRef<HTMLVideoElement>(null)
-  const streamRef = useRef<MediaStream | null>(null)
   const checkingRef = useRef(false)
-  const [facingMode, setFacingMode] = useState<"user" | "environment">("user")
-  const [ready, setReady] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [quality, setQuality] = useState<QualityCheckResult>(INITIAL_QUALITY)
   const [capturing, setCapturing] = useState(false)
   const { height: embeddedHeight, setHeight: setEmbeddedHeight } =
     useScanCameraHeight()
   const resizeStateRef = useRef<{ startY: number; startHeight: number } | null>(
     null,
+  )
+
+  const {
+    devices,
+    activeDeviceId,
+    activeLabel,
+    ready,
+    switching,
+    error,
+    shouldMirror,
+    setVideoElement,
+    selectDevice,
+    flipCamera,
+    canFlipCamera,
+    stopStream,
+    startStream,
+  } = useScanCameraDevices()
+
+  const onVideoRef = useCallback(
+    (node: HTMLVideoElement | null) => {
+      videoRef.current = node
+      setVideoElement(node)
+    },
+    [setVideoElement],
   )
 
   const stopResize = useCallback(() => {
@@ -119,62 +136,6 @@ export function ScanCameraView({
     setEmbeddedHeight(SCAN_CAMERA_HEIGHT.default)
   }, [setEmbeddedHeight])
 
-  const stopStream = useCallback(() => {
-    streamRef.current?.getTracks().forEach((track) => track.stop())
-    streamRef.current = null
-  }, [])
-
-  useEffect(() => {
-    let cancelled = false
-
-    async function startCamera() {
-      setReady(false)
-      setError(null)
-      stopStream()
-      resetVideoFaceDetector()
-
-      try {
-        const accessError = getCameraAccessError()
-        if (accessError) {
-          setError(accessError)
-          return
-        }
-
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode,
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-          },
-          audio: false,
-        })
-
-        if (cancelled) {
-          stream.getTracks().forEach((track) => track.stop())
-          return
-        }
-
-        streamRef.current = stream
-        const video = videoRef.current
-        if (video) {
-          video.srcObject = stream
-          await video.play()
-          setReady(true)
-        }
-      } catch (err) {
-        setError(getCameraPermissionError(err))
-      }
-    }
-
-    void startCamera()
-
-    return () => {
-      cancelled = true
-      stopStream()
-      resetVideoFaceDetector()
-    }
-  }, [facingMode, stopStream])
-
   useEffect(() => {
     if (!ready) return
 
@@ -191,15 +152,15 @@ export function ScanCameraView({
       } finally {
         checkingRef.current = false
       }
-    }, 280)
+    }, 400)
 
     return () => window.clearInterval(interval)
   }, [ready])
 
-  // Live preview: face + lighting only; full gate runs again after capture.
   const canCapture =
     ready &&
     !capturing &&
+    !switching &&
     quality.faceDetected &&
     quality.faceCount === 1 &&
     quality.lightingBand === "ok"
@@ -216,7 +177,7 @@ export function ScanCameraView({
       const ctx = canvas.getContext("2d")
       if (!ctx) return
 
-      if (facingMode === "user") {
+      if (shouldMirror) {
         ctx.translate(canvas.width, 0)
         ctx.scale(-1, 1)
       }
@@ -251,12 +212,13 @@ export function ScanCameraView({
       style={isFullscreen ? undefined : { height: embeddedHeight }}
     >
       <video
-        ref={videoRef}
+        ref={onVideoRef}
+        autoPlay
         playsInline
         muted
         className={cn(
           "size-full object-cover",
-          facingMode === "user" && "scale-x-[-1]",
+          shouldMirror && "scale-x-[-1]",
         )}
       />
 
@@ -264,7 +226,7 @@ export function ScanCameraView({
 
       <div
         className={cn(
-          "absolute inset-x-0 top-0 z-10 flex items-center justify-between p-4",
+          "absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-2 p-4",
           isFullscreen ? "pt-[max(1rem,env(safe-area-inset-top))]" : "p-3",
         )}
       >
@@ -274,7 +236,7 @@ export function ScanCameraView({
               type="button"
               onClick={onSwitchToUpload}
               aria-label="Back to upload"
-              className="pointer-events-auto grid size-10 place-items-center rounded-full border border-border bg-background/80 text-foreground backdrop-blur-sm active:scale-95"
+              className="pointer-events-auto grid size-10 shrink-0 place-items-center rounded-full border border-border bg-background/80 text-foreground backdrop-blur-sm active:scale-95"
             >
               <IconArrowLeft className="size-4" />
             </button>
@@ -284,18 +246,16 @@ export function ScanCameraView({
         ) : (
           <div />
         )}
-        <button
-          type="button"
-          onClick={() =>
-            setFacingMode((current) =>
-              current === "user" ? "environment" : "user",
-            )
-          }
-          aria-label="Switch camera"
-          className="pointer-events-auto grid size-10 place-items-center rounded-full border border-border bg-background/80 text-foreground backdrop-blur-sm active:scale-95"
-        >
-          <IconCameraRotate className="size-5" />
-        </button>
+        <ScanCameraPicker
+          variant="header"
+          devices={devices}
+          activeDeviceId={activeDeviceId}
+          activeLabel={activeLabel}
+          onSelect={(deviceId) => void selectDevice(deviceId)}
+          disabled={capturing}
+          switching={switching}
+          className={isFullscreen ? "hidden" : undefined}
+        />
       </div>
 
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -327,16 +287,35 @@ export function ScanCameraView({
           >
             {lightingOk ? "Lighting OK" : "Adjust lighting"}
           </AnimatedBadge>
+          <ScanCameraPicker
+            variant="badge"
+            devices={devices}
+            activeDeviceId={activeDeviceId}
+            activeLabel={activeLabel}
+            onSelect={(deviceId) => void selectDevice(deviceId)}
+            disabled={capturing}
+            switching={switching}
+          />
         </div>
 
         {error ? (
           <div className="pointer-events-auto space-y-3 text-center">
             <p className="text-sm text-destructive">{error}</p>
-            {onSwitchToUpload ? (
-              <Button type="button" size="sm" variant="secondary" onClick={onSwitchToUpload}>
-                Use photo upload instead
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => void startStream()}
+              >
+                Retry camera
               </Button>
-            ) : null}
+              {onSwitchToUpload ? (
+                <Button type="button" size="sm" variant="outline" onClick={onSwitchToUpload}>
+                  Use photo upload instead
+                </Button>
+              ) : null}
+            </div>
           </div>
         ) : null}
 
@@ -346,29 +325,69 @@ export function ScanCameraView({
           </p>
         ) : null}
 
-        <div className="flex items-center justify-center">
-          <button
-            type="button"
-            disabled={!canCapture}
-            onClick={() => void handleCapture()}
-            aria-label="Take photo"
-            className={cn(
-              "pointer-events-auto grid size-16 place-items-center rounded-full border-4 border-primary bg-background/90 transition-transform active:scale-95 disabled:opacity-45",
-              canCapture ? "cursor-pointer" : "cursor-not-allowed",
-            )}
-          >
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.span
-                key={canCapture ? "ready" : "wait"}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
+        {isFullscreen ? (
+          <div className="flex items-center justify-center gap-8">
+            {canFlipCamera ? (
+              <button
+                type="button"
+                disabled={capturing || switching}
+                onClick={() => void flipCamera()}
+                aria-label="Flip camera"
+                className="pointer-events-auto grid size-10 shrink-0 place-items-center rounded-full border border-border bg-background/80 text-foreground backdrop-blur-sm transition-transform active:scale-95 disabled:opacity-45"
               >
-                <IconCircle className="size-8 text-primary" />
-              </motion.span>
-            </AnimatePresence>
-          </button>
-        </div>
+                <IconCameraRotate className="size-5" />
+              </button>
+            ) : (
+              <div className="size-10 shrink-0" aria-hidden />
+            )}
+            <button
+              type="button"
+              disabled={!canCapture}
+              onClick={() => void handleCapture()}
+              aria-label="Take photo"
+              className={cn(
+                "pointer-events-auto grid size-16 place-items-center rounded-full border-4 border-primary bg-background/90 transition-transform active:scale-95 disabled:opacity-45",
+                canCapture ? "cursor-pointer" : "cursor-not-allowed",
+              )}
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={canCapture ? "ready" : "wait"}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                >
+                  <IconCircle className="size-8 text-primary" />
+                </motion.span>
+              </AnimatePresence>
+            </button>
+            <div className="size-10 shrink-0" aria-hidden />
+          </div>
+        ) : (
+          <div className="flex items-center justify-center">
+            <button
+              type="button"
+              disabled={!canCapture}
+              onClick={() => void handleCapture()}
+              aria-label="Take photo"
+              className={cn(
+                "pointer-events-auto grid size-16 place-items-center rounded-full border-4 border-primary bg-background/90 transition-transform active:scale-95 disabled:opacity-45",
+                canCapture ? "cursor-pointer" : "cursor-not-allowed",
+              )}
+            >
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={canCapture ? "ready" : "wait"}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                >
+                  <IconCircle className="size-8 text-primary" />
+                </motion.span>
+              </AnimatePresence>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

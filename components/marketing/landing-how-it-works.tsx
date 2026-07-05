@@ -3,6 +3,7 @@
 import { IconBottle, IconCamera, IconSparkles } from "@tabler/icons-react"
 import { motion, type Variants } from "motion/react"
 
+import { FramedPanel } from "@/components/marketing/framed-panel"
 import { Card, CardContent } from "@/components/ui/card"
 import { EASE_OUT } from "@/lib/ease"
 
@@ -70,24 +71,26 @@ export function LandingHowItWorks() {
         >
           {steps.map((step, index) => (
             <motion.div key={step.title} variants={itemVariants}>
-              <Card className="bg-card h-full border-border">
-                <CardContent className="space-y-4 p-6">
-                  <div className="flex items-center gap-3">
-                    <span className="bg-primary/10 text-primary flex size-10 items-center justify-center rounded-lg">
-                      <step.icon className="size-5" aria-hidden />
-                    </span>
-                    <span className="text-muted-foreground text-sm font-medium">
-                      Step {index + 1}
-                    </span>
-                  </div>
-                  <h3 className="font-heading text-foreground text-lg font-semibold">
-                    {step.title}
-                  </h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed">
-                    {step.description}
-                  </p>
-                </CardContent>
-              </Card>
+              <FramedPanel className="h-full">
+                <Card className="bg-card h-full border-0 shadow-none ring-0">
+                  <CardContent className="space-y-4 p-6">
+                    <div className="flex items-center gap-3">
+                      <span className="bg-primary/10 text-primary flex size-10 items-center justify-center rounded-lg">
+                        <step.icon className="size-5" aria-hidden />
+                      </span>
+                      <span className="text-muted-foreground text-sm font-medium">
+                        Step {index + 1}
+                      </span>
+                    </div>
+                    <h3 className="font-heading text-foreground text-lg font-semibold">
+                      {step.title}
+                    </h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">
+                      {step.description}
+                    </p>
+                  </CardContent>
+                </Card>
+              </FramedPanel>
             </motion.div>
           ))}
         </motion.div>

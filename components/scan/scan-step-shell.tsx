@@ -9,6 +9,7 @@ type ScanStepShellProps = {
   title: string
   description?: string
   headerTrailing?: ReactNode
+  showDashboardLink?: boolean
   children: ReactNode
   className?: string
 }
@@ -17,9 +18,14 @@ export function ScanStepShell({
   title,
   description,
   headerTrailing,
+  showDashboardLink = true,
   children,
   className,
 }: ScanStepShellProps) {
+  const trailing =
+    headerTrailing ??
+    (showDashboardLink ? <ScanDashboardLink variant="segment" /> : null)
+
   return (
     <div
       className={cn(
@@ -28,13 +34,20 @@ export function ScanStepShell({
       )}
     >
       <div className="space-y-2 px-1">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+        <div
+          className={cn(
+            "flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4",
+            trailing ? "sm:justify-between" : "",
+          )}
+        >
           <p className="font-heading text-sm font-semibold text-foreground">
             {title}
           </p>
-          <div className="flex shrink-0 items-center self-start sm:self-center">
-            {headerTrailing ?? <ScanDashboardLink variant="segment" />}
-          </div>
+          {trailing ? (
+            <div className="flex shrink-0 items-center self-start sm:self-center">
+              {trailing}
+            </div>
+          ) : null}
         </div>
         {description ? (
           <p className="text-xs text-muted-foreground">{description}</p>

@@ -94,6 +94,7 @@ export async function saveScanResultAction(
             overallBand: resultData.overallBand,
             dimensions: resultData.dimensions,
             summary: resultData.summary,
+            naturalRecommendations: resultData.naturalRecommendations,
             recommendations: resultData.recommendations,
             disclaimerVersion: resultData.disclaimerVersion,
             reportFormatVersion: REPORT_FORMAT_VERSION,

@@ -36,7 +36,7 @@ export function ScanReportLayout({
   const showImageColumn = Boolean(imageSrc) || imageLoading
 
   return (
-    <div className={cn("w-full max-w-5xl space-y-4", className)}>
+    <div className={cn("mx-auto w-full max-w-5xl space-y-4", className)}>
       {showActions ? (
         <div className="flex flex-wrap items-center justify-end gap-2">
           {onReEdit ? (
@@ -82,8 +82,9 @@ export function ScanReportLayout({
 
       <div
         className={cn(
-          "grid items-start gap-6",
-          showImageColumn && "lg:grid-cols-[minmax(0,280px)_1fr] lg:gap-8",
+          "grid w-full items-start gap-6",
+          showImageColumn &&
+            "justify-items-center lg:grid-cols-[minmax(0,280px)_1fr] lg:justify-items-stretch lg:gap-8",
         )}
       >
         {showImageColumn ? (
@@ -97,7 +98,9 @@ export function ScanReportLayout({
             />
           </div>
         ) : null}
-        <div className="min-w-0 self-start">{children}</div>
+        <div className="mx-auto min-w-0 w-full max-w-2xl self-start lg:mx-0 lg:max-w-none">
+          {children}
+        </div>
       </div>
     </div>
   )

@@ -5,13 +5,11 @@ import { IconPlayerStop, IconSparkles, IconVideo } from "@tabler/icons-react"
 import { GoogleGenAI } from "@google/genai"
 
 import { AnimatedBadge } from "@/components/motion/animated-badge"
+import { ScanCameraPicker } from "@/components/scan/scan-camera-picker"
 import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import {
-  getCameraAccessError,
-  getCameraPermissionError,
-} from "@/lib/scan/camera-access"
+import { useScanCameraDevices } from "@/hooks/use-scan-camera-devices"
 import { runQualityGate } from "@/lib/scan/quality-gate"
 import type { QualityCheckResult } from "@/lib/scan/types"
 import { cn } from "@/lib/utils"
@@ -60,25 +58,43 @@ function bufferToBase64(buffer: ArrayBuffer): string {
 
 export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const streamRef = useRef<MediaStream | null>(null)
   const sessionRef = useRef<LiveSessionHandle | null>(null)
   const transcriptRef = useRef<string[]>([])
   const bestFrameRef = useRef<Blob | null>(null)
   const startedAtRef = useRef<number>(0)
   const frameTimerRef = useRef<number | null>(null)
 
-  const [ready, setReady] = useState(false)
+  const {
+    devices,
+    activeDeviceId,
+    activeLabel,
+    ready,
+    switching,
+    error: cameraError,
+    shouldMirror,
+    setVideoElement,
+    selectDevice,
+    stopStream,
+  } = useScanCameraDevices()
+
+  const onVideoRef = useCallback(
+    (node: HTMLVideoElement | null) => {
+      videoRef.current = node
+      setVideoElement(node)
+    },
+    [setVideoElement],
+  )
+
   const [streaming, setStreaming] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [connectingLive, setConnectingLive] = useState(false)
+  const [liveError, setLiveError] = useState<string | null>(null)
   const [statusLabel, setStatusLabel] = useState("Connecting to live analysis…")
   const [quality, setQuality] = useState<QualityCheckResult>(INITIAL_QUALITY)
   const [transcriptPreview, setTranscriptPreview] = useState("")
   const [finishing, setFinishing] = useState(false)
 
-  const stopStream = useCallback(() => {
-    streamRef.current?.getTracks().forEach((track) => track.stop())
-    streamRef.current = null
-  }, [])
+  const error = liveError ?? cameraError
+  const pickerLocked = switching || streaming || finishing
 
   const captureFrameBlob = useCallback(async (): Promise<Blob | null> => {
     const video = videoRef.current
@@ -89,12 +105,17 @@ export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
     canvas.height = video.videoHeight
     const ctx = canvas.getContext("2d")
     if (!ctx) return null
+
+    if (shouldMirror) {
+      ctx.translate(canvas.width, 0)
+      ctx.scale(-1, 1)
+    }
     ctx.drawImage(video, 0, 0)
 
     return new Promise((resolve) => {
       canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.85)
     })
-  }, [])
+  }, [shouldMirror])
 
   const appendTranscript = useCallback((line: string) => {
     const trimmed = line.trim()
@@ -103,8 +124,24 @@ export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
     setTranscriptPreview(transcriptRef.current.slice(-3).join(" "))
   }, [])
 
+  const teardownLiveSession = useCallback(() => {
+    if (frameTimerRef.current !== null) {
+      window.clearInterval(frameTimerRef.current)
+      frameTimerRef.current = null
+    }
+    sessionRef.current?.close()
+    sessionRef.current = null
+    setStreaming(false)
+    setConnectingLive(false)
+  }, [])
+
   useEffect(() => {
+    if (!ready || finishing) return
+
     let cancelled = false
+    setConnectingLive(true)
+    setLiveError(null)
+    setStatusLabel("Connecting to live analysis…")
 
     async function startLiveSession() {
       try {
@@ -115,34 +152,12 @@ export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
         if (cancelled) return
 
         if (!tokenResponse.ok || !tokenData.ok) {
-          setError(
+          setLiveError(
             tokenData.ok ? "Could not start live scan." : tokenData.error,
           )
+          setConnectingLive(false)
           return
         }
-
-        const accessError = getCameraAccessError()
-        if (accessError) {
-          setError(accessError)
-          return
-        }
-
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: false,
-        })
-        if (cancelled) {
-          stream.getTracks().forEach((track) => track.stop())
-          return
-        }
-
-        streamRef.current = stream
-        const video = videoRef.current
-        if (video) {
-          video.srcObject = stream
-          await video.play()
-        }
-        setReady(true)
 
         const ai = new GoogleGenAI({
           apiKey: tokenData.token,
@@ -155,6 +170,7 @@ export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
             onopen: () => {
               if (cancelled) return
               setStreaming(true)
+              setConnectingLive(false)
               setStatusLabel("Live scan active — hold still and face the camera")
               startedAtRef.current = Date.now()
             },
@@ -171,7 +187,7 @@ export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
             },
             onerror: (event) => {
               if (!cancelled) {
-                setError(event.message || "Live scan connection error")
+                setLiveError(event.message || "Live scan connection error")
               }
             },
             onclose: () => {
@@ -217,7 +233,10 @@ export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
         }, 1000)
       } catch (err) {
         if (!cancelled) {
-          setError(getCameraPermissionError(err))
+          setLiveError(
+            err instanceof Error ? err.message : "Could not start live scan.",
+          )
+          setConnectingLive(false)
         }
       }
     }
@@ -226,27 +245,27 @@ export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
 
     return () => {
       cancelled = true
-      if (frameTimerRef.current !== null) {
-        window.clearInterval(frameTimerRef.current)
-      }
-      sessionRef.current?.close()
-      stopStream()
+      teardownLiveSession()
     }
-  }, [appendTranscript, captureFrameBlob, stopStream])
+  }, [
+    activeDeviceId,
+    appendTranscript,
+    captureFrameBlob,
+    finishing,
+    ready,
+    teardownLiveSession,
+  ])
 
   const handleFinish = useCallback(async () => {
     setFinishing(true)
     setStatusLabel("Finalizing your live scan…")
 
-    if (frameTimerRef.current !== null) {
-      window.clearInterval(frameTimerRef.current)
-    }
-    sessionRef.current?.close()
+    teardownLiveSession()
     stopStream()
 
     const blob = bestFrameRef.current ?? (await captureFrameBlob())
     if (!blob) {
-      setError("Could not capture a frame from your live scan.")
+      setLiveError("Could not capture a frame from your live scan.")
       setFinishing(false)
       return
     }
@@ -260,7 +279,7 @@ export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
         ? Date.now() - startedAtRef.current
         : 0,
     })
-  }, [captureFrameBlob, onComplete, stopStream])
+  }, [captureFrameBlob, onComplete, stopStream, teardownLiveSession])
 
   return (
     <ScanStepShell
@@ -280,30 +299,58 @@ export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
       </Alert>
 
       <div className="relative overflow-hidden rounded-[1.5rem] border border-border">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <video
-          ref={videoRef}
+          ref={onVideoRef}
           playsInline
           muted
-          className="mx-auto aspect-[3/4] h-[min(48svh,20rem)] w-full bg-muted object-cover"
+          className={cn(
+            "mx-auto aspect-[3/4] h-[min(48svh,20rem)] w-full bg-muted object-cover",
+            shouldMirror && "scale-x-[-1]",
+          )}
         />
-        <div className="absolute inset-x-0 top-0 flex justify-between gap-2 p-3">
-          <AnimatedBadge
-            status={streaming ? "success" : error ? "danger" : "loading"}
-            size="sm"
-          >
-            <IconVideo className="size-3.5" />
-            {streaming ? "Live" : error ? "Error" : "Connecting"}
-          </AnimatedBadge>
-          {quality.passed ? (
-            <AnimatedBadge status="success" size="sm">
-              Face detected
+        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3">
+          <div className="flex flex-wrap gap-2">
+            <AnimatedBadge
+              status={streaming ? "success" : error ? "danger" : "loading"}
+              size="sm"
+            >
+              <IconVideo className="size-3.5" />
+              {streaming ? "Live" : error ? "Error" : "Connecting"}
             </AnimatedBadge>
-          ) : null}
+            {quality.passed ? (
+              <AnimatedBadge status="success" size="sm">
+                Face detected
+              </AnimatedBadge>
+            ) : null}
+            <ScanCameraPicker
+              variant="badge"
+              devices={devices}
+              activeDeviceId={activeDeviceId}
+              activeLabel={activeLabel}
+              onSelect={(deviceId) => void selectDevice(deviceId)}
+              disabled={pickerLocked}
+              switching={switching}
+            />
+          </div>
+          <ScanCameraPicker
+            variant="header"
+            devices={devices}
+            activeDeviceId={activeDeviceId}
+            activeLabel={activeLabel}
+            onSelect={(deviceId) => void selectDevice(deviceId)}
+            disabled={pickerLocked}
+            switching={switching}
+          />
         </div>
       </div>
 
       <p className="text-sm text-muted-foreground">{statusLabel}</p>
+
+      {streaming && devices.length > 1 ? (
+        <p className="text-xs text-muted-foreground">
+          Finish the live session before switching cameras.
+        </p>
+      ) : null}
 
       {transcriptPreview ? (
         <div className="rounded-xl border border-border bg-muted/30 p-3 text-sm">

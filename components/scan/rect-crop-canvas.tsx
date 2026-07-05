@@ -9,14 +9,11 @@ import {
 } from "react"
 
 import type { PixelCrop } from "@/lib/scan/crop-image"
+import {
+  defaultCropRect,
+  type NormalizedRect,
+} from "@/lib/scan/face-crop"
 import { cn } from "@/lib/utils"
-
-type NormalizedRect = {
-  x: number
-  y: number
-  w: number
-  h: number
-}
 
 type ImageBounds = {
   x: number
@@ -35,6 +32,7 @@ type DragMode =
 type RectCropCanvasProps = {
   imageSrc: string
   onCropChange: (crop: PixelCrop) => void
+  initialCropRect?: NormalizedRect | null
   className?: string
 }
 
@@ -64,20 +62,10 @@ function getImageBounds(
   }
 }
 
-function defaultCropRect(): NormalizedRect {
-  const w = 0.72
-  const h = 0.72
-  return {
-    x: (1 - w) / 2,
-    y: (1 - h) / 2,
-    w,
-    h,
-  }
-}
-
 export function RectCropCanvas({
   imageSrc,
   onCropChange,
+  initialCropRect,
   className,
 }: RectCropCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -120,6 +108,12 @@ export function RectCropCanvas({
   useEffect(() => {
     emitCrop(cropRect)
   }, [cropRect, emitCrop])
+
+  useEffect(() => {
+    if (initialCropRect) {
+      setCropRect(initialCropRect)
+    }
+  }, [initialCropRect])
 
   useEffect(() => {
     const node = containerRef.current
@@ -297,7 +291,7 @@ export function RectCropCanvas({
             width: image.naturalWidth,
             height: image.naturalHeight,
           })
-          setCropRect(defaultCropRect())
+          setCropRect(initialCropRect ?? defaultCropRect())
         }}
       />
 

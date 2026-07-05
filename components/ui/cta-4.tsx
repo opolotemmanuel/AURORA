@@ -11,6 +11,7 @@ import {
 } from "@tabler/icons-react"
 import type { ComponentType } from "react"
 
+import { FramedPanel } from "@/components/marketing/framed-panel"
 import { Button } from "@/components/ui/button"
 
 export type MetricIconType = "chart" | "users" | "product" | "finance"
@@ -73,7 +74,10 @@ export function PerformanceOverview({
 
   return (
     <section className="bg-muted/30 w-full py-16 md:py-24">
-      <div className="group border-border bg-primary/5 relative isolate mx-auto flex h-auto min-h-[400px] max-w-[370px] items-center justify-center overflow-hidden rounded-3xl border px-4 pt-12 sm:max-w-2xl sm:px-6 md:max-w-5xl lg:h-[450px] lg:px-8 lg:pt-0">
+      <div className="mx-auto max-w-[370px] px-4 sm:max-w-2xl sm:px-6 md:max-w-5xl lg:px-8">
+        <FramedPanel
+          innerClassName="group bg-primary/5 relative isolate flex min-h-[400px] items-center justify-center overflow-hidden px-4 pt-12 lg:h-[450px] lg:px-8 lg:pt-0"
+        >
         <div
           aria-hidden
           className="absolute top-1/2 left-[max(-7rem,calc(50%-52rem))] -z-10 -translate-y-1/2 transform-gpu blur-2xl"
@@ -201,6 +205,7 @@ export function PerformanceOverview({
             </div>
           </div>
         </div>
+        </FramedPanel>
       </div>
     </section>
   )

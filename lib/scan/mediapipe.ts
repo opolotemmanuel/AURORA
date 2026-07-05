@@ -110,11 +110,28 @@ function mapDetections(
   })
 }
 
+function isVideoReadyForDetection(video: HTMLVideoElement) {
+  return (
+    !video.paused &&
+    !video.ended &&
+    video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+    video.videoWidth > 0 &&
+    video.videoHeight > 0
+  )
+}
+
 async function detectFacesInVideo(
   source: HTMLVideoElement,
 ): Promise<FaceDetection[]> {
+  if (!isVideoReadyForDetection(source)) {
+    return []
+  }
+
   const run = async () => {
     const detector = await getVideoFaceDetector()
+    if (!isVideoReadyForDetection(source)) {
+      return []
+    }
     const result = detector.detectForVideo(source, bumpVideoTimestamp())
     return mapDetections(result.detections)
   }

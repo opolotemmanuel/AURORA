@@ -1,5 +1,6 @@
 "use client"
 
+import { IconLeaf } from "@tabler/icons-react"
 import { motion, useReducedMotion } from "motion/react"
 
 import { BandBadge } from "@/components/scan/band-badge"
@@ -108,15 +109,59 @@ export function SkinReportContent({
         </div>
       </div>
 
+      {assessment.naturalRecommendations.length > 0 ? (
+        <div className="space-y-2">
+          <p className="font-heading text-sm font-semibold text-foreground">
+            Natural steps first
+          </p>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            Everyday habits and gentle natural routines to try before formulated
+            products.
+          </p>
+          <div className="grid gap-2">
+            {assessment.naturalRecommendations.map((item, index) => (
+              <motion.div
+                key={item.id}
+                {...fadeIn(
+                  STAGGER * (assessment.dimensions.length + index + 1),
+                )}
+              >
+                <Card size="sm" className="border-l-4 border-l-primary/40">
+                  <CardHeader className="py-0">
+                    <div className="flex items-start gap-2">
+                      <IconLeaf className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                      <div className="min-w-0 space-y-1">
+                        <CardTitle className="text-sm font-medium normal-case tracking-normal text-foreground">
+                          {item.title}
+                        </CardTitle>
+                        <p className="text-xs leading-relaxed text-muted-foreground">
+                          {item.description}
+                        </p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <div className="space-y-2">
         <p className="font-heading text-sm font-semibold text-foreground">
-          Aurora recommendations
+          Recommended Aurora products
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
           {assessment.recommendations.map((item, index) => (
             <motion.div
               key={item.id}
-              {...fadeIn(STAGGER * (assessment.dimensions.length + index + 1))}
+              {...fadeIn(
+                STAGGER *
+                  (assessment.dimensions.length +
+                    assessment.naturalRecommendations.length +
+                    index +
+                    1),
+              )}
             >
               <ProductCard
                 name={item.name}

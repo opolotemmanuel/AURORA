@@ -34,8 +34,13 @@ export type ReportListItem = {
     overallBand: string
     dimensions: unknown
     summary: string | null
+    naturalRecommendations: unknown
     recommendations: unknown
     disclaimerVersion: string
+  } | null
+  feedback: {
+    rating: number
+    message: string | null
   } | null
 }
 

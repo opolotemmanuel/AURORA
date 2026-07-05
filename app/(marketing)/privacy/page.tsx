@@ -80,7 +80,15 @@ export default function PrivacyPage() {
           <p>
             You can access, correct, export, or delete your data through account
             settings. Linked sign-in methods (email, password, Google) resolve
-            to a single account when the email address matches.
+            to a single account when the email address matches. To request
+            deletion by email, use our{" "}
+            <a
+              href="/privacy/data-deletion"
+              className="text-foreground underline underline-offset-4"
+            >
+              data deletion request form
+            </a>
+            .
           </p>
         </section>
 

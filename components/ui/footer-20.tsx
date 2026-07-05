@@ -60,7 +60,8 @@ export function Footer20({
     boring: [
       { label: "Terms of use", href: "/terms" },
       { label: "Privacy policy", href: "/privacy" },
-      { label: "Help", href: "/login" },
+      { label: "Data deletion", href: "/privacy/data-deletion" },
+      { label: "Help", href: "/help" },
     ],
     cool: [
       { label: "Aurora Organics", href: "/" },

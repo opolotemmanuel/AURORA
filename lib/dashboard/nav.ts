@@ -5,6 +5,7 @@ import {
   IconCoin,
   IconHome,
   IconLock,
+  IconMessage,
   IconPackage,
   IconReport,
   IconSettings,
@@ -56,6 +57,7 @@ const ADMIN: NavSection = {
     { href: "/admin/tokens", label: "Tokens", icon: IconCoin },
     { href: "/admin/models", label: "Models", icon: IconBrain },
     { href: "/admin/products", label: "Products", icon: IconPackage },
+    { href: "/admin/feedback", label: "Feedback", icon: IconMessage },
   ],
 }
 

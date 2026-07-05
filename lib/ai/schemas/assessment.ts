@@ -2,7 +2,13 @@ import { Type } from "@google/genai"
 
 export const skinAssessmentJsonSchema = {
   type: Type.OBJECT,
-  required: ["overallBand", "dimensions", "summary", "recommendations"],
+  required: [
+    "overallBand",
+    "dimensions",
+    "summary",
+    "naturalRecommendations",
+    "recommendations",
+  ],
   properties: {
     overallBand: {
       type: Type.STRING,
@@ -37,6 +43,30 @@ export const skinAssessmentJsonSchema = {
       type: Type.STRING,
       description:
         "2-4 sentence personalized cosmetic summary. Not a medical diagnosis.",
+    },
+    naturalRecommendations: {
+      type: Type.ARRAY,
+      description:
+        "3-4 personalized natural-care steps before products: lifestyle habits, climate-aware routines, and gentle at-home natural-ingredient ideas. Cosmetic guidance only.",
+      items: {
+        type: Type.OBJECT,
+        required: ["id", "title", "description"],
+        properties: {
+          id: {
+            type: Type.STRING,
+            description: "Stable snake_case id, e.g. daily_hydration.",
+          },
+          title: {
+            type: Type.STRING,
+            description: "Short action label.",
+          },
+          description: {
+            type: Type.STRING,
+            description:
+              "1-2 sentences explaining the step and why it fits this user.",
+          },
+        },
+      },
     },
     recommendations: {
       type: Type.ARRAY,

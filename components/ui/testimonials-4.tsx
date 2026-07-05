@@ -4,6 +4,7 @@ import { useMemo } from "react"
 import Autoplay from "embla-carousel-autoplay"
 import { IconQuote } from "@tabler/icons-react"
 
+import { FramedPanel } from "@/components/marketing/framed-panel"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
 import {
@@ -87,34 +88,36 @@ export function Testimonials4({
           <CarouselContent>
             {testimonials.map((testimonial) => (
               <CarouselItem key={testimonial.name} className="basis-auto pt-4">
-                <Card className="border-border bg-card/60 h-[280px] border shadow-sm lg:h-[300px]">
-                  <CardContent className="flex h-full flex-col gap-6 p-6 sm:p-8">
-                    <IconQuote
-                      className="text-primary size-8 shrink-0 opacity-80"
-                      aria-hidden
-                    />
-                    <p className="text-foreground flex-1 text-base leading-relaxed sm:text-lg">
-                      &ldquo;{testimonial.content}&rdquo;
-                    </p>
-                    <div className="flex items-center gap-3">
-                      <Avatar size="lg">
-                        <AvatarImage
-                          src={testimonial.avatar}
-                          alt={testimonial.name}
-                        />
-                        <AvatarFallback>{initials(testimonial.name)}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-foreground text-sm font-medium">
-                          {testimonial.name}
-                        </p>
-                        <p className="text-muted-foreground text-sm">
-                          {testimonial.role}
-                        </p>
+                <FramedPanel>
+                  <Card className="bg-card/60 h-[280px] border-0 shadow-none ring-0 lg:h-[300px]">
+                    <CardContent className="flex h-full flex-col gap-6 p-6 sm:p-8">
+                      <IconQuote
+                        className="text-primary size-8 shrink-0 opacity-80"
+                        aria-hidden
+                      />
+                      <p className="text-foreground flex-1 text-base leading-relaxed sm:text-lg">
+                        &ldquo;{testimonial.content}&rdquo;
+                      </p>
+                      <div className="flex items-center gap-3">
+                        <Avatar size="lg">
+                          <AvatarImage
+                            src={testimonial.avatar}
+                            alt={testimonial.name}
+                          />
+                          <AvatarFallback>{initials(testimonial.name)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-foreground text-sm font-medium">
+                            {testimonial.name}
+                          </p>
+                          <p className="text-muted-foreground text-sm">
+                            {testimonial.role}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </FramedPanel>
               </CarouselItem>
             ))}
           </CarouselContent>

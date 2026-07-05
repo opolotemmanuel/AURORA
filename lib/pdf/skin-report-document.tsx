@@ -179,7 +179,19 @@ export function SkinReportDocument({
           </View>
         ))}
 
-        <Text style={styles.sectionTitle}>Aurora recommendations</Text>
+        {assessment.naturalRecommendations.length > 0 ? (
+          <>
+            <Text style={styles.sectionTitle}>Natural steps first</Text>
+            {assessment.naturalRecommendations.map((item) => (
+              <View key={item.id} style={styles.row}>
+                <Text style={styles.rowLabel}>{item.title}</Text>
+                <Text style={styles.rowNote}>{item.description}</Text>
+              </View>
+            ))}
+          </>
+        ) : null}
+
+        <Text style={styles.sectionTitle}>Recommended Aurora products</Text>
         {assessment.recommendations.map((item) => (
           <View key={item.id} style={styles.row}>
             <Text style={styles.rowLabel}>{item.name}</Text>

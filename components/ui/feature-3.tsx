@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 
+import { FramedPanel } from "@/components/marketing/framed-panel"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -51,7 +52,7 @@ export function Features3() {
           </Button>
         </div>
 
-        <div className="bg-muted dark:bg-card/50 relative flex justify-center rounded-xl p-8 shadow-[inset_0_0px_4px_0px_rgba(0,0,0,0.1)] dark:shadow-[inset_0_0px_4px_0px_rgba(0,0,0,1)]">
+        <FramedPanel innerClassName="flex justify-center p-8">
           <div className="relative h-[380px] w-full max-w-md">
             <Card className="bg-background/80 dark:bg-card/80 ring-border/50 absolute top-0 left-0 w-[260px] rounded-lg p-0 shadow-md backdrop-blur-md">
               <CardContent className="space-y-2 p-4">
@@ -134,7 +135,7 @@ export function Features3() {
               </CardContent>
             </Card>
           </div>
-        </div>
+        </FramedPanel>
       </div>
     </section>
   )

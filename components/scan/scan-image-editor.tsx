@@ -1,12 +1,15 @@
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { IconRefresh, IconTrash } from "@tabler/icons-react"
 
+import { AnimatedBadge } from "@/components/motion/animated-badge"
 import { RectCropCanvas } from "@/components/scan/rect-crop-canvas"
 import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import { Button } from "@/components/ui/button"
 import { getCroppedImageBlob, type PixelCrop } from "@/lib/scan/crop-image"
+import { pickBestFaceCrop, type NormalizedRect } from "@/lib/scan/face-crop"
+import { detectFaces } from "@/lib/scan/mediapipe"
 import { cn } from "@/lib/utils"
 
 type ScanImageEditorProps = {
@@ -14,6 +17,15 @@ type ScanImageEditorProps = {
   onConfirm: (blob: Blob, previewUrl: string) => void
   onRetake: () => void
   onDelete: () => void
+}
+
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = reject
+    image.src = src
+  })
 }
 
 export function ScanImageEditor({
@@ -24,6 +36,39 @@ export function ScanImageEditor({
 }: ScanImageEditorProps) {
   const [croppedArea, setCroppedArea] = useState<PixelCrop | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [detectingFace, setDetectingFace] = useState(true)
+  const [initialCropRect, setInitialCropRect] = useState<NormalizedRect | null>(
+    null,
+  )
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function detectFaceCrop() {
+      setDetectingFace(true)
+      try {
+        const image = await loadImage(imageSrc)
+        if (cancelled) return
+        const faces = await detectFaces(image)
+        if (cancelled) return
+        const rect = pickBestFaceCrop(
+          faces,
+          image.naturalWidth,
+          image.naturalHeight,
+        )
+        setInitialCropRect(rect)
+      } catch {
+        if (!cancelled) setInitialCropRect(null)
+      } finally {
+        if (!cancelled) setDetectingFace(false)
+      }
+    }
+
+    void detectFaceCrop()
+    return () => {
+      cancelled = true
+    }
+  }, [imageSrc])
 
   const onCropChange = useCallback((crop: PixelCrop) => {
     setCroppedArea(crop)
@@ -46,7 +91,20 @@ export function ScanImageEditor({
       title="Adjust your photo"
       description="Drag the box to move it. Pull the corners to resize. Only the highlighted rectangle is saved."
     >
-      <RectCropCanvas imageSrc={imageSrc} onCropChange={onCropChange} />
+      <div className="relative">
+        <RectCropCanvas
+          imageSrc={imageSrc}
+          onCropChange={onCropChange}
+          initialCropRect={initialCropRect}
+        />
+        {detectingFace ? (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-[1.5rem] bg-background/50 backdrop-blur-[1px]">
+            <AnimatedBadge status="loading" size="sm">
+              Positioning crop on your face…
+            </AnimatedBadge>
+          </div>
+        ) : null}
+      </div>
 
       <p className="text-center text-xs text-muted-foreground">
         The dimmed area is not included in your scan.
@@ -76,7 +134,7 @@ export function ScanImageEditor({
         <Button
           type="button"
           size="sm"
-          disabled={submitting || !croppedArea}
+          disabled={submitting || detectingFace || !croppedArea}
           onClick={() => void handleConfirm()}
           className="ml-auto rounded-full"
         >

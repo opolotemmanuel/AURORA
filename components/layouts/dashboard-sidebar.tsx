@@ -213,7 +213,7 @@ export function DashboardSidebar({
       <SidebarHeader className="border-b border-sidebar-border">
         <div className="flex h-12 items-center px-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2">
           <Link
-            href="/dashboard"
+            href="/"
             className="flex min-w-0 items-center gap-2.5 text-sidebar-foreground transition-colors hover:text-sidebar-accent-foreground"
             onClick={() => {
               if (isMobile) {

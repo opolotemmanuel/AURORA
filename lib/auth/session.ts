@@ -14,7 +14,7 @@ export const getSession = cache(async () => {
       auth.api.getSession({
         headers: requestHeaders,
       }),
-    1,
+    3,
   )
 })
 

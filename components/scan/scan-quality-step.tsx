@@ -25,6 +25,7 @@ export function ScanQualityStep({
 }: ScanQualityStepProps) {
   const [loading, setLoading] = useState(true)
   const [result, setResult] = useState<QualityCheckResult | null>(null)
+  const [resolutionWarning, setResolutionWarning] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -33,6 +34,14 @@ export function ScanQualityStep({
       setLoading(true)
       try {
         const image = await loadImage(imageSrc)
+        const shortEdge = Math.min(image.naturalWidth, image.naturalHeight)
+        if (!cancelled) {
+          setResolutionWarning(
+            shortEdge < 1024
+              ? `Photo resolution is ${image.naturalWidth}×${image.naturalHeight}. For best results, use a larger crop or a higher-resolution camera.`
+              : null,
+          )
+        }
         const quality = await runQualityGate(image, { trustUserCrop: true })
         if (!cancelled) setResult(quality)
       } catch {
@@ -114,9 +123,10 @@ export function ScanQualityStep({
         </AnimatedBadge>
       </div>
 
-      {!loading && result && result.issues.length > 0 ? (
+      {!loading && (result?.issues.length || resolutionWarning) ? (
         <ul className="space-y-1 rounded-xl border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-          {result.issues.map((issue) => (
+          {resolutionWarning ? <li>{resolutionWarning}</li> : null}
+          {result?.issues.map((issue) => (
             <li key={issue}>{issue}</li>
           ))}
         </ul>

@@ -75,6 +75,7 @@ export async function persistScanResult(input: PersistScanResultInput) {
           overallBand: resultData.overallBand,
           dimensions: resultData.dimensions,
           summary: resultData.summary,
+          naturalRecommendations: resultData.naturalRecommendations,
           recommendations: resultData.recommendations,
           disclaimerVersion: resultData.disclaimerVersion,
           reportFormatVersion: REPORT_FORMAT_VERSION,

@@ -32,6 +32,7 @@ export async function ReportsList() {
     include: {
       result: true,
       usage: true,
+      feedback: true,
       tokenLedgers: {
         where: { reason: "scan_debit" },
         take: 1,
@@ -73,8 +74,15 @@ export async function ReportsList() {
             overallBand: scan.result.overallBand,
             dimensions: scan.result.dimensions,
             summary: scan.result.summary,
+            naturalRecommendations: scan.result.naturalRecommendations,
             recommendations: enrichedGroups[index] ?? [],
             disclaimerVersion: scan.result.disclaimerVersion,
+          }
+        : null,
+      feedback: scan.feedback
+        ? {
+            rating: scan.feedback.rating,
+            message: scan.feedback.message,
           }
         : null,
     }

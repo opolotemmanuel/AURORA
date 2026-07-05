@@ -1,5 +1,6 @@
 "use client"
 
+import { ScanFeedbackWidget } from "@/components/scan/scan-feedback-widget"
 import { ScanReportLayout } from "@/components/scan/scan-report-layout"
 import { SkinReportContent } from "@/components/scan/skin-report-content"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -9,6 +10,7 @@ type ScanResultsViewProps = {
   assessment: SkinAssessment
   climateContext?: ScanClimateContext | null
   imageSrc: string
+  scanId: string | null
   onNewScan: () => void
   onReEdit: () => void
   onViewReport: () => void
@@ -19,31 +21,35 @@ export function ScanResultsView({
   assessment,
   climateContext = null,
   imageSrc,
+  scanId,
   onNewScan,
   onReEdit,
   onViewReport,
   creditsCharged,
 }: ScanResultsViewProps) {
   return (
-    <ScanReportLayout
-      imageSrc={imageSrc}
-      onRescan={onNewScan}
-      onReEdit={onReEdit}
-      onViewReport={onViewReport}
-    >
-      <Alert className="mb-4">
-        <AlertDescription>
-          Your photo is shown only for this session. It is not stored or included
-          in saved reports or PDFs.
-          {creditsCharged != null
-            ? ` This scan used ${creditsCharged.toLocaleString()} credits.`
-            : null}
-        </AlertDescription>
-      </Alert>
-      <SkinReportContent
-        assessment={assessment}
-        climateContext={climateContext}
-      />
-    </ScanReportLayout>
+    <div className="relative mx-auto w-full max-w-5xl">
+      <ScanReportLayout
+        imageSrc={imageSrc}
+        onRescan={onNewScan}
+        onReEdit={onReEdit}
+        onViewReport={onViewReport}
+      >
+        <Alert className="mb-4">
+          <AlertDescription>
+            Your photo is shown only for this session. It is not stored or included
+            in saved reports or PDFs.
+            {creditsCharged != null
+              ? ` This scan used ${creditsCharged.toLocaleString()} credits.`
+              : null}
+          </AlertDescription>
+        </Alert>
+        <SkinReportContent
+          assessment={assessment}
+          climateContext={climateContext}
+        />
+      </ScanReportLayout>
+      {scanId ? <ScanFeedbackWidget scanId={scanId} /> : null}
+    </div>
   )
 }

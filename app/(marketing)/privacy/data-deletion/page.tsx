@@ -1,10 +1,21 @@
+import { Suspense } from "react"
+
 import { LandingFooter } from "@/components/marketing/landing-footer"
 import { DeletionRequestForm } from "@/components/marketing/deletion-request-form"
 import { getSession } from "@/lib/auth/session"
 
-export default async function DataDeletionPage() {
+async function DeletionRequestSection() {
   const session = await getSession()
 
+  return (
+    <DeletionRequestForm
+      defaultEmail={session?.user.email ?? ""}
+      isLoggedIn={Boolean(session)}
+    />
+  )
+}
+
+export default function DataDeletionPage() {
   return (
     <>
       <article className="mx-auto max-w-3xl px-6 py-16">
@@ -39,10 +50,13 @@ export default async function DataDeletionPage() {
           </p>
         </div>
 
-        <DeletionRequestForm
-          defaultEmail={session?.user.email ?? ""}
-          isLoggedIn={Boolean(session)}
-        />
+        <Suspense
+          fallback={
+            <DeletionRequestForm defaultEmail="" isLoggedIn={false} />
+          }
+        >
+          <DeletionRequestSection />
+        </Suspense>
       </article>
       <LandingFooter />
     </>

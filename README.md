@@ -93,16 +93,54 @@ The scan wizard runs entirely in the browser until results are saved:
 
 ## Docker
 
-Build and run the app in a container (production mode):
+The image uses Next.js [standalone output](https://nextjs.org/docs/app/api-reference/config/next-config-js/output) for a minimal production bundle. **Secrets are not baked into the image** — `.env` files are excluded via `.dockerignore`. Inject them at runtime instead.
+
+### Build
 
 ```bash
 docker build -t aura .
+```
+
+To enable Apple Sign In in the client bundle, pass the public flag at **build** time (not run time):
+
+```bash
+docker build \
+  --build-arg NEXT_PUBLIC_APPLE_AUTH_ENABLED=true \
+  -t aura .
+```
+
+### Run
+
+Apply migrations before starting the container (one-off, outside the app process):
+
+```bash
+npx prisma migrate deploy
+```
+
+Then start the app with your env file:
+
+```bash
 docker run --rm -p 3000:3000 --env-file .env aura
 ```
 
-Then open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000).
 
-The image uses Next.js [standalone output](https://nextjs.org/docs/app/api-reference/config/next-config-js/output) for a minimal production bundle.
+### Environment variables in Docker
+
+| When | Variables | How |
+| ---- | --------- | --- |
+| **Build** | `NEXT_PUBLIC_*` only (e.g. `NEXT_PUBLIC_APPLE_AUTH_ENABLED`) | `docker build --build-arg ...` |
+| **Runtime** | Everything else (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `GEMINI_API_KEY`, etc.) | `docker run --env-file .env` or `-e VAR=value` |
+
+**Production checklist:**
+
+1. Copy `.env.example` to a production env file (never commit it).
+2. Set `BETTER_AUTH_URL` to your public HTTPS domain — not `http://localhost:3000`.
+3. Use your production Neon `DATABASE_URL`.
+4. Run `prisma migrate deploy` before starting the container.
+5. Pass any `NEXT_PUBLIC_*` flags at build time if needed.
+
+For production, prefer injecting vars from your platform's secret store (`-e` flags, Docker Compose secrets, K8s Secrets) instead of a file on disk.
 
 ## Project structure
 

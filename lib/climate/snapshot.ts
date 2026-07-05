@@ -32,14 +32,14 @@ export function toScanClimateContext(
   if (!hasClimate && !hasPlace) return null
 
   return {
-    city: location.city,
-    region: location.region,
-    country: location.country,
-    uvIndexBand: location.uvIndexBand,
-    humidityBand: location.humidityBand,
-    temperatureBand: location.temperatureBand,
-    climateZone: location.climateZone,
-    seasonBand: location.seasonBand,
+    city: location.city ?? null,
+    region: location.region ?? null,
+    country: location.country ?? null,
+    uvIndexBand: location.uvIndexBand ?? null,
+    humidityBand: location.humidityBand ?? null,
+    temperatureBand: location.temperatureBand ?? null,
+    climateZone: location.climateZone ?? null,
+    seasonBand: location.seasonBand ?? null,
     syncedAt: location.lastSyncedAt?.toISOString() ?? null,
   }
 }

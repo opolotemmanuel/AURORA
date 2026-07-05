@@ -34,15 +34,25 @@ export function ScanImagePanel({
         className,
       )}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={imageSrc}
-        alt="Scan photo"
-        className={cn(
-          "block w-full object-cover",
-          compact ? "h-auto" : "aspect-[3/4]",
-        )}
-      />
+      {imageSrc ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={imageSrc}
+          alt="Scan photo"
+          className={cn(
+            "block w-full object-cover",
+            compact ? "h-auto" : "aspect-[3/4]",
+          )}
+        />
+      ) : (
+        <div
+          className={cn(
+            "block w-full bg-muted",
+            compact ? "h-auto min-h-48" : "aspect-[3/4]",
+          )}
+          aria-hidden
+        />
+      )}
 
       {isLoading ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/60 backdrop-blur-[2px]">

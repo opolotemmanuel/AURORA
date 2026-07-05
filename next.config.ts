@@ -1,9 +1,11 @@
 import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ["192.168.1.15"],
   cacheComponents: true,
   output: "standalone",
+  outputFileTracingIncludes: {
+    "/*": ["./generated/prisma/**/*"],
+  },
   images: {
     remotePatterns: [
       {

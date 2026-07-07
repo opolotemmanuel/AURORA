@@ -55,6 +55,9 @@ export function ScanDetailModal({
     dimensions: scan.result.dimensions as Parameters<
       typeof fromScanResult
     >[0]["dimensions"],
+    doshaTyping: scan.result.doshaTyping as Parameters<
+      typeof fromScanResult
+    >[0]["doshaTyping"],
     summary: scan.result.summary,
     naturalRecommendations: scan.result.naturalRecommendations as Parameters<
       typeof fromScanResult
@@ -105,8 +108,8 @@ export function ScanDetailModal({
         description={scanDate}
         className="sm:max-w-5xl"
       >
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="relative min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-20 sm:px-6">
             <div className="mx-auto max-w-3xl space-y-6">
               <ReportDocumentHeader
                 scanDate={scanDate}
@@ -119,12 +122,17 @@ export function ScanDetailModal({
                 assessment={assessment}
                 climateContext={climateContext}
               />
-
-              <ScanFeedbackWidget
-                scanId={scan.id}
-                existingFeedback={scan.feedback}
-              />
             </div>
+          </div>
+
+          <div className="pointer-events-none absolute inset-x-0 bottom-14 z-30 flex justify-end px-4 sm:bottom-16 sm:px-6">
+            <ScanFeedbackWidget
+              scanId={scan.id}
+              existingFeedback={scan.feedback}
+              position="bottom-right"
+              anchored
+              className="pointer-events-auto"
+            />
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3 sm:px-6">
@@ -132,7 +140,7 @@ export function ScanDetailModal({
               type="button"
               size="sm"
               variant="outline"
-              className="rounded-full text-destructive hover:text-destructive"
+              className="text-destructive hover:text-destructive"
               disabled={deleting}
               onClick={() => setDeleteOpen(true)}
             >
@@ -142,7 +150,6 @@ export function ScanDetailModal({
             <Button
               type="button"
               size="sm"
-              className="rounded-full"
               disabled={downloading}
               onClick={handleDownloadPdf}
             >
@@ -157,7 +164,6 @@ export function ScanDetailModal({
               type="button"
               variant="outline"
               size="sm"
-              className="rounded-full"
               onClick={() => onOpenChange(false)}
             >
               Close

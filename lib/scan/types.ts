@@ -1,3 +1,6 @@
+import type { SkinDosha } from "@/lib/scan/dosha"
+import type { SkinDimensionId } from "@/lib/scan/dimensions"
+
 export type AssessmentBand =
   | "minimal"
   | "mild"
@@ -35,9 +38,15 @@ export type QualityCheckResult = {
 }
 
 export type SkinDimension = {
-  id: string
+  id: SkinDimensionId | string
   label: string
   band: AssessmentBand
+  note: string
+}
+
+export type DoshaTyping = {
+  primary: SkinDosha
+  secondary?: SkinDosha | null
   note: string
 }
 
@@ -75,6 +84,7 @@ export type ProductRecommendation = {
 export type SkinAssessment = {
   overallBand: AssessmentBand
   dimensions: SkinDimension[]
+  doshaTyping: DoshaTyping
   summary: string
   naturalRecommendations: NaturalRecommendation[]
   recommendations: ProductRecommendation[]

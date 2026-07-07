@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/client"
 import { resolveStoreUrl } from "@/lib/products/store-url"
+import { filterCatalogRecommendations } from "@/lib/products/validate-catalog-recommendations"
 import type { ProductRecommendation } from "@/lib/scan/types"
 
 type CatalogProductFields = {
@@ -16,7 +17,7 @@ async function getCatalogProductMap(
   }
 
   const products = await prisma.product.findMany({
-    where: { slug: { in: slugs } },
+    where: { slug: { in: slugs }, isActive: true },
     select: { slug: true, imageUrl: true, storeUrl: true },
   })
 
@@ -53,8 +54,14 @@ export async function enrichRecommendationsWithImages(
   const catalogBySlug = await getCatalogProductMap(
     recommendations.map((item) => item.id),
   )
+  const catalogSlugs = new Set(catalogBySlug.keys())
+  const validated = filterCatalogRecommendations(
+    recommendations,
+    catalogSlugs,
+    { minValid: 1, max: recommendations.length },
+  )
 
-  return applyCatalogFields(recommendations, catalogBySlug)
+  return applyCatalogFields(validated, catalogBySlug)
 }
 
 export async function enrichManyRecommendationsWithImages(
@@ -66,7 +73,12 @@ export async function enrichManyRecommendationsWithImages(
 
   const catalogBySlug = await getCatalogProductMap([...new Set(slugs)])
 
-  return recommendationGroups.map((group) =>
-    applyCatalogFields(group, catalogBySlug),
-  )
+  return recommendationGroups.map((group) => {
+    const catalogSlugs = new Set(catalogBySlug.keys())
+    const validated = filterCatalogRecommendations(group, catalogSlugs, {
+      minValid: 0,
+      max: group.length,
+    })
+    return applyCatalogFields(validated, catalogBySlug)
+  })
 }

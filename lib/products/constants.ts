@@ -29,4 +29,6 @@ export const PRODUCT_CLIMATE_TAGS = [
   "polluted",
 ] as const
 
+export type ProductClimateTag = (typeof PRODUCT_CLIMATE_TAGS)[number]
+
 export const AURORA_STORE_ORIGIN = "https://www.auroraorganics.co"

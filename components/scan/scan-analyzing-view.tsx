@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 
 import { AnimatedBadge } from "@/components/motion/animated-badge"
+import { ScanAnalyzingOverlay } from "@/components/scan/scan-analyzing-overlay"
 import { ScanStepFrame } from "@/components/scan/scan-step-frame"
 import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -203,6 +204,8 @@ export function ScanAnalyzingView({
     }
   }, [imageBlob, livePayload, onComplete])
 
+  const activePhase = toolCalls.findIndex((call) => call.status === "running")
+
   return (
     <ScanStepFrame>
       <ScanStepShell
@@ -225,7 +228,8 @@ export function ScanAnalyzingView({
           className="mx-auto aspect-[3/4] h-[min(48svh,20rem)] w-auto max-w-full object-cover"
         />
         {!error && !isComplete ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/60 backdrop-blur-[2px]">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/45 backdrop-blur-[1px]">
+            <ScanAnalyzingOverlay activePhase={Math.max(activePhase, 0)} />
             <AnimatedBadge
               status="loading"
               size="md"

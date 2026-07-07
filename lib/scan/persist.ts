@@ -5,6 +5,8 @@ import {
   DISCLAIMER_VERSION,
   SKIN_DISCLAIMER,
 } from "@/lib/scan/constants"
+import type { DoshaTyping } from "@/lib/scan/types"
+import { normalizeDimensions } from "@/lib/scan/normalize-dimensions"
 import type {
   NaturalRecommendation,
   ProductRecommendation,
@@ -12,10 +14,17 @@ import type {
   SkinDimension,
 } from "@/lib/scan/types"
 
+const DEFAULT_DOSHA_TYPING: DoshaTyping = {
+  primary: "balanced",
+  secondary: null,
+  note: "Dosha lean was not assessed for this scan.",
+}
+
 export function toScanResultData(assessment: SkinAssessment) {
   return {
     overallBand: assessment.overallBand,
     dimensions: assessment.dimensions as unknown as Prisma.InputJsonValue,
+    doshaTyping: assessment.doshaTyping as unknown as Prisma.InputJsonValue,
     summary: assessment.summary,
     naturalRecommendations:
       assessment.naturalRecommendations as unknown as Prisma.InputJsonValue,
@@ -30,6 +39,7 @@ export function fromScanResult(
     ScanResult,
     | "overallBand"
     | "dimensions"
+    | "doshaTyping"
     | "summary"
     | "naturalRecommendations"
     | "recommendations"
@@ -37,8 +47,13 @@ export function fromScanResult(
   >,
 ): SkinAssessment {
   const dimensions = Array.isArray(result.dimensions)
-    ? (result.dimensions as SkinDimension[])
-    : []
+    ? normalizeDimensions(result.dimensions as SkinDimension[])
+    : normalizeDimensions([])
+
+  const doshaTyping =
+    result.doshaTyping && typeof result.doshaTyping === "object"
+      ? (result.doshaTyping as DoshaTyping)
+      : DEFAULT_DOSHA_TYPING
 
   const naturalRecommendations = Array.isArray(result.naturalRecommendations)
     ? (result.naturalRecommendations as NaturalRecommendation[])
@@ -51,6 +66,7 @@ export function fromScanResult(
   return {
     overallBand: result.overallBand as SkinAssessment["overallBand"],
     dimensions,
+    doshaTyping,
     summary: result.summary ?? "",
     naturalRecommendations,
     recommendations,

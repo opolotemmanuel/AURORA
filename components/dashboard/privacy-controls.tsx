@@ -88,13 +88,13 @@ export function PrivacyControls({
           />
 
           {scans.length > 0 ? (
-            <div className="rounded-xl border border-border p-4">
+            <div className="rounded-none border border-border p-4">
               <h3 className="font-heading text-sm font-medium">Individual scans</h3>
               <ul className="mt-3 space-y-2">
                 {scans.map((scan) => (
                   <li
                     key={scan.id}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 text-sm"
+                    className="flex items-center justify-between gap-3 rounded-none border border-border px-3 py-2 text-sm"
                   >
                     <span className="text-muted-foreground">
                       {new Date(scan.createdAt).toLocaleDateString()} — {scan.status}
@@ -174,7 +174,7 @@ function PrivacyAction({
   destructive?: boolean
 }) {
   return (
-    <div className="rounded-xl border border-border p-4">
+    <div className="rounded-none border border-border p-4">
       <h3 className="font-heading text-sm font-medium">{title}</h3>
       <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       <AlertDialog>

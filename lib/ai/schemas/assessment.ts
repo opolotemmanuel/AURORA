@@ -1,10 +1,14 @@
 import { Type } from "@google/genai"
 
+import { SKIN_DIMENSION_IDS } from "@/lib/scan/dimensions"
+import { SKIN_DOSHA_VALUES } from "@/lib/scan/dosha"
+
 export const skinAssessmentJsonSchema = {
   type: Type.OBJECT,
   required: [
     "overallBand",
     "dimensions",
+    "doshaTyping",
     "summary",
     "naturalRecommendations",
     "recommendations",
@@ -18,14 +22,18 @@ export const skinAssessmentJsonSchema = {
     },
     dimensions: {
       type: Type.ARRAY,
-      description: "Per-dimension cosmetic band assessments.",
+      description:
+        "Exactly six cosmetic dimension assessments using the required ids.",
+      minItems: SKIN_DIMENSION_IDS.length,
+      maxItems: SKIN_DIMENSION_IDS.length,
       items: {
         type: Type.OBJECT,
         required: ["id", "label", "band", "note"],
         properties: {
           id: {
             type: Type.STRING,
-            description: "Stable snake_case id, e.g. hydration, texture.",
+            enum: [...SKIN_DIMENSION_IDS],
+            description: "Required dimension id from the fixed catalog.",
           },
           label: { type: Type.STRING },
           band: {
@@ -36,6 +44,30 @@ export const skinAssessmentJsonSchema = {
             type: Type.STRING,
             description: "Short personalized note referencing user context.",
           },
+        },
+      },
+    },
+    doshaTyping: {
+      type: Type.OBJECT,
+      required: ["primary", "note"],
+      description:
+        "Cosmetic Ayurvedic skin lean for wellness guidance only — not a medical constitution diagnosis.",
+      properties: {
+        primary: {
+          type: Type.STRING,
+          enum: [...SKIN_DOSHA_VALUES],
+          description: "Primary cosmetic dosha lean visible in the photo.",
+        },
+        secondary: {
+          type: Type.STRING,
+          enum: [...SKIN_DOSHA_VALUES],
+          nullable: true,
+          description: "Optional secondary lean when clearly visible.",
+        },
+        note: {
+          type: Type.STRING,
+          description:
+            "1-2 sentences on visible cosmetic traits supporting this lean.",
         },
       },
     },

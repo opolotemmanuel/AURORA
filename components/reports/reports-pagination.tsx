@@ -42,7 +42,6 @@ export function ReportsPagination({
           asChild
           variant="outline"
           size="sm"
-          className="rounded-full"
           disabled={page <= 1}
         >
           <Link
@@ -58,7 +57,6 @@ export function ReportsPagination({
           asChild
           variant="outline"
           size="sm"
-          className="rounded-full"
           disabled={page >= totalPages}
         >
           <Link

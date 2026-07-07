@@ -9,10 +9,10 @@ import {
 
 import { ScanDetailModal } from "@/components/reports/scan-detail-modal"
 import { ReportsPagination } from "@/components/reports/reports-pagination"
+import { BandBadge } from "@/components/scan/band-badge"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { downloadReportPdf } from "@/lib/reports/download-report-pdf"
-import { formatBand } from "@/lib/scan/format"
 import type { SkinAssessment } from "@/lib/scan/types"
 import { cn } from "@/lib/utils"
 
@@ -34,6 +34,7 @@ export type ReportListItem = {
   result: {
     overallBand: string
     dimensions: unknown
+    doshaTyping: unknown
     summary: string | null
     naturalRecommendations: unknown
     recommendations: unknown
@@ -89,7 +90,7 @@ export function ReportsListClient({
             <article
               key={scan.id}
               className={cn(
-                "rounded-xl border border-border bg-card p-5 transition-colors",
+                "rounded-none border border-border bg-card p-5 transition-colors",
                 scan.result && "cursor-pointer hover:bg-muted/30",
               )}
               onClick={() => scan.result && openReport(scan)}
@@ -115,14 +116,20 @@ export function ReportsListClient({
                     })}
                   </p>
                   <div className="mt-1 flex flex-wrap items-center gap-2">
-                    <h2 className="font-heading text-lg font-medium capitalize">
-                      {scan.result?.overallBand
-                        ? formatBand(
-                            scan.result
-                              .overallBand as SkinAssessment["overallBand"],
-                          )
-                        : scan.status}
-                    </h2>
+                    {scan.result?.overallBand ? (
+                      <BandBadge
+                        band={
+                          scan.result
+                            .overallBand as SkinAssessment["overallBand"]
+                        }
+                        size="sm"
+                        variant="chip"
+                      />
+                    ) : (
+                      <h2 className="font-heading text-lg font-medium capitalize">
+                        {scan.status}
+                      </h2>
+                    )}
                     <Badge variant="secondary" className="font-normal capitalize">
                       {scan.captureMode}
                     </Badge>
@@ -163,7 +170,6 @@ export function ReportsListClient({
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="rounded-full"
                     onClick={() => openReport(scan)}
                   >
                     <IconFileText className="size-3.5" />
@@ -173,7 +179,6 @@ export function ReportsListClient({
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="rounded-full"
                     disabled={isDownloading}
                     onClick={() => handleDownloadPdf(scan.id)}
                   >

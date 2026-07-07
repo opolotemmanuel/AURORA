@@ -29,7 +29,7 @@ export function SettingsTabs({ account, climate }: SettingsTabsProps) {
       <TabsContent value="climate" pending={tabPending === "climate"}>{climate}</TabsContent>
 
       <TabsContent value="data" pending={tabPending === "data"}>
-        <section className="rounded-xl border border-border p-5">
+        <section className="rounded-none border border-border p-5">
           <h2 className="font-heading text-sm font-medium">Manage your data</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Edit profile fields or delete personal data.

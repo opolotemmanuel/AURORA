@@ -23,6 +23,7 @@ export async function ProfileEditorLoader() {
         biologicalSex: profile?.biologicalSex ?? "",
         skinType: profile?.skinType ?? "",
         fitzpatrickBand: profile?.fitzpatrickBand ?? "",
+        skinDosha: profile?.skinDosha ?? "",
         primaryConcerns: profile?.primaryConcerns ?? [],
         skinGoals: profile?.skinGoals ?? [],
         allergies: profile?.allergies ?? "",

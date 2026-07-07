@@ -24,7 +24,7 @@ export async function DashboardOverviewStats() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-5">
+        <div className="rounded-none border border-border bg-card p-5">
           <h2 className="font-heading text-sm font-medium">Token usage (14 days)</h2>
           <p className="mt-1 text-xs text-muted-foreground">
             Debit activity from your wallet
@@ -34,7 +34,7 @@ export async function DashboardOverviewStats() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-5">
+        <div className="rounded-none border border-border bg-card p-5">
           <h2 className="font-heading text-sm font-medium">Quick summary</h2>
           <dl className="mt-4 space-y-3 text-sm">
             <div className="flex justify-between gap-4">

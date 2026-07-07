@@ -10,7 +10,7 @@ export async function SettingsAccountSection() {
   const ctx = await requireAuthContext()
 
   return (
-    <section className="rounded-xl border border-border p-5">
+    <section className="rounded-none border border-border p-5">
       <h2 className="font-heading text-sm font-medium">Account</h2>
       <p className="mt-2 text-sm text-muted-foreground">{ctx.user.email}</p>
       <div className="mt-4 flex flex-wrap gap-2">

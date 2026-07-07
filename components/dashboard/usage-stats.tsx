@@ -17,7 +17,7 @@ export async function UsageStats() {
         <StatCard label="Granted" value={stats.lifetimeGranted.toLocaleString()} />
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-5">
+      <div className="rounded-none border border-border bg-card p-5">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
             <h2 className="font-heading text-sm font-medium">Credits used</h2>
@@ -39,14 +39,14 @@ export async function UsageStats() {
         />
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-5">
+      <div className="rounded-none border border-border bg-card p-5">
         <h2 className="font-heading text-sm font-medium">Daily token usage</h2>
         <div className="mt-4">
           <UsageBarChart data={stats.dailyUsage} />
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-5">
+      <div className="rounded-none border border-border bg-card p-5">
         <h2 className="font-heading text-sm font-medium">Recent activity</h2>
         <div className="mt-4">
           <RecentActivityList entries={stats.recentActivity} />

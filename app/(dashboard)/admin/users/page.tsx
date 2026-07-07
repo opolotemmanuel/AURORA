@@ -6,9 +6,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 function UsersTableSkeleton() {
   return (
-    <div className="rounded-xl border border-border">
+    <div className="rounded-none border border-border">
       <div className="border-b border-border p-4">
-        <Skeleton className="h-9 w-full max-w-sm rounded-lg" />
+        <Skeleton className="h-9 w-full max-w-sm rounded-none" />
       </div>
       {Array.from({ length: 6 }).map((_, i) => (
         <div key={i} className="flex items-center gap-4 border-b border-border p-4 last:border-0">
@@ -17,7 +17,7 @@ function UsersTableSkeleton() {
             <Skeleton className="h-4 w-40" />
             <Skeleton className="h-3 w-56" />
           </div>
-          <Skeleton className="h-8 w-20 rounded-lg" />
+          <Skeleton className="h-8 w-20 rounded-none" />
         </div>
       ))}
     </div>

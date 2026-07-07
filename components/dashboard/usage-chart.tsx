@@ -32,7 +32,7 @@ export function UsageBarChart({
 
   if (data.every((d) => d.value === 0)) {
     return (
-      <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
+      <div className="flex h-48 items-center justify-center rounded-none border border-dashed border-border text-sm text-muted-foreground">
         No usage data yet
       </div>
     )

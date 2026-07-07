@@ -12,10 +12,10 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <DashboardPageHeader
         title="Overview"
-        description="Cosmetic guidance only — not a medical diagnosis."
+        description="Your credits, recent scans, and skin reports in one place."
       />
 
-      <section className="rounded-xl border border-border bg-card p-5 sm:p-6">
+      <section className="rounded-none border border-border bg-card p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <h2 className="font-heading text-lg font-medium">Ready for a scan?</h2>

@@ -3,8 +3,10 @@ import { GoogleGenAI, type ThinkingLevel } from "@google/genai"
 import { skinAssessmentJsonSchema } from "@/lib/ai/schemas/assessment"
 import { buildAnalyzeContents } from "@/lib/ai/prompts/system"
 import type { AnalyzeSkinInput, AnalyzeSkinResult } from "@/lib/ai/types"
-import { skinAssessmentSchema } from "@/lib/scan/schemas"
+import { filterCatalogRecommendations } from "@/lib/products/validate-catalog-recommendations"
 import { SKIN_DISCLAIMER } from "@/lib/scan/constants"
+import { normalizeDimensions } from "@/lib/scan/normalize-dimensions"
+import { skinAssessmentSchema } from "@/lib/scan/schemas"
 import type { UsageInput } from "@/lib/tokens/pricing"
 
 function mapUsage(
@@ -35,19 +37,17 @@ function sanitizeAssessment(
     throw new Error("Model returned insufficient natural recommendations")
   }
 
-  const valid = assessment.recommendations.filter((rec) =>
-    catalogSlugs.has(rec.id),
+  const recommendations = filterCatalogRecommendations(
+    assessment.recommendations,
+    catalogSlugs,
   )
 
-  if (valid.length >= 2) {
-    return {
-      ...assessment,
-      naturalRecommendations,
-      recommendations: valid.slice(0, 4),
-    }
+  return {
+    ...assessment,
+    dimensions: normalizeDimensions(assessment.dimensions),
+    naturalRecommendations,
+    recommendations,
   }
-
-  throw new Error("Model returned invalid product recommendations")
 }
 
 export async function analyzeWithGemini(
@@ -59,7 +59,10 @@ export async function analyzeWithGemini(
   }
 
   const ai = new GoogleGenAI({ apiKey })
-  const { systemInstruction, contents } = buildAnalyzeContents(input)
+  const { systemInstruction, contents } = buildAnalyzeContents(
+    input,
+    input.activeClimateTags ?? [],
+  )
   const catalogSlugs = new Set(input.catalog.map((product) => product.slug))
   const startedAt = Date.now()
 

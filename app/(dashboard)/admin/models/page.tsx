@@ -6,14 +6,14 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 function ModelsAdminSkeleton() {
   return (
-    <div className="space-y-4 rounded-xl border border-border p-5">
+    <div className="space-y-4 rounded-none border border-border p-5">
       {Array.from({ length: 3 }).map((_, i) => (
         <div key={i} className="flex items-center justify-between gap-4">
           <div className="space-y-2">
             <Skeleton className="h-4 w-40" />
             <Skeleton className="h-3 w-64" />
           </div>
-          <Skeleton className="h-8 w-24 rounded-lg" />
+          <Skeleton className="h-8 w-24 rounded-none" />
         </div>
       ))}
     </div>

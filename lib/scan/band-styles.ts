@@ -19,10 +19,19 @@ const BAND_CARD_ACCENT_CLASS: Record<AssessmentBand, string> = {
 
 const BAND_ANIMATED_STATUS: Record<AssessmentBand, AnimatedBadgeStatus> = {
   minimal: "success",
-  mild: "info",
+  mild: "success",
   moderate: "warning",
   elevated: "danger",
   not_assessed: "neutral",
+}
+
+/** PDF hex colors aligned with in-app chart band scale (minimal → elevated). */
+const BAND_PDF_COLOR: Record<AssessmentBand, string> = {
+  minimal: "#5a8f4a",
+  mild: "#8b6914",
+  moderate: "#b8860b",
+  elevated: "#a85c32",
+  not_assessed: "#888888",
 }
 
 export function getBandChipClass(band: AssessmentBand) {
@@ -35,4 +44,8 @@ export function getBandCardAccentClass(band: AssessmentBand) {
 
 export function getBandAnimatedStatus(band: AssessmentBand) {
   return BAND_ANIMATED_STATUS[band]
+}
+
+export function getBandPdfColor(band: AssessmentBand) {
+  return BAND_PDF_COLOR[band]
 }

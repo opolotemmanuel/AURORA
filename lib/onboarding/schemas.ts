@@ -28,6 +28,11 @@ export const skinSchema = z.object({
         : value,
     z.enum(["I", "II", "III", "IV", "V", "VI"]).optional(),
   ),
+  skinDosha: z.preprocess(
+    (value) =>
+      value === "" || value === null || value === undefined ? undefined : value,
+    z.enum(["vata", "pitta", "kapha", "balanced"]).optional(),
+  ),
   primaryConcerns: z.array(z.string()).default([]),
   skinGoals: z.array(z.string()).default([]),
   allergies: z.string().max(2000).optional(),

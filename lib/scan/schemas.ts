@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { SKIN_DIMENSION_IDS } from "@/lib/scan/dimensions"
+import { SKIN_DOSHA_VALUES } from "@/lib/scan/dosha"
 import type { SkinAssessment } from "@/lib/scan/types"
 
 const assessmentBandSchema = z.enum([
@@ -25,16 +27,23 @@ const applicationFrequencySchema = z.enum([
   "weekly",
 ])
 
+const skinDimensionSchema = z.object({
+  id: z.enum(SKIN_DIMENSION_IDS),
+  label: z.string(),
+  band: assessmentBandSchema,
+  note: z.string(),
+})
+
+const doshaTypingSchema = z.object({
+  primary: z.enum(SKIN_DOSHA_VALUES),
+  secondary: z.enum(SKIN_DOSHA_VALUES).nullable().optional(),
+  note: z.string(),
+})
+
 export const skinAssessmentSchema = z.object({
   overallBand: assessmentBandSchema,
-  dimensions: z.array(
-    z.object({
-      id: z.string(),
-      label: z.string(),
-      band: assessmentBandSchema,
-      note: z.string(),
-    }),
-  ),
+  dimensions: z.array(skinDimensionSchema).length(SKIN_DIMENSION_IDS.length),
+  doshaTyping: doshaTypingSchema,
   summary: z.string(),
   naturalRecommendations: z.array(
     z.object({

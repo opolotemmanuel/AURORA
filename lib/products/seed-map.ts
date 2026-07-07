@@ -77,6 +77,29 @@ export function buildDescription(item: FallbackProduct): string {
   return lines.join("\n\n").slice(0, 5000)
 }
 
+export function inferClimateTags(tags: string[], description: string): string[] {
+  const haystack = [...tags, description].join(" ").toLowerCase()
+  const climateTags = new Set<string>()
+
+  if (/spf|sun\s?screen|uv|solar/i.test(haystack)) {
+    climateTags.add("high_uv")
+  }
+  if (/humid|monsoon|tropical|dewy/i.test(haystack)) {
+    climateTags.add("humid")
+  }
+  if (/dry|dehydrat|arid|barrier/i.test(haystack)) {
+    climateTags.add("dry")
+  }
+  if (/cold|winter|chap|frost/i.test(haystack)) {
+    climateTags.add("cold")
+  }
+  if (/pollut|urban|city\s?smog|detox/i.test(haystack)) {
+    climateTags.add("polluted")
+  }
+
+  return [...climateTags]
+}
+
 export function mapFallbackProduct(item: FallbackProduct) {
   const slug =
     slugFromProductUrl(item.product_url) || slugify(item.name)
@@ -96,7 +119,7 @@ export function mapFallbackProduct(item: FallbackProduct) {
     ingredients,
     targetConcerns: inferTargetConcerns(item.tags, item.description),
     suitableSkinTypes: [] as string[],
-    climateTags: [] as string[],
+    climateTags: inferClimateTags(item.tags, item.description),
     imageUrl: item.image_url || undefined,
     storeUrl: item.product_url || undefined,
     isActive: true,

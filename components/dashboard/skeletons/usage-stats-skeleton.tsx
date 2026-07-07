@@ -5,11 +5,11 @@ export function UsageStatsSkeleton() {
   return (
     <>
       <StatCardsSkeleton count={3} />
-      <div className="rounded-xl border border-border bg-card p-5">
+      <div className="rounded-none border border-border bg-card p-5">
         <Skeleton className="h-4 w-36" />
-        <Skeleton className="mt-4 h-48 w-full rounded-lg" />
+        <Skeleton className="mt-4 h-48 w-full rounded-none" />
       </div>
-      <div className="rounded-xl border border-border bg-card p-5">
+      <div className="rounded-none border border-border bg-card p-5">
         <Skeleton className="h-4 w-32" />
         <div className="mt-4 space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (

@@ -10,12 +10,12 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 function AccountSectionSkeleton() {
   return (
-    <section className="rounded-xl border border-border p-5">
+    <section className="rounded-none border border-border p-5">
       <Skeleton className="h-4 w-20" />
       <Skeleton className="mt-3 h-4 w-48" />
       <div className="mt-4 flex gap-2">
-        <Skeleton className="h-9 w-24 rounded-lg" />
-        <Skeleton className="h-9 w-32 rounded-lg" />
+        <Skeleton className="h-9 w-24 rounded-none" />
+        <Skeleton className="h-9 w-32 rounded-none" />
       </div>
     </section>
   )

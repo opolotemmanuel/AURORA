@@ -167,6 +167,13 @@ enum FitzpatrickBand {
   VI
 }
 
+enum SkinDosha {
+  vata
+  pitta
+  kapha
+  balanced
+}
+
 enum AgeBand {
   under_18
   age_18_24
@@ -271,6 +278,7 @@ model UserProfile {
   biologicalSex          BiologicalSex?
   skinType               SkinType?
   fitzpatrickBand        FitzpatrickBand?
+  skinDosha              SkinDosha?
   primaryConcerns        String[]         @default([])
   skinGoals              String[]         @default([])
   allergies              String?
@@ -428,6 +436,7 @@ model ScanResult {
   scan                Scan           @relation(fields: [scanId], references: [id], onDelete: Cascade)
   overallBand         AssessmentBand @default(not_assessed)
   dimensions          Json?
+  doshaTyping         Json?
   summary                 String?
   naturalRecommendations  Json?
   recommendations         Json?

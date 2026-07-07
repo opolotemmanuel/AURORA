@@ -46,14 +46,14 @@ function StarDisplay({ rating }: { rating: number }) {
 export function FeedbackTable({ rows }: FeedbackTableProps) {
   if (rows.length === 0) {
     return (
-      <div className="rounded-xl border border-border p-8 text-center text-sm text-muted-foreground">
+      <div className="rounded-none border border-border p-8 text-center text-sm text-muted-foreground">
         No scan feedback yet.
       </div>
     )
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border">
+    <div className="overflow-hidden rounded-none border border-border">
       <Table>
         <TableHeader>
           <TableRow>

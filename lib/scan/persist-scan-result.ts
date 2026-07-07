@@ -28,6 +28,7 @@ type PersistScanResultInput = {
     ageBand: string | null
     skinType: string | null
     fitzpatrickBand: string | null
+    skinDosha: string | null
     primaryConcerns: string[]
     skinGoals: string[]
     consentVersion: string | null
@@ -52,6 +53,7 @@ export async function persistScanResult(input: PersistScanResultInput) {
                 ageBand: input.profile.ageBand,
                 skinType: input.profile.skinType,
                 fitzpatrickBand: input.profile.fitzpatrickBand,
+                skinDosha: input.profile.skinDosha,
                 primaryConcerns: input.profile.primaryConcerns,
                 skinGoals: input.profile.skinGoals,
               }
@@ -74,6 +76,7 @@ export async function persistScanResult(input: PersistScanResultInput) {
           scanId: created.id,
           overallBand: resultData.overallBand,
           dimensions: resultData.dimensions,
+          doshaTyping: resultData.doshaTyping,
           summary: resultData.summary,
           naturalRecommendations: resultData.naturalRecommendations,
           recommendations: resultData.recommendations,

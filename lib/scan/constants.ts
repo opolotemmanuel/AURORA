@@ -8,13 +8,14 @@ export const SKIN_DISCLAIMER =
 
 export const REPORT_SECTION_TITLES = {
   snapshot: "Your skin snapshot",
+  dosha: "Ayurvedic skin lean",
   weather: "Your local weather",
   areas: "Key skin areas",
   everydayCare: "Everyday care",
   products: "Product matches",
 } as const
 
-export const REPORT_FORMAT_VERSION = "1.1"
+export const REPORT_FORMAT_VERSION = "1.2"
 
 export function getScanTokenCost(): number {
   const raw = process.env.SCAN_TOKEN_COST

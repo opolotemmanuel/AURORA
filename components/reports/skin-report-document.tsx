@@ -1,12 +1,13 @@
 import { DimensionRadarChart } from "@/components/scan/dimension-radar-chart"
 import { ReportApplicationSchedule } from "@/components/reports/report-application-schedule"
+import { ReportBandDisplay } from "@/components/reports/report-band-display"
 import { ReportClimateBlock } from "@/components/reports/report-climate-block"
 import { ReportDimensionTable } from "@/components/reports/report-dimension-table"
 import { ReportDisclaimer } from "@/components/reports/report-disclaimer"
+import { ReportDoshaBlock } from "@/components/reports/report-dosha-block"
 import { ReportProductList } from "@/components/reports/report-product-list"
 import { ReportSection } from "@/components/reports/report-section"
 import { REPORT_SECTION_TITLES } from "@/lib/scan/constants"
-import { formatBand } from "@/lib/scan/format"
 import type { ScanClimateContext, SkinAssessment } from "@/lib/scan/types"
 import { cn } from "@/lib/utils"
 
@@ -24,12 +25,14 @@ export function SkinReportDocument({
   return (
     <div className={cn("space-y-8 font-sans", className)}>
       <ReportSection title={REPORT_SECTION_TITLES.snapshot} first>
-        <p className="text-sm font-medium text-foreground">
-          {formatBand(assessment.overallBand)}
-        </p>
-        <p className="mt-2 max-w-prose text-sm leading-relaxed text-muted-foreground">
+        <ReportBandDisplay band={assessment.overallBand} />
+        <p className="mt-4 max-w-prose text-sm leading-relaxed text-muted-foreground">
           {assessment.summary}
         </p>
+      </ReportSection>
+
+      <ReportSection title={REPORT_SECTION_TITLES.dosha}>
+        <ReportDoshaBlock doshaTyping={assessment.doshaTyping} />
       </ReportSection>
 
       <ReportSection title={REPORT_SECTION_TITLES.weather}>

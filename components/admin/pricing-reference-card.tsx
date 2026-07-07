@@ -31,7 +31,7 @@ export async function PricingReferenceCard() {
   const flatFloor = getScanTokenCost()
 
   return (
-    <section className="space-y-4 rounded-lg border border-border p-4">
+    <section className="space-y-4 rounded-none border border-border p-4">
       <div>
         <h2 className="font-heading text-lg font-medium">Pricing reference</h2>
         <p className="text-sm text-muted-foreground">

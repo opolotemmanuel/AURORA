@@ -30,6 +30,7 @@ import {
   formatSkinOptionLabel,
   type OnboardingStep,
 } from "@/lib/onboarding/constants"
+import { SKIN_DOSHA_OPTIONS } from "@/lib/scan/dosha"
 import {
   completeOnboardingAction,
   resolveBrowserLocationAction,
@@ -94,6 +95,7 @@ export function OnboardingWizard({
   const [skin, setSkin] = useState({
     skinType: "",
     fitzpatrickBand: "",
+    skinDosha: "",
     primaryConcerns: [] as string[],
     skinGoals: [] as string[],
     allergies: "",
@@ -408,6 +410,36 @@ export function OnboardingWizard({
                   <SelectContent>
                     <SelectItem value="unsure">I&apos;m not sure — skip</SelectItem>
                     {FITZPATRICK_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label} — {option.hint}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </OnboardingStepItem>
+              <OnboardingStepItem className="space-y-2">
+                <div className="space-y-1">
+                  <Label>Ayurvedic skin lean (optional)</Label>
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    Cosmetic wellness guidance only — pick the lean that feels closest,
+                    or skip if you&apos;re not sure.
+                  </p>
+                </div>
+                <Select
+                  value={skin.skinDosha || "unsure"}
+                  onValueChange={(v) =>
+                    setSkin({
+                      ...skin,
+                      skinDosha: v === "unsure" ? "" : v,
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose one or skip" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unsure">I&apos;m not sure — skip</SelectItem>
+                    {SKIN_DOSHA_OPTIONS.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label} — {option.hint}
                       </SelectItem>

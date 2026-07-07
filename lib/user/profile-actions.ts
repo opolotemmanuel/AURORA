@@ -45,6 +45,7 @@ export async function updateSkinAction(input: unknown) {
     data: {
       skinType: data.skinType ?? null,
       fitzpatrickBand: data.fitzpatrickBand ?? null,
+      skinDosha: data.skinDosha ?? null,
       primaryConcerns: data.primaryConcerns,
       skinGoals: data.skinGoals,
       allergies: data.allergies ?? null,

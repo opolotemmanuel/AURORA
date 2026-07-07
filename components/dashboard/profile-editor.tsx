@@ -16,6 +16,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { useTabSearchParam } from "@/hooks/use-tab-search-param"
 import { FITZPATRICK_OPTIONS, formatSkinOptionLabel } from "@/lib/onboarding/constants"
+import { SKIN_DOSHA_OPTIONS } from "@/lib/scan/dosha"
 import {
   updateBasicsAction,
   updateLocationAction,
@@ -32,6 +33,7 @@ type ProfileFormProps = {
     biologicalSex: string
     skinType: string
     fitzpatrickBand: string
+    skinDosha: string
     primaryConcerns: string[]
     skinGoals: string[]
     allergies: string
@@ -62,6 +64,7 @@ export function ProfileEditor({ profile }: ProfileFormProps) {
   const [skin, setSkin] = useState({
     skinType: profile.skinType,
     fitzpatrickBand: profile.fitzpatrickBand,
+    skinDosha: profile.skinDosha,
     primaryConcerns: profile.primaryConcerns,
     skinGoals: profile.skinGoals,
     allergies: profile.allergies,
@@ -99,7 +102,7 @@ export function ProfileEditor({ profile }: ProfileFormProps) {
       </TabsList>
 
       <TabsContent value="basics" pending={tabPending === "basics"}>
-        <section className="space-y-4 rounded-xl border border-border p-5">
+        <section className="space-y-4 rounded-none border border-border p-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
@@ -117,7 +120,7 @@ export function ProfileEditor({ profile }: ProfileFormProps) {
       </TabsContent>
 
       <TabsContent value="skin" pending={tabPending === "skin"}>
-        <section className="space-y-4 rounded-xl border border-border p-5">
+        <section className="space-y-4 rounded-none border border-border p-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <Select value={skin.skinType} onValueChange={(v) => setSkin({ ...skin, skinType: v })}>
               <SelectTrigger><SelectValue placeholder="Skin type" /></SelectTrigger>
@@ -145,6 +148,24 @@ export function ProfileEditor({ profile }: ProfileFormProps) {
                 ))}
               </SelectContent>
             </Select>
+            <Select
+              value={skin.skinDosha || "unsure"}
+              onValueChange={(v) =>
+                setSkin({ ...skin, skinDosha: v === "unsure" ? "" : v })
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Ayurvedic lean (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unsure">I&apos;m not sure — skip</SelectItem>
+                {SKIN_DOSHA_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label} — {option.hint}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex flex-wrap gap-2">
             {CONCERNS.map((c) => (
@@ -166,7 +187,7 @@ export function ProfileEditor({ profile }: ProfileFormProps) {
       </TabsContent>
 
       <TabsContent value="routine" pending={tabPending === "routine"}>
-        <section className="space-y-4 rounded-xl border border-border p-5">
+        <section className="space-y-4 rounded-none border border-border p-5">
           <Textarea value={routine.am} onChange={(e) => setRoutine({ ...routine, am: e.target.value })} placeholder="Morning routine" />
           <Textarea value={routine.pm} onChange={(e) => setRoutine({ ...routine, pm: e.target.value })} placeholder="Evening routine" />
           <Button disabled={savePending} onClick={() => save("Routine", () => updateRoutineAction({ currentRoutine: routine }))}>Save routine</Button>
@@ -174,7 +195,7 @@ export function ProfileEditor({ profile }: ProfileFormProps) {
       </TabsContent>
 
       <TabsContent value="location" pending={tabPending === "location"}>
-        <section className="space-y-4 rounded-xl border border-border p-5">
+        <section className="space-y-4 rounded-none border border-border p-5">
           <div className="grid gap-4 sm:grid-cols-3">
             <Input value={location.city} onChange={(e) => setLocation({ ...location, city: e.target.value })} placeholder="City" />
             <Input value={location.region} onChange={(e) => setLocation({ ...location, region: e.target.value })} placeholder="Region" />

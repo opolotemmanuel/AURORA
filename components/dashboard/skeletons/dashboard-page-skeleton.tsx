@@ -8,11 +8,11 @@ export function DashboardPageSkeleton() {
       <PageHeaderSkeleton withBadge />
       <StatCardsSkeleton />
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-5">
+        <div className="rounded-none border border-border bg-card p-5">
           <Skeleton className="h-4 w-40" />
-          <Skeleton className="mt-4 h-48 w-full rounded-lg" />
+          <Skeleton className="mt-4 h-48 w-full rounded-none" />
         </div>
-        <div className="rounded-xl border border-border bg-card p-5">
+        <div className="rounded-none border border-border bg-card p-5">
           <Skeleton className="h-4 w-32" />
           <div className="mt-4 space-y-3">
             {Array.from({ length: 4 }).map((_, i) => (

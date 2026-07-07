@@ -11,6 +11,7 @@ import {
 
 import { DimensionRadarSvg } from "@/lib/pdf/dimension-radar-svg"
 import { reportStyles } from "@/lib/pdf/report-styles"
+import { getBandPdfColor } from "@/lib/scan/band-styles"
 import {
   CONSULTATION_BOOKING_URL,
   REPORT_SECTION_TITLES,
@@ -23,7 +24,9 @@ import {
   formatClimateZone,
   formatLocationLabel,
   formatSeasonBand,
+  formatSkinHeadline,
 } from "@/lib/scan/format"
+import { formatDoshaLabel } from "@/lib/scan/dosha"
 import type { ScanClimateContext, SkinAssessment } from "@/lib/scan/types"
 
 type SkinReportDocumentProps = {
@@ -122,7 +125,12 @@ function DimensionCards({ assessment }: { assessment: SkinAssessment }) {
         <View key={dimension.id} wrap={false} style={reportStyles.gridCell}>
           <View style={reportStyles.gridCellHeader}>
             <Text style={reportStyles.rowLabel}>{dimension.label}</Text>
-            <Text style={reportStyles.rowValue}>
+            <Text
+              style={[
+                reportStyles.rowValue,
+                { color: getBandPdfColor(dimension.band) },
+              ]}
+            >
               {formatBand(dimension.band)}
             </Text>
           </View>
@@ -227,11 +235,36 @@ export function SkinReportDocument({
         />
 
         <ReportSection title={REPORT_SECTION_TITLES.snapshot} first>
-          <Text style={reportStyles.bodyStrong}>
+          <Text
+            style={[
+              reportStyles.bodyStrong,
+              { color: getBandPdfColor(assessment.overallBand) },
+            ]}
+          >
             {formatBand(assessment.overallBand)}
+          </Text>
+          <Text style={[reportStyles.body, { marginTop: 4 }]}>
+            {formatSkinHeadline(assessment.overallBand)}
           </Text>
           <Text style={[reportStyles.body, { marginTop: 6 }]}>
             {assessment.summary}
+          </Text>
+        </ReportSection>
+
+        <ReportSection title={REPORT_SECTION_TITLES.dosha}>
+          <Text style={reportStyles.bodyStrong}>
+            Primary lean: {formatDoshaLabel(assessment.doshaTyping.primary)}
+            {assessment.doshaTyping.secondary &&
+            assessment.doshaTyping.secondary !== assessment.doshaTyping.primary
+              ? ` · Secondary: ${formatDoshaLabel(assessment.doshaTyping.secondary)}`
+              : ""}
+          </Text>
+          <Text style={[reportStyles.body, { marginTop: 6 }]}>
+            {assessment.doshaTyping.note}
+          </Text>
+          <Text style={[reportStyles.meta, { marginTop: 6 }]}>
+            Cosmetic Ayurvedic wellness guidance only — not a medical constitution
+            diagnosis.
           </Text>
         </ReportSection>
 

@@ -17,6 +17,7 @@ export type UserScanContext = {
     ageBand: string | null
     skinType: string | null
     fitzpatrickBand: string | null
+    skinDosha: string | null
     primaryConcerns: string[]
     skinGoals: string[]
     allergies: string | null
@@ -47,6 +48,7 @@ export type AnalyzeSkinInput = {
   }
   catalog: CatalogProductContext[]
   userContext: UserScanContext
+  activeClimateTags?: string[]
   liveTranscript?: string
 }
 

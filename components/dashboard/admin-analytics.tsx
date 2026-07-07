@@ -15,13 +15,13 @@ export async function AdminAnalytics() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-5">
+        <div className="rounded-none border border-border bg-card p-5">
           <h2 className="font-heading text-sm font-medium">Token grants (14 days)</h2>
           <div className="mt-4">
             <UsageBarChart data={stats.grantsByDay} label="Granted" />
           </div>
         </div>
-        <div className="rounded-xl border border-border bg-card p-5">
+        <div className="rounded-none border border-border bg-card p-5">
           <h2 className="font-heading text-sm font-medium">Token usage (14 days)</h2>
           <div className="mt-4">
             <UsageBarChart data={stats.usageByDay} label="Used" />
@@ -30,13 +30,13 @@ export async function AdminAnalytics() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-5">
+        <div className="rounded-none border border-border bg-card p-5">
           <h2 className="font-heading text-sm font-medium">Users by role</h2>
           <div className="mt-4">
             <RoleDistributionChart data={stats.usersByRole} />
           </div>
         </div>
-        <div className="rounded-xl border border-border bg-card p-5">
+        <div className="rounded-none border border-border bg-card p-5">
           <h2 className="font-heading text-sm font-medium">Scans by status</h2>
           <ul className="mt-4 space-y-2 text-sm">
             {stats.scansByStatus.map((s) => (
@@ -52,7 +52,7 @@ export async function AdminAnalytics() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-5">
+      <div className="rounded-none border border-border bg-card p-5">
         <h2 className="font-heading text-sm font-medium">Recent sign-ups</h2>
         <ul className="mt-4 space-y-2 text-sm">
           {stats.recentUsers.map((u) => (

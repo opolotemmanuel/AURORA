@@ -15,7 +15,7 @@ export async function ClimateSection() {
   }
 
   return (
-    <section className="rounded-xl border border-border p-5">
+    <section className="rounded-none border border-border p-5">
       <h2 className="font-heading text-sm font-medium">Climate cache</h2>
       {location?.city ? (
         <p className="mt-2 text-sm text-muted-foreground">

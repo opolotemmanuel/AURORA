@@ -1,5 +1,5 @@
-import { formatBand } from "@/lib/scan/format"
-import type { SkinDimension } from "@/lib/scan/types"
+import { BandBadge } from "@/components/scan/band-badge"
+import type { AssessmentBand, SkinDimension } from "@/lib/scan/types"
 import { cn } from "@/lib/utils"
 
 type ReportDimensionTableProps = {
@@ -22,15 +22,17 @@ export function ReportDimensionTable({
       {dimensions.map((dimension) => (
         <div
           key={dimension.id}
-          className="bg-muted/20 space-y-1 rounded-sm p-3"
+          className="space-y-1 rounded-sm bg-muted/20 p-3"
         >
           <div className="flex items-start justify-between gap-2">
             <p className="text-sm font-medium text-foreground">
               {dimension.label}
             </p>
-            <p className="shrink-0 text-sm font-medium text-foreground">
-              {formatBand(dimension.band)}
-            </p>
+            <BandBadge
+              band={dimension.band as AssessmentBand}
+              size="sm"
+              variant="chip"
+            />
           </div>
           {dimension.note ? (
             <p className="text-xs leading-relaxed text-muted-foreground">

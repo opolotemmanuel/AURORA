@@ -75,7 +75,7 @@ export function RecentActivityList({
   const visibleEntries = expanded ? entries : entries.slice(0, PREVIEW_COUNT)
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
+    <div className="overflow-hidden rounded-none border border-border">
       <div
         className={cn(
           expanded && "max-h-[min(320px,45vh)] overflow-y-auto",

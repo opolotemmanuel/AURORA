@@ -40,6 +40,7 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { ThemeToggleMenuItem } from "@/components/theme-toggle"
 import { signOut } from "@/lib/auth/client"
 import {
   getNavSections,
@@ -119,7 +120,7 @@ function SidebarUserFooter({
             onMouseEnter={openMenu}
             onMouseLeave={closeMenu}
             className={cn(
-              "flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-sidebar-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+              "flex w-full items-center gap-3 rounded-none p-2 text-left transition-colors hover:bg-sidebar-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
               collapsed && "justify-center p-1",
             )}
           >
@@ -159,7 +160,7 @@ function SidebarUserFooter({
             </p>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
+          <DropdownMenuItem asChild className="cursor-pointer">
             <Link
               href="/settings"
               onClick={() => {
@@ -173,6 +174,7 @@ function SidebarUserFooter({
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
+          <ThemeToggleMenuItem />
           <DropdownMenuItem
             variant="destructive"
             disabled={signingOut}
@@ -235,7 +237,7 @@ export function DashboardSidebar({
                   }
                 }}
               >
-                <span className="flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-md">
+                <span className="flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-none">
                   <Image
                     src={brandIcon}
                     alt=""

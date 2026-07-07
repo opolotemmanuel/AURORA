@@ -34,7 +34,7 @@ export function TokenGrantForm({ users }: { users: TokenGrantUser[] }) {
 
   return (
     <form
-      className="w-full space-y-4 rounded-lg border border-border p-4"
+      className="w-full space-y-4 rounded-none border border-border p-4"
       onSubmit={(e) => {
         e.preventDefault()
         if (!userId) return

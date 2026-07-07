@@ -51,7 +51,7 @@ export function ProductsAdminClient({ products }: ProductsAdminClientProps) {
 
   return (
     <>
-      <div className="rounded-xl  ">
+      <div className="rounded-none  ">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-heading text-sm font-medium">Catalog</h2>
           <Button type="button" size="sm" onClick={openCreate}>

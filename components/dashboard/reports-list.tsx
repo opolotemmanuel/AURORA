@@ -88,6 +88,7 @@ export async function ReportsList({ page = 1 }: ReportsListProps) {
         ? {
             overallBand: scan.result.overallBand,
             dimensions: scan.result.dimensions,
+            doshaTyping: scan.result.doshaTyping,
             summary: scan.result.summary,
             naturalRecommendations: scan.result.naturalRecommendations,
             recommendations: enrichedGroups[index] ?? [],
@@ -107,7 +108,7 @@ export async function ReportsList({ page = 1 }: ReportsListProps) {
 
   if (totalCount === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-border p-8 text-center">
+      <div className="rounded-none border border-dashed border-border p-8 text-center">
         <p className="text-sm text-muted-foreground">No scans yet.</p>
         <Button asChild className="mt-4" variant="secondary">
           <Link href="/scan">Start a scan</Link>

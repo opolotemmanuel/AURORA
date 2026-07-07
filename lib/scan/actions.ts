@@ -6,6 +6,10 @@ import { toLocationSnapshot } from "@/lib/climate/context"
 import { requireSession } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/client"
 import { withDbRetry } from "@/lib/db/retry"
+import {
+  filterCatalogRecommendations,
+  getActiveCatalogSlugs,
+} from "@/lib/products/validate-catalog-recommendations"
 import { CONSENT_VERSION } from "@/lib/onboarding/constants"
 import { REPORT_FORMAT_VERSION } from "@/lib/scan/constants"
 import { toScanResultData } from "@/lib/scan/persist"
@@ -45,7 +49,15 @@ export async function saveScanResultAction(
       : { assessment: input },
   )
   const assessment = parsed.assessment
-  const resultData = toScanResultData(assessment)
+  const catalogSlugs = await getActiveCatalogSlugs()
+  const validatedAssessment = {
+    ...assessment,
+    recommendations: filterCatalogRecommendations(
+      assessment.recommendations,
+      catalogSlugs,
+    ),
+  }
+  const resultData = toScanResultData(validatedAssessment)
   const usage: UsageInput = parsed.usage ?? DEFAULT_MOCK_USAGE
 
   const pricing = await computeScanCreditCost(usage)
@@ -93,6 +105,7 @@ export async function saveScanResultAction(
             scanId: created.id,
             overallBand: resultData.overallBand,
             dimensions: resultData.dimensions,
+            doshaTyping: resultData.doshaTyping,
             summary: resultData.summary,
             naturalRecommendations: resultData.naturalRecommendations,
             recommendations: resultData.recommendations,

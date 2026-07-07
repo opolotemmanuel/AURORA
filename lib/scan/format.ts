@@ -1,20 +1,23 @@
 import type { AssessmentBand, ApplicationFrequency, ApplicationTime } from "@/lib/scan/types"
 
 const BAND_LABEL: Record<AssessmentBand, string> = {
-  minimal: "Minimal",
-  mild: "Mild",
+  minimal: "Balanced",
+  mild: "Mostly balanced",
   moderate: "Moderate",
   elevated: "Elevated",
   not_assessed: "Not assessed",
 }
 
 const SKIN_HEADLINE: Record<AssessmentBand, string> = {
-  minimal: "generally balanced and healthy-looking",
-  mild: "mostly balanced with mild areas to support",
-  moderate: "showing moderate cosmetic concerns in some areas",
-  elevated: "showing elevated cosmetic concerns worth addressing",
-  not_assessed: "not fully assessed in this scan",
+  minimal: "Generally balanced with negligible visible concerns",
+  mild: "Mostly balanced with minor areas that could use gentle support",
+  moderate: "Some visible cosmetic patterns worth addressing in your routine",
+  elevated: "More noticeable cosmetic patterns worth prioritizing in your routine",
+  not_assessed: "Not fully assessed in this scan",
 }
+
+const BAND_SCALE_HINT =
+  "Bands reflect cosmetic concern level from a photo — lower is better. They are not a medical score."
 
 export function formatBand(band: AssessmentBand) {
   return BAND_LABEL[band]
@@ -22,6 +25,10 @@ export function formatBand(band: AssessmentBand) {
 
 export function formatSkinHeadline(band: AssessmentBand) {
   return SKIN_HEADLINE[band]
+}
+
+export function formatBandScaleHint() {
+  return BAND_SCALE_HINT
 }
 
 const CLIMATE_BAND_LABEL: Record<string, string> = {

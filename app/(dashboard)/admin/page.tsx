@@ -9,7 +9,7 @@ function AdminAnalyticsSkeleton() {
   return (
     <>
       <DashboardStatsSkeleton />
-      <div className="rounded-xl border border-border bg-card p-5">
+      <div className="rounded-none border border-border bg-card p-5">
         <Skeleton className="h-4 w-36" />
         <div className="mt-4 space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (

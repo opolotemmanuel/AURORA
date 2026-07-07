@@ -15,6 +15,7 @@ export async function getUserScanContext(
           ageBand: profile.ageBand,
           skinType: profile.skinType,
           fitzpatrickBand: profile.fitzpatrickBand,
+          skinDosha: profile.skinDosha,
           primaryConcerns: profile.primaryConcerns,
           skinGoals: profile.skinGoals,
           allergies: profile.allergies,

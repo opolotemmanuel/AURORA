@@ -23,6 +23,7 @@ Built with Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, and sh
 3. Start the development server:
 
    ```bash
+   sudo systemctl start postgresql //start database
    npm run dev
    ```
 

@@ -39,6 +39,8 @@ type ScanAnalysis = {
   recommendations: Array<{
     title: string
     reason: string
+    category?: string
+    imagePath?: string
   }>
   routineTips: string[]
   quality: {
@@ -56,6 +58,12 @@ type AnalyzeScanResponse = {
   fallback: boolean
   error?: string
   analysis: ScanAnalysis | null
+  report?: {
+    id: string
+    scanId: string
+    createdAt: string
+  }
+  reportDownloadUrl?: string
 }
 
 type ImageEditState = {
@@ -603,11 +611,34 @@ function ResultsStep({ analysis }: { analysis: ScanAnalysis | null }) {
         <p className="text-sm font-medium">Aurora recommendations</p>
         <div className="mt-3 grid gap-3">
           {analysis.recommendations.map((recommendation) => (
-            <div key={recommendation.title} className="text-sm">
-              <p className="font-medium">{recommendation.title}</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">{recommendation.reason}</p>
+            <div key={recommendation.title} className="flex gap-3 rounded-lg border border-border bg-muted p-3 text-sm">
+              <div className="relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-lg border border-border bg-card text-xs text-muted-foreground">
+                {recommendation.imagePath ? (
+                  <Image
+                    src={recommendation.imagePath}
+                    alt={`${recommendation.title} product image`}
+                    fill
+                    sizes="64px"
+                    className="object-cover"
+                  />
+                ) : (
+                  "No image"
+                )}
+              </div>
+              <div>
+                <p className="font-medium">{recommendation.title}</p>
+                {recommendation.category ? (
+                  <p className="mt-1 text-xs text-muted-foreground">{recommendation.category}</p>
+                ) : null}
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{recommendation.reason}</p>
+              </div>
             </div>
           ))}
+          {analysis.recommendations.length === 0 ? (
+            <div className="rounded-lg border border-border bg-muted p-3 text-sm text-muted-foreground">
+              No active Aurora products are available for recommendations yet.
+            </div>
+          ) : null}
         </div>
       </div>
       <div className="rounded-lg border border-border bg-muted p-4 text-sm leading-6 text-muted-foreground">
@@ -686,6 +717,7 @@ export function ScanFlow() {
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [analysisResult, setAnalysisResult] = useState<ScanAnalysis | null>(null)
   const [analysisError, setAnalysisError] = useState<string | null>(null)
+  const [reportDownloadUrl, setReportDownloadUrl] = useState<string | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isCameraActive, setIsCameraActive] = useState(false)
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -768,6 +800,7 @@ export function ScanFlow() {
     setCameraError(null)
     setAnalysisResult(null)
     setAnalysisError(null)
+    setReportDownloadUrl(null)
     setInputMethod("camera")
     stopCamera()
     setCurrentStep("review")
@@ -790,6 +823,7 @@ export function ScanFlow() {
         setImageEdit(defaultImageEdit)
         setAnalysisResult(null)
         setAnalysisError(null)
+        setReportDownloadUrl(null)
         setInputMethod("upload")
         stopCamera()
         setCurrentStep("review")
@@ -805,6 +839,7 @@ export function ScanFlow() {
     setImageEdit(defaultImageEdit)
     setAnalysisResult(null)
     setAnalysisError(null)
+    setReportDownloadUrl(null)
     setCurrentStep("capture")
   }
 
@@ -814,6 +849,7 @@ export function ScanFlow() {
     setImageEdit(defaultImageEdit)
     setAnalysisResult(null)
     setAnalysisError(null)
+    setReportDownloadUrl(null)
     setCurrentStep("capture")
   }
 
@@ -842,6 +878,7 @@ export function ScanFlow() {
     setCameraError(null)
     setAnalysisResult(null)
     setAnalysisError(null)
+    setReportDownloadUrl(null)
     setCurrentStep("intro")
   }
 
@@ -852,6 +889,7 @@ export function ScanFlow() {
     setIsAnalyzing(true)
     setAnalysisResult(null)
     setAnalysisError(null)
+    setReportDownloadUrl(null)
 
     try {
       const editedImage = await createEditedImageDataUrl(selectedImage, imageEdit)
@@ -859,6 +897,7 @@ export function ScanFlow() {
       const imageFile = await dataUrlToFile(editedImage, selectedFileName)
       const formData = new FormData()
       formData.append("image", imageFile)
+      formData.append("source", inputMethod ?? "unknown")
 
       const response = await fetch("/api/scan/analyze", {
         method: "POST",
@@ -871,6 +910,7 @@ export function ScanFlow() {
       }
 
       setAnalysisResult(payload.analysis)
+      setReportDownloadUrl(payload.reportDownloadUrl ?? null)
       setAnalysisError(payload.fallback ? payload.error ?? "Fallback cosmetic report returned." : null)
     } catch (error) {
       setAnalysisError(
@@ -939,7 +979,14 @@ export function ScanFlow() {
                 <Button type="button" onClick={restart}>
                   Start New Scan
                 </Button>
-                <Button type="button" variant="outline">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!reportDownloadUrl}
+                  onClick={() => {
+                    if (reportDownloadUrl) window.open(reportDownloadUrl, "_blank", "noopener,noreferrer")
+                  }}
+                >
                   <IconDownload className="size-4" />
                   Download PDF
                 </Button>

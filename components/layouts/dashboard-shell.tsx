@@ -8,9 +8,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
 
   return (
-    <div className="flex min-h-svh">
+    <div className="min-h-svh bg-background pl-56">
       <DashboardSidebar pathname={pathname} />
-      <main className="flex-1 overflow-auto p-8">{children}</main>
+      <main className="min-h-svh p-8">{children}</main>
     </div>
   )
 }

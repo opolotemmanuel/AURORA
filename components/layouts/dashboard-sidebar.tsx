@@ -11,7 +11,7 @@ const navItems = [
 
 export function DashboardSidebar({ pathname }: { pathname: string }) {
   return (
-    <aside className="flex w-56 shrink-0 flex-col border-r border-border bg-sidebar">
+    <aside className="fixed inset-y-0 left-0 z-30 flex w-56 shrink-0 flex-col border-r border-border bg-sidebar">
       <div className="flex h-14 items-center border-b border-sidebar-border px-6">
         <Link href="/dashboard" className="font-heading text-sm font-medium tracking-wide">
           Aura

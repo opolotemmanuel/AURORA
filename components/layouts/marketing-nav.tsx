@@ -1,14 +1,12 @@
 import Link from "next/link"
-import { IconArrowRight, IconLeaf } from "@tabler/icons-react"
+import { IconLeaf } from "@tabler/icons-react"
 
-import { Button } from "@/components/ui/button"
+import { AuthNavActions } from "@/components/auth/auth-nav-actions"
 
 const navLinks = [
-  { href: "/", label: "Home" },
   { href: "#how-it-works", label: "How It Works" },
-  { href: "#technology", label: "Technology" },
-  { href: "#clinics", label: "For Clinics" },
-  { href: "#faq", label: "FAQ" },
+  { href: "#features", label: "Features" },
+  { href: "#privacy", label: "Privacy" },
 ] as const
 
 export function MarketingNav() {
@@ -35,15 +33,7 @@ export function MarketingNav() {
           ))}
         </nav>
         <div className="flex items-center justify-end gap-3">
-          <Button asChild variant="outline" size="lg">
-            <Link href="/login">Login</Link>
-          </Button>
-          <Button asChild size="lg">
-            <Link href="/scan">
-              Start Free Scan
-              <IconArrowRight className="size-4" />
-            </Link>
-          </Button>
+          <AuthNavActions />
         </div>
       </div>
     </header>

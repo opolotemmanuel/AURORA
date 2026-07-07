@@ -1,5 +1,13 @@
 import { NextResponse } from "next/server"
 
+import {
+  analyzeSkinWithGemini,
+  getGeminiDiagnosticMessage,
+  getGeminiFallbackUserMessage,
+} from "@/lib/ai/gemini-adapter"
+import { createScanReport } from "@/lib/backend/scan-service"
+import type { ScanAnalysisReport, ScanSource } from "@/lib/backend/types"
+
 const MAX_IMAGE_SIZE = 8 * 1024 * 1024
 const DISCLAIMER =
   "Aurora SkinSense provides cosmetic wellness guidance only. This is not a medical diagnosis, treatment plan, or substitute for professional medical advice."
@@ -37,23 +45,53 @@ export async function POST(request: Request) {
       return jsonError("Image upload is empty.", 400)
     }
 
-    const analysis = buildFallbackSkinAnalysis()
-
-    return NextResponse.json({
-      success: false,
-      fallback: true,
-      error:
-        "Live Gemini analysis is not bundled in this branch, so a cosmetic fallback report was returned.",
+    const geminiResult = await analyzeImageWithFallback(image)
+    const bundle = await createScanReport({
       image: {
         fileName: image.name,
         mimeType: normalizedType,
         size: image.size,
         stored: false,
       },
-      analysis,
+      analysis: geminiResult.analysis,
+      source: normalizeScanSource(formData.get("source")),
+      fallbackReason: geminiResult.fallbackReason,
+      aiProviderReason: geminiResult.aiProviderReason,
+    })
+
+    return NextResponse.json({
+      success: !geminiResult.fallback,
+      fallback: geminiResult.fallback,
+      error: geminiResult.fallbackReason,
+      image: {
+        fileName: image.name,
+        mimeType: normalizedType,
+        size: image.size,
+        stored: false,
+      },
+      analysis: bundle.report.analysis,
+      scan: bundle.scan,
+      report: {
+        id: bundle.report.id,
+        scanId: bundle.report.scanId,
+        createdAt: bundle.report.createdAt,
+      },
+      recommendations: bundle.report.recommendations,
+      reportDownloadUrl: `/api/reports/${bundle.report.id}/print`,
     })
   } catch (error) {
     const fallback = buildFallbackSkinAnalysis()
+    const bundle = await createScanReport({
+      image: {
+        stored: false,
+      },
+      analysis: fallback,
+      source: "unknown",
+      fallbackReason:
+        error instanceof Error
+          ? "Scan analysis failed, so a cosmetic fallback report was returned."
+          : "Scan analysis was unavailable, so a cosmetic fallback report was returned.",
+    })
 
     return NextResponse.json(
       {
@@ -66,7 +104,15 @@ export async function POST(request: Request) {
         image: {
           stored: false,
         },
-        analysis: fallback,
+        analysis: bundle.report.analysis,
+        scan: bundle.scan,
+        report: {
+          id: bundle.report.id,
+          scanId: bundle.report.scanId,
+          createdAt: bundle.report.createdAt,
+        },
+        recommendations: bundle.report.recommendations,
+        reportDownloadUrl: `/api/reports/${bundle.report.id}/print`,
       },
       { status: 200 },
     )
@@ -98,10 +144,36 @@ function jsonError(message: string, status: number) {
   )
 }
 
-function buildFallbackSkinAnalysis() {
+function normalizeScanSource(value: FormDataEntryValue | null): ScanSource {
+  if (value === "camera" || value === "upload") return value
+  return "unknown"
+}
+
+async function analyzeImageWithFallback(image: File): Promise<{
+  analysis: ScanAnalysisReport
+  fallback: boolean
+  fallbackReason?: string
+  aiProviderReason?: string
+}> {
+  try {
+    return {
+      analysis: await analyzeSkinWithGemini(image),
+      fallback: false,
+    }
+  } catch (error) {
+    return {
+      analysis: buildFallbackSkinAnalysis(),
+      fallback: true,
+      fallbackReason: getGeminiFallbackUserMessage(error),
+      aiProviderReason: getGeminiDiagnosticMessage(error),
+    }
+  }
+}
+
+function buildFallbackSkinAnalysis(): ScanAnalysisReport {
   return {
     summary:
-      "We could not complete a live AI review in this build, so this fallback report keeps guidance general and cosmetic-only.",
+      "AI analysis is temporarily unavailable, so this fallback report keeps guidance general and cosmetic-only.",
     cosmeticFindings: [
       {
         label: "Image quality",
@@ -111,7 +183,7 @@ function buildFallbackSkinAnalysis() {
       {
         label: "Visible texture",
         band: "not_visible",
-        observation: "Please retry once live analysis is enabled for more specific cosmetic guidance.",
+        observation: "Please retry later for more specific cosmetic guidance.",
       },
     ],
     recommendations: [
@@ -121,7 +193,7 @@ function buildFallbackSkinAnalysis() {
       },
       {
         title: "Retry later",
-        reason: "Live analysis can provide more specific Aurora recommendations when enabled.",
+        reason: "AI analysis can provide more specific Aurora recommendations when available.",
       },
     ],
     routineTips: [

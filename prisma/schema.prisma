@@ -1,0 +1,297 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  OWNER
+  SUPPORT
+  PRIVACY
+}
+
+enum ScanSource {
+  CAMERA
+  UPLOAD
+  UNKNOWN
+}
+
+enum ScanStatus {
+  RECEIVED
+  ANALYZED
+  FALLBACK
+  FAILED
+}
+
+enum ReportSource {
+  GEMINI
+  FALLBACK
+  RULE_BASED
+}
+
+enum RoutineStep {
+  CLEANSE
+  TREAT
+  MOISTURIZE
+  PROTECT
+}
+
+enum MatchStrength {
+  PRIMARY
+  SUPPORTING
+  OPTIONAL
+}
+
+enum DownloadFormat {
+  PRINT_HTML
+  PDF
+}
+
+enum AiProviderStatus {
+  SUCCESS
+  FALLBACK
+  FAILED
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String?
+  emailVerified Boolean  @default(false)
+  image         String?
+  role          UserRole @default(USER)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  scans           Scan[]
+  reports         Report[]
+  downloads       ReportDownload[]
+  actedAuditLogs  AuditLog[]       @relation("AuditActor")
+  authAccounts    AuthAccount[]
+  authSessions    AuthSession[]
+
+  @@index([role])
+  @@index([emailVerified])
+}
+
+model AuthSession {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model AuthAccount {
+  id                    String    @id @default(cuid())
+  userId                String
+  accountId             String
+  providerId            String
+  passwordHash          String?
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@index([providerId])
+}
+
+model AuthVerification {
+  id         String    @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([identifier])
+  @@index([expiresAt])
+}
+
+model Scan {
+  id                  String     @id @default(cuid())
+  userId              String?
+  source              ScanSource @default(UNKNOWN)
+  status              ScanStatus @default(RECEIVED)
+  imageFileName       String?
+  imageMimeType       String?
+  imageSizeBytes      Int?
+  originalImageStored Boolean    @default(false)
+  imageStorageKey     String?
+  qualityLighting     String?
+  qualityFraming      String?
+  qualityConfidence   String?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  report Report?
+
+  @@index([userId])
+  @@index([status])
+  @@index([source])
+  @@index([createdAt])
+}
+
+model Report {
+  id             String       @id @default(cuid())
+  scanId         String       @unique
+  userId         String?
+  summary        String
+  source         ReportSource
+  model          String
+  disclaimer     String
+  fallbackReason String?
+  routineTips    Json
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  scan            Scan              @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  user            User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  findings        ReportFinding[]
+  recommendations Recommendation[]
+  downloads       ReportDownload[]
+  aiEvents        AiProviderEvent[]
+
+  @@index([userId])
+  @@index([source])
+  @@index([createdAt])
+}
+
+model ReportFinding {
+  id          String   @id @default(cuid())
+  reportId    String
+  label       String
+  concern     String?
+  band        String
+  observation String
+  sortOrder   Int
+  createdAt   DateTime @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([band])
+}
+
+model Product {
+  id               String      @id @default(cuid())
+  slug             String      @unique
+  name             String
+  category         String
+  routineStep      RoutineStep
+  shortDescription String
+  imagePath        String?
+  cosmeticBenefits Json
+  bestFor          Json
+  avoidIf          Json?
+  priority         Int
+  active           Boolean     @default(true)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  recommendations Recommendation[]
+
+  @@index([active])
+  @@index([routineStep])
+}
+
+model Recommendation {
+  id               String        @id @default(cuid())
+  reportId         String
+  productId        String?
+  productSlug      String
+  productName      String
+  productCategory  String
+  routineStep      RoutineStep
+  shortDescription String
+  cosmeticBenefits Json
+  rank             Int
+  score            Int
+  matchStrength    MatchStrength
+  reasons          Json
+  productSnapshot  Json
+  createdAt        DateTime      @default(now())
+
+  report  Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  @@index([reportId])
+  @@index([productId])
+  @@index([rank])
+  @@index([productSlug])
+}
+
+model ReportDownload {
+  id        String         @id @default(cuid())
+  reportId  String
+  format    DownloadFormat
+  userId    String?
+  ipHash    String?
+  userAgent String?
+  createdAt DateTime       @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([reportId])
+  @@index([format])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorRole  UserRole?
+  action     String
+  targetType String
+  targetId   String
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+model AiProviderEvent {
+  id        String           @id @default(cuid())
+  provider  String
+  model     String
+  status    AiProviderStatus
+  scanId    String?
+  reportId  String?
+  reason    String?
+  createdAt DateTime         @default(now())
+
+  report Report? @relation(fields: [reportId], references: [id], onDelete: SetNull)
+
+  @@index([provider])
+  @@index([status])
+  @@index([createdAt])
+  @@index([scanId])
+  @@index([reportId])
+}

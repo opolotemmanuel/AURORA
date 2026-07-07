@@ -6,57 +6,57 @@ import { PerformanceOverview } from "@/components/ui/cta-4"
 
 const periods = [
   {
-    id: "week",
-    label: "This week",
+    id: "latest",
+    label: "Your scan",
     metrics: [
       {
-        id: "scans",
-        label: "Scans",
-        value: "2.4k",
+        id: "hydration",
+        label: "Hydration",
+        value: "Balanced",
         changePercent: 12,
         icon: "chart" as const,
       },
       {
-        id: "reports",
-        label: "Reports",
-        value: "1.9k",
+        id: "tone",
+        label: "Tone",
+        value: "Even",
         changePercent: 8,
         icon: "users" as const,
       },
       {
-        id: "matches",
-        label: "Matches",
-        value: "94%",
-        changePercent: 3,
+        id: "texture",
+        label: "Texture",
+        value: "Smooth",
+        changePercent: 5,
         icon: "product" as const,
       },
       {
-        id: "satisfaction",
-        label: "Satisfaction",
-        value: "4.8",
-        changePercent: 5,
+        id: "matches",
+        label: "Matches",
+        value: "4",
+        changePercent: 3,
         icon: "finance" as const,
       },
     ],
     activities: [
       {
         id: "1",
-        title: "Skin balance report generated",
-        timestamp: "2 min ago",
+        title: "Skin report generated",
+        timestamp: "Just now",
         value: "",
         isPositive: true,
       },
       {
         id: "2",
-        title: "Aurora serum recommended",
-        timestamp: "18 min ago",
+        title: "Serum matched to your routine",
+        timestamp: "Just now",
         value: "",
         isPositive: true,
       },
       {
         id: "3",
-        title: "Climate profile synced",
-        timestamp: "1 hr ago",
+        title: "Report saved to dashboard",
+        timestamp: "Just now",
         value: "",
         isPositive: true,
       },
@@ -69,13 +69,13 @@ export function LandingCta() {
 
   return (
     <PerformanceOverview
-      title="Ready for your"
-      accentWord="first scan?"
-      subtitle="Create your account, tell us about your skin, and receive a personalized cosmetic wellness report — plus Aurora Organics recommendations — in minutes."
+      title="Ready to understand"
+      accentWord="your skin?"
+      subtitle="Set up your profile and run one scan for personalized insights, product matches, and a routine made for you."
       ctaLabel="Start your scan"
       onCtaClick={() => router.push("/scan")}
       periods={periods}
-      defaultPeriodId="week"
+      defaultPeriodId="latest"
     />
   )
 }

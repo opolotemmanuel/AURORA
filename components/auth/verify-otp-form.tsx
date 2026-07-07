@@ -99,7 +99,7 @@ export function VerifyOtpForm() {
         disabled={loading || status === "success"}
         autoFocus
         label="Verification code"
-        hint="Cosmetic wellness guidance only — not a medical diagnosis."
+        hint="Check your inbox and spam folder if the code does not arrive."
       />
 
       {status === "success" ? null : (

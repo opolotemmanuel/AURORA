@@ -124,7 +124,7 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
       const { data, error: signUpError } = await authClient.signUp.email({
         email,
         password,
-        name: name || email.split("@")[0] || "Aura user",
+        name: name || email.split("@")[0] || "Member",
       })
 
       setLoading(false)
@@ -203,7 +203,7 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
           <div className="absolute inset-0">
             <Image
               src={PLACEHOLDER_IMAGES.auth}
-              alt="Skincare and wellness aesthetic — placeholder imagery"
+              alt="Personalized skincare routine imagery"
               fill
               className="object-cover"
               sizes="50vw"
@@ -220,8 +220,8 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
               <br />
               Discover your routine.
             </h1>
-            <p className="text-muted-foreground mt-4 max-w-sm text-sm">
-              Cosmetic wellness guidance by Aurora Organics.
+            <p className="text-muted-foreground mt-4 max-w-sm text-sm text-balance">
+              Personalized skin insights, routines, and matches made for you.
             </p>
           </div>
         </div>
@@ -235,12 +235,12 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
           className="w-full max-w-[400px]"
         >
           <motion.div variants={itemVariants} className="mb-8 text-center lg:text-left">
-            <h2 className="font-heading text-foreground text-3xl leading-tight font-medium tracking-tight md:text-[40px]">
+            <h2 className="font-heading text-foreground text-3xl leading-tight font-medium tracking-tight text-balance md:text-[40px]">
               {isSignUp ? (
                 <>
                   Create your
                   <br />
-                  <span className="font-display font-normal italic">Aura account</span>
+                  <span className="font-display font-normal italic">account</span>
                 </>
               ) : (
                 <>
@@ -474,7 +474,7 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
               </>
             ) : (
               <>
-                New to Aura?{" "}
+                New here?{" "}
                 <Link
                   href={`/signup${callbackUrl !== "/onboarding" ? `?callbackUrl=${encodeURIComponent(callbackUrl)}` : ""}`}
                   className="text-foreground font-medium underline underline-offset-4"

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Autoplay from "embla-carousel-autoplay"
 import { IconQuote } from "@tabler/icons-react"
 
@@ -38,6 +38,19 @@ export function Testimonials4({
   testimonials = TESTIMONIALS,
   className,
 }: Testimonials4Props) {
+  const [isDesktop, setIsDesktop] = useState(false)
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 1024px)")
+    const onChange = () => setIsDesktop(mediaQuery.matches)
+
+    onChange()
+    mediaQuery.addEventListener("change", onChange)
+    return () => mediaQuery.removeEventListener("change", onChange)
+  }, [])
+
+  const orientation = isDesktop ? "vertical" : "horizontal"
+
   const plugin = useMemo(
     () =>
       Autoplay({
@@ -61,7 +74,7 @@ export function Testimonials4({
           <p className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
             {badge}
           </p>
-          <h2 className="font-heading text-foreground text-3xl leading-tight font-semibold tracking-tight text-balance sm:text-4xl">
+          <h2 className="font-heading text-foreground text-3xl leading-tight font-medium tracking-tight text-balance md:text-4xl">
             {heading}
           </h2>
           <p className="text-muted-foreground max-w-md text-base leading-relaxed sm:text-lg">
@@ -69,12 +82,13 @@ export function Testimonials4({
           </p>
         </div>
 
-        <div className="relative">
+        <div className="relative min-w-0">
           <Carousel
-            orientation="vertical"
+            key={orientation}
+            orientation={orientation}
             opts={{
               loop: true,
-              align: "start",
+              align: isDesktop ? "start" : "center",
               containScroll: false,
             }}
             plugins={[plugin]}
@@ -83,13 +97,23 @@ export function Testimonials4({
               plugin.reset()
               plugin.play()
             }}
-            className="h-full w-full [&_[data-slot=carousel-content]]:h-[400px] [&_[data-slot=carousel-content]]:[-webkit-mask-image:linear-gradient(to_bottom,transparent,black_12%,black_88%,transparent)] [&_[data-slot=carousel-content]]:[mask-image:linear-gradient(to_bottom,transparent,black_12%,black_88%,transparent)] lg:[&_[data-slot=carousel-content]]:h-[500px]"
+            className={cn(
+              "h-full w-full",
+              isDesktop
+                ? "[&_[data-slot=carousel-content]]:h-[500px] [&_[data-slot=carousel-content]]:[-webkit-mask-image:linear-gradient(to_bottom,transparent,black_12%,black_88%,transparent)] [&_[data-slot=carousel-content]]:[mask-image:linear-gradient(to_bottom,transparent,black_12%,black_88%,transparent)]"
+                : "[&_[data-slot=carousel-content]]:[-webkit-mask-image:linear-gradient(to_right,transparent,black_5%,black_95%,transparent)] [&_[data-slot=carousel-content]]:[mask-image:linear-gradient(to_right,transparent,black_5%,black_95%,transparent)]",
+            )}
           >
           <CarouselContent>
             {testimonials.map((testimonial) => (
-              <CarouselItem key={testimonial.name} className="basis-auto pt-4">
+              <CarouselItem
+                key={testimonial.name}
+                className={cn(
+                  isDesktop ? "basis-auto pt-4" : "basis-[88%] sm:basis-[72%]",
+                )}
+              >
                 <FramedPanel>
-                  <Card className="bg-card/60 h-[280px] border-0 shadow-none ring-0 lg:h-[300px]">
+                  <Card className="bg-card/60 h-[280px] border-0 shadow-none ring-0 sm:h-[300px]">
                     <CardContent className="flex h-full flex-col gap-6 p-6 sm:p-8">
                       <IconQuote
                         className="text-primary size-8 shrink-0 opacity-80"

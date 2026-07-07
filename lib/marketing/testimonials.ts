@@ -11,14 +11,14 @@ export const TESTIMONIALS: Testimonial[] = [
     role: "Skincare enthusiast",
     avatar: "https://avatars.githubusercontent.com/u/9919?v=4",
     content:
-      "The band-based results felt honest — no fake precision scores. I finally understood what my routine was missing.",
+      "The band-based results felt honest, with no fake precision scores. I finally understood what my routine was missing.",
   },
   {
     name: "Jordan Ellis",
-    role: "Aurora customer",
+    role: "Combination skin",
     avatar: "https://avatars.githubusercontent.com/u/583231?v=4",
     content:
-      "Scan to report took minutes. The product matches were relevant to my climate and skin goals, not generic lists.",
+      "The scan was quick and the guidance actually fit my climate and skin goals, not a generic list.",
   },
   {
     name: "Priya Sharma",
@@ -32,7 +32,7 @@ export const TESTIMONIALS: Testimonial[] = [
     role: "First-time scanner",
     avatar: "https://avatars.githubusercontent.com/u/499550?v=4",
     content:
-      "The onboarding was simple and the PDF report is something I actually reference when shopping for serums.",
+      "The onboarding was simple and the report is something I keep coming back to when refining my routine.",
   },
   {
     name: "Sam Okonkwo",
@@ -43,7 +43,7 @@ export const TESTIMONIALS: Testimonial[] = [
   },
   {
     name: "Elena Vasquez",
-    role: "Aurora member",
+    role: "Sensitive skin",
     avatar: "https://avatars.githubusercontent.com/u/1500684?v=4",
     content:
       "Privacy-first by default sold me. I get the report value without feeling like my photo lives on a server forever.",

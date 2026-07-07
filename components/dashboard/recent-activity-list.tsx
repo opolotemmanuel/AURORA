@@ -3,7 +3,6 @@
 import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   getLedgerDetail,
   getLedgerFullLabel,
@@ -76,16 +75,20 @@ export function RecentActivityList({
   const visibleEntries = expanded ? entries : entries.slice(0, PREVIEW_COUNT)
 
   return (
-    <div className="space-y-3">
-      <ScrollArea className={cn(expanded && "max-h-[min(320px,45vh)]")}>
-        <ul className="pr-3 text-sm">
+    <div className="overflow-hidden rounded-lg border border-border">
+      <div
+        className={cn(
+          expanded && "max-h-[min(320px,45vh)] overflow-y-auto",
+        )}
+      >
+        <ul className="px-3 text-sm">
           {visibleEntries.map((entry, index) => (
             <ActivityRow key={`${entry.reason}-${entry.createdAt}-${index}`} entry={entry} />
           ))}
         </ul>
-      </ScrollArea>
+      </div>
       {canExpand ? (
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border bg-muted/30 px-3 py-2">
           <p className="text-xs text-muted-foreground">
             {expanded
               ? `${entries.length} recent entries`
@@ -95,7 +98,7 @@ export function RecentActivityList({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-7 px-2 text-xs"
+            className="h-7 shrink-0 px-2 text-xs"
             onClick={() => setExpanded((value) => !value)}
           >
             {expanded ? "Show less" : "Show all"}

@@ -12,19 +12,19 @@ const steps = [
     icon: IconCamera,
     title: "Scan",
     description:
-      "Use your camera or upload a photo. On-device checks help ensure good lighting and framing before analysis.",
+      "Snap a photo or upload from your gallery. Quick on-screen checks help you get a clear shot before analysis.",
   },
   {
     icon: IconSparkles,
     title: "Assess",
     description:
-      "Aura reviews your image and returns clear cosmetic wellness bands — hydration, tone, texture — in language you can actually use.",
+      "Your scan becomes a simple skin profile with hydration, tone, and texture explained in plain language.",
   },
   {
     icon: IconBottle,
     title: "Recommend",
     description:
-      "Discover Aurora Organics products matched to your profile, routine, and climate. Save and share your PDF report anytime.",
+      "Get Aurora Organics matches for your skin, routine, and climate, plus a report you can save or share.",
   },
 ]
 
@@ -57,8 +57,8 @@ export function LandingHowItWorks() {
           <p className="text-muted-foreground mb-3 text-sm font-medium tracking-wide uppercase">
             How it works
           </p>
-          <h2 className="font-heading text-foreground text-3xl font-semibold tracking-tight text-balance md:text-4xl">
-            Your skin report in three simple steps
+          <h2 className="font-heading text-foreground text-3xl leading-tight font-medium tracking-tight text-balance md:text-4xl">
+            Scan, learn, improve in three steps
           </h2>
         </div>
 

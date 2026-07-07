@@ -6,13 +6,13 @@ const BRAND_NAME = "Aurora Organics"
 function introForType(type: OtpType): string {
   switch (type) {
     case "forget-password":
-      return "Use this code to reset your password"
+      return "Enter this code to reset your password"
     case "email-verification":
-      return "Use this code to verify your email"
+      return "Enter this code to verify your email"
     case "change-email":
-      return "Use this code to confirm your new email"
+      return "Enter this code to confirm your new email address"
     default:
-      return `Use this code to sign in to ${BRAND_NAME}`
+      return "Enter this code to sign in to your account"
   }
 }
 
@@ -42,7 +42,7 @@ export function buildOtpEmailText({
 }): string {
   const intro = introForType(type)
 
-  return `${intro}:\n\n${otp}\n\nThis code expires in ${expiresMinutes} minutes. If you did not request this, you can ignore this email.\n\n— ${BRAND_NAME} (cosmetic wellness guidance only; not a medical diagnosis)`
+  return `${intro}:\n\n${otp}\n\nThis code expires in ${expiresMinutes} minutes. If you did not request this, you can safely ignore this email.\n\n${BRAND_NAME}\nThoughtful skincare, made personal.`
 }
 
 export function buildOtpEmailHtml({
@@ -73,7 +73,7 @@ export function buildOtpEmailHtml({
           <tr>
             <td style="padding:28px 32px 20px;text-align:center;border-bottom:1px solid #f0ece7;">
               <p style="margin:0;font-family:Roboto,Segoe UI,sans-serif;font-size:20px;font-weight:500;letter-spacing:0.04em;color:#a67c52;">Aurora Organics</p>
-              <p style="margin:8px 0 0;font-size:13px;color:#7a7268;">Cosmetic skin intelligence</p>
+              <p style="margin:8px 0 0;font-size:13px;color:#7a7268;">Thoughtful skincare, made personal</p>
             </td>
           </tr>
           <tr>
@@ -95,7 +95,7 @@ export function buildOtpEmailHtml({
           <tr>
             <td style="padding:20px 32px 28px;background-color:#faf9f7;border-top:1px solid #f0ece7;">
               <p style="margin:0;font-size:11px;line-height:1.6;color:#9a9288;text-align:center;">
-                Aurora Organics provides cosmetic wellness guidance only — not a medical diagnosis.
+                ${BRAND_NAME} · Thoughtful skincare, made personal.
               </p>
             </td>
           </tr>

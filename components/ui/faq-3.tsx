@@ -43,7 +43,7 @@ export function FAQ3({
             </Badge>
           )}
 
-          <h2 className="text-foreground mb-4 text-4xl leading-tight font-bold tracking-tight text-balance sm:text-5xl">
+          <h2 className="font-heading text-foreground mb-4 text-3xl leading-tight font-medium tracking-tight text-balance md:text-4xl">
             {heading}
           </h2>
 

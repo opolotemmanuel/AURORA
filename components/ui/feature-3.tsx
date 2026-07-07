@@ -13,17 +13,17 @@ export function Features3() {
         <div className="space-y-6">
           <div className="text-muted-foreground bg-muted/50 inline-flex w-fit items-center gap-2 rounded-lg px-3 py-1 text-sm">
             <span className="bg-primary h-2 w-2 rounded-full" />
-            Why Aura
+            Why it works
           </div>
 
-          <h2 className="font-heading text-4xl leading-tight font-semibold tracking-tight text-balance md:text-5xl">
-            Personalized guidance, built for your skin
+          <h2 className="font-heading text-foreground text-3xl leading-tight font-medium tracking-tight text-balance md:text-4xl">
+            Skincare guidance that actually fits you
           </h2>
 
           <p className="text-muted-foreground max-w-lg">
-            Stop guessing at the shelf. Aura reads your skin, surfaces what matters
-            in plain language, and connects you to Aurora Organics formulas that fit
-            your goals, routine, and climate.
+            No more trial and error at the shelf. One scan shows what your skin
+            needs, explains it in plain language, and matches you to Aurora
+            Organics formulas for your goals, routine, and climate.
           </p>
 
           <div className="space-y-2">

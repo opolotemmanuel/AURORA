@@ -47,7 +47,7 @@ export function DeletionRequestForm({
           <p className="text-foreground font-medium">Delete instantly from your dashboard</p>
           <p className="text-muted-foreground text-sm leading-relaxed">
             You are signed in. You can delete scans, profile data, or your entire
-            account immediately from privacy settings — no need to wait for support.
+            account immediately from privacy settings. No need to wait for support.
           </p>
           <Button asChild size="sm">
             <Link href="/dashboard/privacy">Go to privacy settings</Link>

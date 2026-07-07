@@ -80,19 +80,18 @@ export function LandingHero() {
             variants={itemVariants}
             className="text-muted-foreground max-w-lg text-base leading-relaxed md:text-lg"
           >
-            A quick face scan turns into a personalized cosmetic wellness report —
-            clear insights, Aurora Organics product matches, and a routine built
-            around you. Guidance you can act on; not a medical diagnosis.
+            Your best skin starts here. In seconds, one scan gives you a
+            profile, matched products, and a routine made for you.
           </motion.p>
 
           <motion.div
             variants={itemVariants}
-            className="flex flex-col items-center gap-3 sm:flex-row md:items-start"
+            className="grid w-full grid-cols-1 gap-3 sm:w-fit sm:grid-cols-2"
           >
-            <Button asChild size="lg">
+            <Button asChild size="lg" className="w-full">
               <Link href="/scan">Start your scan</Link>
             </Button>
-            <Button asChild variant="outline" size="lg">
+            <Button asChild variant="outline" size="lg" className="w-full">
               <Link href="/dashboard">Dashboard</Link>
             </Button>
           </motion.div>
@@ -136,7 +135,7 @@ export function LandingHero() {
             <div className="relative aspect-[4/5] overflow-hidden rounded-xl">
               <Image
                 src={PLACEHOLDER_IMAGES.hero}
-                alt="Personalized skincare routine — Aurora Organics wellness imagery"
+                alt="Personalized skincare routine, Aurora Organics wellness imagery"
                 fill
                 className="object-cover"
                 sizes="(max-width: 768px) 100vw, 50vw"

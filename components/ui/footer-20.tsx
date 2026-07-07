@@ -48,12 +48,12 @@ export interface Footer20Props {
 
 export function Footer20({
   brandName = "Aurora Organics",
-  description = "Thoughtful skincare, made personal. Aura brings Aurora Organics expertise to your screen — clear cosmetic insights, routines tailored to you, and product guidance you can trust. Wellness guidance only; not a medical diagnosis.",
-  email = "hello@auroraorganics.com",
+  description = "Clear skin insights, routines built for you, and product matches you can act on. Thoughtful skincare, made personal.",
+  email = "info@auroraorganics.co",
   links = {
     good: [
       { label: "Home", href: "/" },
-      { label: "Start scan", href: "/scan" },
+      { label: "Start your scan", href: "/scan" },
       { label: "Sign in", href: "/login" },
       { label: "Sign up", href: "/signup" },
     ],
@@ -64,7 +64,8 @@ export function Footer20({
       { label: "Help", href: "/help" },
     ],
     cool: [
-      { label: "Aurora Organics", href: "/" },
+      { label: "Aurora Organics", href: "https://www.auroraorganics.co" },
+      { label: "Contact", href: "mailto:info@auroraorganics.co" },
     ],
   },
 }: Footer20Props) {

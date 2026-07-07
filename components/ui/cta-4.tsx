@@ -106,7 +106,7 @@ export function PerformanceOverview({
 
         <div className="grid w-full items-center gap-12 lg:grid-cols-2 lg:gap-16">
           <div className="flex flex-col items-center gap-5 text-center lg:items-start lg:text-left">
-            <h2 className="text-foreground font-heading text-2xl font-bold tracking-tight text-balance sm:text-3xl md:text-4xl">
+            <h2 className="font-heading text-foreground text-3xl leading-tight font-medium tracking-tight text-balance md:text-4xl">
               {title} <span className="text-primary">{accentWord}</span>
             </h2>
             <p className="text-muted-foreground max-w-md text-sm leading-relaxed sm:text-base">

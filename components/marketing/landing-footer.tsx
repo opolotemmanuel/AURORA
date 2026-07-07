@@ -1,5 +1,29 @@
 import { Footer20 } from "@/components/ui/footer-20"
+import { AURORA_STORE_ORIGIN } from "@/lib/products/constants"
 
 export function LandingFooter() {
-  return <Footer20 />
+  return (
+    <Footer20
+      description="Clear skin insights, routines built for you, and product matches you can act on. Thoughtful skincare, made personal."
+      email="info@auroraorganics.co"
+      links={{
+        good: [
+          { label: "Home", href: "/" },
+          { label: "Start your scan", href: "/scan" },
+          { label: "Sign in", href: "/login" },
+          { label: "Sign up", href: "/signup" },
+        ],
+        boring: [
+          { label: "Terms of use", href: "/terms" },
+          { label: "Privacy policy", href: "/privacy" },
+          { label: "Data deletion", href: "/privacy/data-deletion" },
+          { label: "Help", href: "/help" },
+        ],
+        cool: [
+          { label: "Aurora Organics", href: AURORA_STORE_ORIGIN },
+          { label: "Contact", href: "mailto:info@auroraorganics.co" },
+        ],
+      }}
+    />
+  )
 }

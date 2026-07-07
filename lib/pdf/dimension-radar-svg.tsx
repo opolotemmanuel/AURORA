@@ -12,25 +12,29 @@ import { reportColors } from "./report-styles"
 
 type DimensionRadarSvgProps = {
   dimensions: SkinDimension[]
-  size?: number
 }
 
-const DEFAULT_CHART_SIZE = 280
-const LABEL_PADDING = 26
+/** Inner chart diameter — labels sit in the padded margin outside this. */
+const CHART_SIZE = 190
+const LABEL_PADDING = 52
+const SVG_SIZE = CHART_SIZE + LABEL_PADDING * 2
 
-export function DimensionRadarSvg({
-  dimensions,
-  size = DEFAULT_CHART_SIZE,
-}: DimensionRadarSvgProps) {
+export function DimensionRadarSvg({ dimensions }: DimensionRadarSvgProps) {
   if (dimensions.length === 0) return null
 
-  const geometry = buildDimensionChartGeometry(dimensions, size, 0.3)
-  const { center, outerRadius, points, polygonPoints, gridRings } = geometry
+  const geometry = buildDimensionChartGeometry(dimensions, CHART_SIZE, 0.26)
+  const { outerRadius, points, gridRings } = geometry
+  const offset = LABEL_PADDING
+  const center = geometry.center + offset
   const count = points.length
 
+  const offsetPolygon = points
+    .map((point) => `${point.x + offset},${point.y + offset}`)
+    .join(" ")
+
   return (
-    <View wrap={false} style={{ alignItems: "center", marginVertical: 8 }}>
-      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+    <View wrap={false} style={{ alignItems: "center", marginVertical: 4 }}>
+      <Svg width={SVG_SIZE} height={SVG_SIZE} viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}>
         {gridRings.map((ringRadius) => {
           const ringPoints = Array.from({ length: count }, (_, index) => {
             const angle = (Math.PI * 2 * index) / count - Math.PI / 2
@@ -63,7 +67,7 @@ export function DimensionRadarSvg({
         ))}
 
         <Polygon
-          points={polygonPoints}
+          points={offsetPolygon}
           fill={reportColors.chartFill}
           stroke={reportColors.chart}
           strokeWidth={1.5}
@@ -74,7 +78,7 @@ export function DimensionRadarSvg({
             point.angle,
             center,
             outerRadius,
-            LABEL_PADDING,
+            LABEL_PADDING - 8,
           )
 
           return (

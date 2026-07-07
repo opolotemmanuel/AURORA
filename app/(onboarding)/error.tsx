@@ -1,13 +1,14 @@
 "use client"
 
 import Link from "next/link"
+import type { ErrorInfo } from "next/error"
 import { Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { parseOnboardingStep } from "@/components/onboarding/use-onboarding-step-url"
 
-function OnboardingErrorContent({ reset }: { reset: () => void }) {
+function OnboardingErrorContent({ retry }: { retry: () => void }) {
   const searchParams = useSearchParams()
   const step = parseOnboardingStep(searchParams.get("step"))
   const callbackUrl = searchParams.get("callbackUrl")
@@ -27,7 +28,7 @@ function OnboardingErrorContent({ reset }: { reset: () => void }) {
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-3">
-        <Button type="button" onClick={reset}>
+        <Button type="button" onClick={retry}>
           Try again
         </Button>
         <Button type="button" variant="outline" asChild>
@@ -38,12 +39,7 @@ function OnboardingErrorContent({ reset }: { reset: () => void }) {
   )
 }
 
-export default function OnboardingError({
-  reset,
-}: {
-  error: Error & { digest?: string }
-  reset: () => void
-}) {
+export default function OnboardingError({ unstable_retry }: ErrorInfo) {
   return (
     <Suspense
       fallback={
@@ -52,7 +48,7 @@ export default function OnboardingError({
         </div>
       }
     >
-      <OnboardingErrorContent reset={reset} />
+      <OnboardingErrorContent retry={unstable_retry} />
     </Suspense>
   )
 }

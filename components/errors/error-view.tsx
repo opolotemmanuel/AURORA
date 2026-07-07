@@ -3,10 +3,10 @@
 import { NotFoundGlitch } from "@/components/motion/not-found/glitch"
 
 type ErrorViewProps = {
-  reset: () => void
+  retry: () => void
 }
 
-export function ErrorView({ reset }: ErrorViewProps) {
+export function ErrorView({ retry }: ErrorViewProps) {
   return (
     <div className="bg-background flex min-h-svh items-center justify-center px-6 py-12">
       <NotFoundGlitch
@@ -16,7 +16,7 @@ export function ErrorView({ reset }: ErrorViewProps) {
         homeHref="/"
         homeLabel="Back home"
         retryLabel="Try again"
-        onRetry={reset}
+        onRetry={retry}
       />
     </div>
   )

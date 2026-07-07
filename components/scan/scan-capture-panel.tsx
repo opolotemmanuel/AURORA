@@ -115,7 +115,6 @@ export function ScanCapturePanel({
           <ScanStepShell
             title={copy.title}
             description={copy.description}
-            showDashboardLink={false}
           >
             <TabsContent value="upload" className="mt-0">
               <ScanUploadPanel onImageSelected={onImageSelected} />

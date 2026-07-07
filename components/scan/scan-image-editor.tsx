@@ -5,6 +5,7 @@ import { IconRefresh, IconTrash } from "@tabler/icons-react"
 
 import { AnimatedBadge } from "@/components/motion/animated-badge"
 import { RectCropCanvas } from "@/components/scan/rect-crop-canvas"
+import { ScanStepFrame } from "@/components/scan/scan-step-frame"
 import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import { Button } from "@/components/ui/button"
 import { getCroppedImageBlob, type PixelCrop } from "@/lib/scan/crop-image"
@@ -87,10 +88,11 @@ export function ScanImageEditor({
   }
 
   return (
-    <ScanStepShell
-      title="Adjust your photo"
-      description="Drag the box to move it. Pull the corners to resize. Only the highlighted rectangle is saved."
-    >
+    <ScanStepFrame>
+      <ScanStepShell
+        title="Adjust your photo"
+        description="Drag the box to move it. Pull the corners to resize. Only the highlighted rectangle is saved."
+      >
       <div className="relative">
         <RectCropCanvas
           imageSrc={imageSrc}
@@ -142,5 +144,6 @@ export function ScanImageEditor({
         </Button>
       </div>
     </ScanStepShell>
+    </ScanStepFrame>
   )
 }

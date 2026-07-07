@@ -6,6 +6,8 @@ import { GoogleGenAI } from "@google/genai"
 
 import { AnimatedBadge } from "@/components/motion/animated-badge"
 import { ScanCameraPicker } from "@/components/scan/scan-camera-picker"
+import { ScanDashboardLink } from "@/components/scan/scan-close-button"
+import { ScanStepFrame } from "@/components/scan/scan-step-frame"
 import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -282,15 +284,20 @@ export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
   }, [captureFrameBlob, onComplete, stopStream, teardownLiveSession])
 
   return (
-    <ScanStepShell
-      title="Live scan"
-      description="Pro — real-time cosmetic skin analysis via camera"
+    <ScanStepFrame
       headerTrailing={
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-          Cancel
-        </Button>
+        <>
+          <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+            Cancel
+          </Button>
+          <ScanDashboardLink variant="action" />
+        </>
       }
     >
+      <ScanStepShell
+        title="Live scan"
+        description="Pro — real-time cosmetic skin analysis via camera"
+      >
       <Alert>
         <AlertDescription>
           Cosmetic guidance only — not a medical diagnosis. Video frames are
@@ -393,5 +400,6 @@ export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
         </li>
       </ul>
     </ScanStepShell>
+    </ScanStepFrame>
   )
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 
 import { AnimatedBadge } from "@/components/motion/animated-badge"
+import { ScanStepFrame } from "@/components/scan/scan-step-frame"
 import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { toUserFacingScanError } from "@/lib/scan/errors"
@@ -203,10 +204,11 @@ export function ScanAnalyzingView({
   }, [imageBlob, livePayload, onComplete])
 
   return (
-    <ScanStepShell
-      title="Analyzing your scan"
-      description={description}
-    >
+    <ScanStepFrame>
+      <ScanStepShell
+        title="Analyzing your scan"
+        description={description}
+      >
       <Alert>
         <AlertDescription>
           {livePayload
@@ -280,5 +282,6 @@ export function ScanAnalyzingView({
         ))}
       </ul>
     </ScanStepShell>
+    </ScanStepFrame>
   )
 }

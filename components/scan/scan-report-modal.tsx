@@ -55,7 +55,8 @@ export function ScanReportModal({
     <ResponsiveDialog
       open={open}
       onOpenChange={onOpenChange}
-      description="Cosmetic assessment — not a medical diagnosis"
+      title="Skin report"
+      description={formattedDate}
       className="sm:max-w-5xl"
     >
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

@@ -3,18 +3,33 @@
 import Link from "next/link"
 import { IconLayoutDashboard, IconX } from "@tabler/icons-react"
 
+import {
+  ScanHeaderActionLink,
+  scanHeaderActionClassName,
+} from "@/components/scan/scan-header-action"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 type ScanDashboardLinkProps = {
   className?: string
-  variant?: "icon" | "label" | "segment"
+  variant?: "icon" | "label" | "segment" | "action"
 }
 
 export function ScanDashboardLink({
   className,
-  variant = "label",
+  variant = "action",
 }: ScanDashboardLinkProps) {
+  if (variant === "action") {
+    return (
+      <ScanHeaderActionLink
+        href="/dashboard"
+        label="Dashboard"
+        icon={<IconLayoutDashboard className="size-3.5" />}
+        className={className}
+      />
+    )
+  }
+
   if (variant === "icon") {
     return (
       <Link
@@ -40,7 +55,7 @@ export function ScanDashboardLink({
         )}
       >
         <IconLayoutDashboard className="size-3.5" />
-        Dashboard
+        <span className="hidden sm:inline">Dashboard</span>
       </Link>
     )
   }
@@ -50,11 +65,11 @@ export function ScanDashboardLink({
       variant="outline"
       size="sm"
       asChild
-      className={cn("bg-background/80 backdrop-blur-sm", className)}
+      className={cn(scanHeaderActionClassName, "bg-background/80 backdrop-blur-sm", className)}
     >
-      <Link href="/dashboard">
-        <IconLayoutDashboard className="size-4" />
-        Dashboard
+      <Link href="/dashboard" aria-label="Dashboard">
+        <IconLayoutDashboard className="size-3.5" />
+        <span className="hidden sm:inline">Dashboard</span>
       </Link>
     </Button>
   )

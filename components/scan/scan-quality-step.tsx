@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { IconCrop, IconRefresh } from "@tabler/icons-react"
 
 import { AnimatedBadge } from "@/components/motion/animated-badge"
+import { ScanStepFrame } from "@/components/scan/scan-step-frame"
 import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import { Button } from "@/components/ui/button"
 import { runQualityGate } from "@/lib/scan/quality-gate"
@@ -71,10 +72,11 @@ export function ScanQualityStep({
   }, [imageSrc])
 
   return (
-    <ScanStepShell
-      title="Checking photo quality"
-      description="We verify lighting on your cropped skin photo"
-    >
+    <ScanStepFrame>
+      <ScanStepShell
+        title="Checking photo quality"
+        description="We verify lighting on your cropped skin photo"
+      >
       <div className="mx-auto overflow-hidden rounded-[1.5rem] border border-border">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -164,6 +166,7 @@ export function ScanQualityStep({
         </Button>
       </div>
     </ScanStepShell>
+    </ScanStepFrame>
   )
 }
 

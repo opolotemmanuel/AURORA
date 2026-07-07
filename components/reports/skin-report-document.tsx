@@ -2,8 +2,10 @@ import { DimensionRadarChart } from "@/components/scan/dimension-radar-chart"
 import { ReportApplicationSchedule } from "@/components/reports/report-application-schedule"
 import { ReportClimateBlock } from "@/components/reports/report-climate-block"
 import { ReportDimensionTable } from "@/components/reports/report-dimension-table"
+import { ReportDisclaimer } from "@/components/reports/report-disclaimer"
 import { ReportProductList } from "@/components/reports/report-product-list"
 import { ReportSection } from "@/components/reports/report-section"
+import { REPORT_SECTION_TITLES } from "@/lib/scan/constants"
 import { formatBand } from "@/lib/scan/format"
 import type { ScanClimateContext, SkinAssessment } from "@/lib/scan/types"
 import { cn } from "@/lib/utils"
@@ -21,7 +23,7 @@ export function SkinReportDocument({
 }: SkinReportDocumentProps) {
   return (
     <div className={cn("space-y-8 font-sans", className)}>
-      <ReportSection title="Overall assessment" first>
+      <ReportSection title={REPORT_SECTION_TITLES.snapshot} first>
         <p className="text-sm font-medium text-foreground">
           {formatBand(assessment.overallBand)}
         </p>
@@ -30,11 +32,11 @@ export function SkinReportDocument({
         </p>
       </ReportSection>
 
-      <ReportSection title="Local climate context">
+      <ReportSection title={REPORT_SECTION_TITLES.weather}>
         <ReportClimateBlock climateContext={climateContext} />
       </ReportSection>
 
-      <ReportSection title="Dimensions">
+      <ReportSection title={REPORT_SECTION_TITLES.areas}>
         <p className="mb-3 text-xs text-muted-foreground">
           Band levels from minimal (center) to elevated (outer edge)
         </p>
@@ -48,10 +50,9 @@ export function SkinReportDocument({
       </ReportSection>
 
       {assessment.naturalRecommendations.length > 0 ? (
-        <ReportSection title="Natural steps first">
+        <ReportSection title={REPORT_SECTION_TITLES.everydayCare}>
           <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-            Everyday habits and gentle natural routines to try before formulated
-            products.
+            Simple habits and gentle routines to support your skin.
           </p>
           <ul className="space-y-2">
             {assessment.naturalRecommendations.map((item) => (
@@ -77,15 +78,11 @@ export function SkinReportDocument({
         </ReportSection>
       ) : null}
 
-      <ReportSection title="Recommended Aurora products">
+      <ReportSection title={REPORT_SECTION_TITLES.products}>
         <ReportProductList products={assessment.recommendations} />
       </ReportSection>
 
-      <div className="bg-muted/30 px-3 py-3">
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          {assessment.disclaimer}
-        </p>
-      </div>
+      <ReportDisclaimer />
     </div>
   )
 }

@@ -164,9 +164,17 @@ export const reportStyles = StyleSheet.create({
     marginTop: 20,
     padding: 10,
     backgroundColor: reportColors.surface,
+  },
+  disclaimerText: {
     fontSize: 8,
     color: reportColors.muted,
     lineHeight: 1.4,
+  },
+  disclaimerLink: {
+    marginTop: 8,
+    fontSize: 8,
+    color: reportColors.primary,
+    textDecoration: "none",
   },
   chartCaption: {
     fontSize: 8,

@@ -1,15 +1,11 @@
 "use client"
 
 import Link from "next/link"
+import type { ErrorInfo } from "next/error"
 
 import { Button } from "@/components/ui/button"
 
-export default function DashboardError({
-  reset,
-}: {
-  error: Error & { digest?: string }
-  reset: () => void
-}) {
+export default function DashboardError({ unstable_retry }: ErrorInfo) {
   return (
     <div className="bg-background flex min-h-svh flex-col items-center justify-center gap-6 px-6 py-12 text-center">
       <div className="max-w-sm space-y-2">
@@ -19,7 +15,7 @@ export default function DashboardError({
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-3">
-        <Button type="button" onClick={reset}>
+        <Button type="button" onClick={unstable_retry}>
           Try again
         </Button>
         <Button type="button" variant="outline" asChild>

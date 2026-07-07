@@ -54,7 +54,7 @@ export function ClimateContextCard({
         <div className="flex items-center gap-2">
           <IconCloud className="size-4 text-muted-foreground" />
           <CardTitle className="text-sm font-medium normal-case tracking-normal text-foreground">
-            Local climate context
+            Your local weather
           </CardTitle>
         </div>
       </CardHeader>

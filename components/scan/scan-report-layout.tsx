@@ -1,11 +1,12 @@
 "use client"
 
 import type { ReactNode } from "react"
-import Link from "next/link"
 import { IconCrop, IconFileText, IconRefresh } from "@tabler/icons-react"
 
-import { Button } from "@/components/ui/button"
+import { ScanFlowHeader } from "@/components/scan/scan-flow-header"
+import { ScanHeaderActionButton } from "@/components/scan/scan-header-action"
 import { ScanImagePanel } from "@/components/scan/scan-image-panel"
+import { ScanDashboardLink } from "@/components/scan/scan-close-button"
 import { cn } from "@/lib/utils"
 
 type ScanReportLayoutProps = {
@@ -38,46 +39,36 @@ export function ScanReportLayout({
   return (
     <div className={cn("mx-auto w-full max-w-5xl space-y-4", className)}>
       {showActions ? (
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {onReEdit ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onReEdit}
-              className="rounded-full"
-            >
-              <IconCrop className="size-3.5" />
-              Adjust crop
-            </Button>
-          ) : null}
-          {onRescan ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onRescan}
-              className="rounded-full"
-            >
-              <IconRefresh className="size-3.5" />
-              Rescan
-            </Button>
-          ) : null}
-          <Button asChild size="sm" variant="outline" className="rounded-full">
-            <Link href="/dashboard">Dashboard</Link>
-          </Button>
-          {onViewReport ? (
-            <Button
-              type="button"
-              size="sm"
-              onClick={onViewReport}
-              className="rounded-full"
-            >
-              <IconFileText className="size-3.5" />
-              View report
-            </Button>
-          ) : null}
-        </div>
+        <ScanFlowHeader
+          className="max-w-5xl"
+          trailing={
+            <div className="flex shrink-0 flex-nowrap items-center justify-end gap-1.5 sm:gap-2">
+              {onReEdit ? (
+                <ScanHeaderActionButton
+                  label="Adjust crop"
+                  icon={<IconCrop className="size-3.5" />}
+                  onClick={onReEdit}
+                />
+              ) : null}
+              {onRescan ? (
+                <ScanHeaderActionButton
+                  label="Rescan"
+                  icon={<IconRefresh className="size-3.5" />}
+                  onClick={onRescan}
+                />
+              ) : null}
+              <ScanDashboardLink variant="action" />
+              {onViewReport ? (
+                <ScanHeaderActionButton
+                  label="View report"
+                  icon={<IconFileText className="size-3.5" />}
+                  onClick={onViewReport}
+                  variant="default"
+                />
+              ) : null}
+            </div>
+          }
+        />
       ) : null}
 
       <div

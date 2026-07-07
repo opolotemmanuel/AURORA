@@ -1,7 +1,18 @@
-export const DISCLAIMER_VERSION = "1.0"
+export const DISCLAIMER_VERSION = "1.1"
+
+export const CONSULTATION_BOOKING_URL =
+  "https://calendly.com/auroraorganic4u"
 
 export const SKIN_DISCLAIMER =
-  "This assessment is for cosmetic and wellness guidance only. It is not a medical diagnosis. Consult a licensed professional for clinical concerns."
+  "This report is for cosmetic and wellness guidance only. Results may vary with lighting, photo quality, and changes in your skin. It is not a medical diagnosis. For clinical concerns, seek advice from a licensed healthcare professional."
+
+export const REPORT_SECTION_TITLES = {
+  snapshot: "Your skin snapshot",
+  weather: "Your local weather",
+  areas: "Key skin areas",
+  everydayCare: "Everyday care",
+  products: "Product matches",
+} as const
 
 export const REPORT_FORMAT_VERSION = "1.1"
 

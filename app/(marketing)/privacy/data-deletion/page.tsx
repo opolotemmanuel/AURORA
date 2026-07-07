@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { Suspense } from "react"
 
 import { LandingFooter } from "@/components/marketing/landing-footer"
@@ -27,27 +28,82 @@ export default function DataDeletionPage() {
             Request data deletion
           </h1>
           <p className="text-muted-foreground text-sm">
-            Ask us to delete all personal data associated with your account.
+            Ask us to delete personal data associated with your account.
           </p>
         </header>
 
-        <div className="text-muted-foreground mb-10 space-y-4 text-sm leading-relaxed">
+        <div className="text-muted-foreground mb-10 space-y-6 text-sm leading-relaxed">
           <p>
             You have the right to request deletion of your personal data. If you
-            are signed in, you can also delete data instantly from your dashboard
+            are signed in, you can delete data instantly from your dashboard
             without waiting for a support response.
           </p>
-          <p>
-            Submit the form below and we will confirm by email. For urgent
-            requests, contact{" "}
-            <a
-              href="mailto:hello@auroraorganics.com"
-              className="text-foreground underline underline-offset-4"
-            >
-              hello@auroraorganics.com
-            </a>
-            .
-          </p>
+
+          <section className="space-y-3">
+            <h2 className="text-foreground font-heading text-lg font-medium">
+              Delete from your dashboard
+            </h2>
+            <p>
+              Signed-in users can manage deletion from{" "}
+              <Link
+                href="/dashboard/privacy"
+                className="text-foreground underline underline-offset-4"
+              >
+                dashboard privacy settings
+              </Link>
+              :
+            </p>
+            <ul className="list-disc space-y-2 pl-5">
+              <li>
+                <strong className="text-foreground">Profile and wellness data</strong>{" "}
+                — clears skin profile, routine, and lifestyle fields; your account
+                stays active.
+              </li>
+              <li>
+                <strong className="text-foreground">Location and climate cache</strong>{" "}
+                — removes city, coordinates, and cached climate bands.
+              </li>
+              <li>
+                <strong className="text-foreground">Individual scans</strong> —
+                delete specific scans and their reports.
+              </li>
+              <li>
+                <strong className="text-foreground">All scans and reports</strong>{" "}
+                — permanently removes every scan for your account.
+              </li>
+              <li>
+                <strong className="text-foreground">All personal data</strong> —
+                removes scans, profile, location, and consent records; your account
+                remains but is reset.
+              </li>
+              <li>
+                <strong className="text-foreground">Account</strong> — permanently
+                deletes your account and all associated data.
+              </li>
+            </ul>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-foreground font-heading text-lg font-medium">
+              Request deletion by email
+            </h2>
+            <p>
+              Use the form below if you cannot access your dashboard or prefer to
+              submit a request by email. Submissions are reviewed manually by our
+              team — they do not trigger automatic erasure. We will confirm by
+              email, typically within 30 days.
+            </p>
+            <p>
+              For urgent requests, contact{" "}
+              <a
+                href="mailto:info@auroraorganics.co"
+                className="text-foreground underline underline-offset-4"
+              >
+                info@auroraorganics.co
+              </a>
+              .
+            </p>
+          </section>
         </div>
 
         <Suspense

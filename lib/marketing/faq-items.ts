@@ -15,9 +15,19 @@ export const MARKETING_FAQ_ITEMS: MarketingFaqItem[] = [
       "No. This is cosmetic and wellness guidance only. Results use simple skin bands, not clinical precision, and are not a substitute for advice from a licensed healthcare professional.",
   },
   {
+    question: "Is my photo sent to AI?",
+    answer:
+      "Yes. Your cropped photo is sent to Google Gemini for cosmetic analysis. Aura does not store your photo by default — only the text assessment and recommendations are saved. On-device quality checks run locally in your browser and are not sent to our servers.",
+  },
+  {
     question: "Do you keep my photos?",
     answer:
       "By default, we store your report and assessment data, not your scan photo. You can delete scans, profile details, or your entire account anytime from the dashboard.",
+  },
+  {
+    question: "What are scan tiers?",
+    answer:
+      "Aura offers Starter, Thinking, and Pro tiers. Starter includes still-photo scans — new accounts get three free Starter scans. Thinking adds deeper AI analysis. Pro adds live camera scans with real-time analysis. Each saved analysis uses one scan allowance.",
   },
   {
     question: "How do scan allowances work?",
@@ -27,7 +37,7 @@ export const MARKETING_FAQ_ITEMS: MarketingFaqItem[] = [
   {
     question: "What do the skin bands mean?",
     answer:
-      "Bands are simple labels for areas like hydration, tone, and texture: easy to read, honest about what the scan can tell you, and meant to guide your routine without fake percentages.",
+      "Bands are simple labels for areas like hydration, tone, and texture: easy to read, honest about what the scan can tell you, and meant to guide product choices without fake percentages.",
   },
   {
     question: "How are products recommended?",
@@ -37,11 +47,11 @@ export const MARKETING_FAQ_ITEMS: MarketingFaqItem[] = [
   {
     question: "Can I download my report?",
     answer:
-      "Yes. Saved reports live in your dashboard. Open them anytime and download a text-only PDF to keep or share.",
+      "Yes. Saved reports live in your dashboard. Open any report and download a text-only PDF — no photo is included. This is the way to keep or share your assessment results.",
   },
   {
     question: "How is my data protected?",
     answer:
-      "Data is encrypted in transit and at rest. We only collect what is needed to deliver your report and recommendations. You must give explicit consent before your first scan.",
+      "Data is encrypted in transit using HTTPS/TLS and stored on encrypted database infrastructure. We only collect what is needed to deliver your report and recommendations. You must give explicit consent before your first scan.",
   },
 ]

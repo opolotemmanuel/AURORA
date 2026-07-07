@@ -4,7 +4,7 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 
 const from = process.env.EMAIL_FROM ?? "Aurora Organics <onboarding@resend.dev>"
 const privacyTo =
-  process.env.PRIVACY_EMAIL ?? "hello@auroraorganics.com"
+  process.env.PRIVACY_EMAIL ?? "info@auroraorganics.co"
 
 export async function sendDeletionRequestEmail({
   email,

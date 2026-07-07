@@ -26,40 +26,71 @@ export default function HelpPage() {
               Getting started
             </h2>
             <p>
-              Create an account, complete onboarding, then start a scan from{" "}
+              Create an account, complete onboarding (including a required consent
+              step for photo processing), then start a scan from{" "}
               <Link href="/scan" className="text-foreground underline underline-offset-4">
                 /scan
               </Link>
               . You can upload a photo or use your camera. On-device checks help
               ensure good lighting and framing before analysis. Each scan uses one
               allowance from your tier; your report is saved to your dashboard and
-              can be downloaded as a PDF.
+              can be downloaded as a text-only PDF.
             </p>
           </section>
 
           <section className="space-y-3">
             <h2 className="text-foreground font-heading text-lg font-medium">
-              Account &amp; onboarding
+              Account and onboarding
             </h2>
             <p>
-              Sign in with email and password, a one-time code, or Google. After
-              your first sign-in, onboarding collects your skin profile, routine,
-              and optional location for climate-aware guidance. You can update
-              profile details anytime from your dashboard settings.
+              Sign in with email and password, a one-time code, Google, or Apple
+              (where available). After your first sign-in, onboarding collects your
+              skin profile, routine, lifestyle, and optional location for
+              climate-aware guidance. You must accept photo-processing consent
+              before scans can begin. You can update profile details anytime from
+              your dashboard settings.
             </p>
           </section>
 
           <section className="space-y-3">
             <h2 className="text-foreground font-heading text-lg font-medium">
-              Privacy &amp; your data
+              Scan tiers
+            </h2>
+            <p>
+              Aura offers three tiers, each with different analysis capabilities:
+            </p>
+            <ul className="list-disc space-y-2 pl-5">
+              <li>
+                <strong className="text-foreground">Starter</strong> — still-photo
+                scans. New accounts receive three free Starter scans.
+              </li>
+              <li>
+                <strong className="text-foreground">Thinking</strong> — still-photo
+                scans with deeper AI analysis.
+              </li>
+              <li>
+                <strong className="text-foreground">Pro</strong> — still-photo
+                scans plus live camera scans with real-time AI analysis.
+              </li>
+            </ul>
+            <p>
+              Each saved analysis uses one scan allowance. Additional scans can be
+              purchased by tier when billing is available.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="text-foreground font-heading text-lg font-medium">
+              Privacy and your data
             </h2>
             <p>
               Read our{" "}
               <Link href="/privacy" className="text-foreground underline underline-offset-4">
                 privacy policy
               </Link>{" "}
-              for full details. Logged-in users can delete scans, profile data, or
-              their entire account from{" "}
+              for full details on what we collect, how photos are processed by AI,
+              and which third-party providers we use. Logged-in users can delete
+              scans, profile data, or their entire account from{" "}
               <Link
                 href="/dashboard/privacy"
                 className="text-foreground underline underline-offset-4"
@@ -84,10 +115,10 @@ export default function HelpPage() {
             <p>
               Still need help? Email{" "}
               <a
-                href="mailto:hello@auroraorganics.com"
+                href="mailto:info@auroraorganics.co"
                 className="text-foreground underline underline-offset-4"
               >
-                hello@auroraorganics.com
+                info@auroraorganics.co
               </a>{" "}
               and we will get back to you as soon as we can.
             </p>

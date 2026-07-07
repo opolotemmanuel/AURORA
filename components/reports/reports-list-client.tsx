@@ -90,7 +90,7 @@ export function ReportsListClient({
             <article
               key={scan.id}
               className={cn(
-                "rounded-none border border-border bg-card p-5 transition-colors",
+                "@container rounded-none border border-border bg-card p-5 transition-colors",
                 scan.result && "cursor-pointer hover:bg-muted/30",
               )}
               onClick={() => scan.result && openReport(scan)}
@@ -162,7 +162,7 @@ export function ReportsListClient({
 
               {scan.result ? (
                 <div
-                  className="mt-4 flex flex-wrap gap-2"
+                  className="mt-4 grid grid-cols-1 gap-2 @min-[18rem]:grid-cols-2"
                   onClick={(event) => event.stopPropagation()}
                   onKeyDown={(event) => event.stopPropagation()}
                 >
@@ -170,6 +170,7 @@ export function ReportsListClient({
                     type="button"
                     size="sm"
                     variant="outline"
+                    className="w-full"
                     onClick={() => openReport(scan)}
                   >
                     <IconFileText className="size-3.5" />
@@ -179,6 +180,7 @@ export function ReportsListClient({
                     type="button"
                     size="sm"
                     variant="outline"
+                    className="w-full"
                     disabled={isDownloading}
                     onClick={() => handleDownloadPdf(scan.id)}
                   >

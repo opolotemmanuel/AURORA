@@ -37,7 +37,6 @@ export function ScanWizard({ userScanTier }: ScanWizardProps) {
   const [climateContext, setClimateContext] =
     useState<ScanClimateContext | null>(null)
   const [scanId, setScanId] = useState<string | null>(null)
-  const [creditsCharged, setCreditsCharged] = useState<number | null>(null)
   const [reportOpen, setReportOpen] = useState(false)
   const urlsRef = useRef<string[]>([])
 
@@ -65,7 +64,6 @@ export function ScanWizard({ userScanTier }: ScanWizardProps) {
     setAssessment(null)
     setClimateContext(null)
     setScanId(null)
-    setCreditsCharged(null)
     setReportOpen(false)
   }, [revokeAllUrls])
 
@@ -80,7 +78,6 @@ export function ScanWizard({ userScanTier }: ScanWizardProps) {
     setAssessment(null)
     setClimateContext(null)
     setScanId(null)
-    setCreditsCharged(null)
     setReportOpen(false)
     setStep("edit")
   }, [croppedPreviewUrl])
@@ -132,13 +129,11 @@ export function ScanWizard({ userScanTier }: ScanWizardProps) {
     (result: {
       assessment: SkinAssessment
       scanId: string
-      creditsCharged: number
       climateContext: ScanClimateContext | null
     }) => {
       setAssessment(result.assessment)
       setClimateContext(result.climateContext)
       setScanId(result.scanId)
-      setCreditsCharged(result.creditsCharged)
       setStep("results")
     },
     [],
@@ -200,6 +195,7 @@ export function ScanWizard({ userScanTier }: ScanWizardProps) {
                 imageBlob={imageBlob}
                 livePayload={livePayload ?? undefined}
                 onComplete={handleAnalysisComplete}
+                onRetry={resetScan}
               />
             ) : null}
 
@@ -212,7 +208,6 @@ export function ScanWizard({ userScanTier }: ScanWizardProps) {
                 onNewScan={resetScan}
                 onReEdit={handleBackToEdit}
                 onViewReport={() => setReportOpen(true)}
-                creditsCharged={creditsCharged}
               />
             ) : null}
           </motion.div>
@@ -227,7 +222,6 @@ export function ScanWizard({ userScanTier }: ScanWizardProps) {
           climateContext={climateContext}
           imageSrc={croppedPreviewUrl}
           scanId={scanId}
-          creditsCharged={creditsCharged}
         />
       ) : null}
     </div>

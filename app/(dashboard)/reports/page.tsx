@@ -16,7 +16,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
     <div className="space-y-8">
       <DashboardPageHeader
         title="Reports"
-        description="Your scan history with token usage, costs, dimension profiles, and downloadable PDF reports."
+        description="Your scan history with dimension profiles and downloadable PDF reports."
       />
 
       <Suspense fallback={<ReportsListSkeleton />}>

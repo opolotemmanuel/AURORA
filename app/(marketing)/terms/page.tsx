@@ -53,11 +53,12 @@ export default function TermsPage() {
 
         <section className="space-y-3">
           <h2 className="text-foreground font-heading text-lg font-medium">
-            Scan tokens
+            Scan allowances
           </h2>
           <p>
-            Scans consume tokens from your wallet. Bonus tokens may be granted at
-            signup or by administrators. Tokens have no cash value and are
+            Scans consume one allowance from your active tier. New accounts receive
+            three free Starter scans. Additional scans may be purchased by tier when
+            billing is available. Allowances have no cash value and are
             non-transferable unless explicitly stated otherwise.
           </p>
         </section>

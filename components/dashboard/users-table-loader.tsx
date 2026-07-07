@@ -28,7 +28,7 @@ export async function UsersTableLoader() {
     email: user.email,
     role: user.role,
     banned: user.banned,
-    scanTier: tierByUserId.get(user.id) ?? "start",
+    scanTier: tierByUserId.get(user.id) ?? "starter",
   }))
 
   return <UsersTable initialUsers={initialUsers} />

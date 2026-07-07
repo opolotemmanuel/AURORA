@@ -20,7 +20,6 @@ type ScanReportModalProps = {
   climateContext?: ScanClimateContext | null
   imageSrc?: string | null
   scanId?: string | null
-  creditsCharged?: number | null
   scanDate?: string
 }
 
@@ -31,7 +30,6 @@ export function ScanReportModal({
   climateContext = null,
   imageSrc,
   scanId,
-  creditsCharged,
   scanDate,
 }: ScanReportModalProps) {
   const [downloading, setDownloading] = useState(false)
@@ -64,10 +62,7 @@ export function ScanReportModal({
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-20 sm:px-6">
           <ScanReportLayout imageSrc={imageSrc} showActions={false}>
             <div className="mx-auto max-w-3xl space-y-6">
-              <ReportDocumentHeader
-                scanDate={formattedDate}
-                creditsCharged={creditsCharged}
-              />
+              <ReportDocumentHeader scanDate={formattedDate} />
               <SkinReportDocument
                 assessment={assessment}
                 climateContext={climateContext}

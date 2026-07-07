@@ -10,13 +10,13 @@ export async function DashboardOverviewStats() {
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Token balance" value={stats.balance.toLocaleString()} />
+        <StatCard label="Scans remaining" value={stats.remaining.toLocaleString()} />
         <StatCard
-          label="Lifetime used"
+          label="Scans used"
           value={stats.lifetimeUsed.toLocaleString()}
           hint="All time"
         />
-        <StatCard label="Scans" value={stats.scanCount} />
+        <StatCard label="Total scans" value={stats.scanCount} />
         <StatCard
           label="Skin type"
           value={String(stats.profile?.skinType ?? "—")}
@@ -25,9 +25,9 @@ export async function DashboardOverviewStats() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-none border border-border bg-card p-5">
-          <h2 className="font-heading text-sm font-medium">Token usage (14 days)</h2>
+          <h2 className="font-heading text-sm font-medium">Scans used (14 days)</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Debit activity from your wallet
+            One scan debited per saved analysis
           </p>
           <div className="mt-4">
             <UsageBarChart data={stats.dailyUsage} />
@@ -56,7 +56,7 @@ export async function DashboardOverviewStats() {
               </dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Tokens granted</dt>
+              <dt className="text-muted-foreground">Scans granted</dt>
               <dd>{stats.lifetimeGranted.toLocaleString()}</dd>
             </div>
           </dl>

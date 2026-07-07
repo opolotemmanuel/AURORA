@@ -20,7 +20,6 @@ type ScanResultsViewProps = {
   onNewScan: () => void
   onReEdit: () => void
   onViewReport: () => void
-  creditsCharged?: number | null
   scanDate?: string
 }
 
@@ -32,7 +31,6 @@ export function ScanResultsView({
   onNewScan,
   onReEdit,
   onViewReport,
-  creditsCharged,
   scanDate,
 }: ScanResultsViewProps) {
   const [downloading, setDownloading] = useState(false)
@@ -62,10 +60,7 @@ export function ScanResultsView({
         onViewReport={onViewReport}
       >
         <div className="mx-auto max-w-3xl space-y-6 pb-20">
-          <ReportDocumentHeader
-            scanDate={formattedDate}
-            creditsCharged={creditsCharged}
-          />
+          <ReportDocumentHeader scanDate={formattedDate} />
 
           <Alert>
             <AlertDescription>

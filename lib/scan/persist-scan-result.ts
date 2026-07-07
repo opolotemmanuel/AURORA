@@ -1,3 +1,4 @@
+import type { Prisma } from "@/generated/prisma/client"
 import { revalidatePath } from "next/cache"
 
 import type { ScanCaptureMode } from "@/generated/prisma/client"
@@ -7,12 +8,9 @@ import { withDbRetry } from "@/lib/db/retry"
 import { REPORT_FORMAT_VERSION } from "@/lib/scan/constants"
 import { toScanResultData } from "@/lib/scan/persist"
 import type { SkinAssessment } from "@/lib/scan/types"
-import {
-  pricingResultToLedgerMetadata,
-  type PricingResult,
-} from "@/lib/tokens/pricing"
-import type { UsageInput } from "@/lib/tokens/pricing"
-import { debitTokensInTransaction } from "@/lib/tokens/wallet"
+import type { UsageInput } from "@/lib/scans/cost"
+import { getUsageTotalTokens } from "@/lib/tokens/format-usage"
+import { debitScanInTransaction } from "@/lib/scans/balance"
 import { toLocationSnapshot } from "@/lib/climate/context"
 import type { UserLocation } from "@/generated/prisma/client"
 
@@ -20,7 +18,7 @@ type PersistScanResultInput = {
   userId: string
   assessment: SkinAssessment
   usage: UsageInput
-  pricing: PricingResult
+  estimatedCostMicros: number | null
   latencyMs: number
   captureMode?: ScanCaptureMode
   location: UserLocation | null
@@ -35,6 +33,21 @@ type PersistScanResultInput = {
     photoProcessingConsent: boolean | null
     consentAcceptedAt: Date | null
   } | null
+}
+
+function scanDebitMetadata(
+  usage: UsageInput,
+  estimatedCostMicros: number | null,
+): Prisma.InputJsonValue {
+  return {
+    modelId: usage.modelId,
+    inputTokens: usage.inputTokens,
+    outputTokens: usage.outputTokens,
+    cachedTokens: usage.cachedTokens ?? 0,
+    reasoningTokens: usage.reasoningTokens ?? 0,
+    totalTokens: getUsageTotalTokens(usage),
+    estimatedCostMicros,
+  }
 }
 
 export async function persistScanResult(input: PersistScanResultInput) {
@@ -92,10 +105,7 @@ export async function persistScanResult(input: PersistScanResultInput) {
         },
       })
 
-      const totalTokens =
-        input.usage.inputTokens +
-        input.usage.outputTokens +
-        (input.usage.cachedTokens ?? 0)
+      const totalTokens = getUsageTotalTokens(input.usage)
 
       if (totalTokens > 0) {
         await tx.scanUsage.create({
@@ -106,20 +116,22 @@ export async function persistScanResult(input: PersistScanResultInput) {
             inputTokens: input.usage.inputTokens,
             outputTokens: input.usage.outputTokens,
             cachedTokens: input.usage.cachedTokens ?? 0,
+            reasoningTokens: input.usage.reasoningTokens ?? null,
             totalTokens,
-            estimatedCostMicros: input.pricing.costMicros,
+            estimatedCostMicros: input.estimatedCostMicros,
             latencyMs: input.latencyMs,
+            rawUsage: (input.usage.rawUsage ?? undefined) as
+              | Prisma.InputJsonValue
+              | undefined,
           },
         })
       }
 
-      await debitTokensInTransaction(tx, {
+      await debitScanInTransaction(tx, {
         userId: input.userId,
-        amount: input.pricing.credits,
         reason: "scan_debit",
         scanId: created.id,
-        provider: input.usage.provider,
-        metadata: pricingResultToLedgerMetadata(input.usage, input.pricing),
+        metadata: scanDebitMetadata(input.usage, input.estimatedCostMicros),
       })
 
       return { scan: created, report }

@@ -9,19 +9,10 @@ import { enrichManyRecommendationsWithImages } from "@/lib/products/enrich-recom
 import { REPORTS_PAGE_SIZE } from "@/lib/reports/constants"
 import type { ProductRecommendation } from "@/lib/scan/types"
 
-type ScanDebitMetadata = {
-  creditsCharged?: number
-  modelId?: string
-}
-
-function getCreditsCharged(
-  ledger: { delta: number; metadata: unknown } | undefined,
+function getScansDebited(
+  ledger: { delta: number } | undefined,
 ): number | null {
   if (!ledger) return null
-  const metadata = ledger.metadata as ScanDebitMetadata | null
-  if (metadata?.creditsCharged != null) {
-    return metadata.creditsCharged
-  }
   return Math.abs(ledger.delta)
 }
 
@@ -46,7 +37,7 @@ export async function ReportsList({ page = 1 }: ReportsListProps) {
         result: true,
         usage: true,
         feedback: true,
-        tokenLedgers: {
+        scanLedgers: {
           where: { reason: "scan_debit" },
           take: 1,
           orderBy: { createdAt: "desc" },
@@ -66,7 +57,7 @@ export async function ReportsList({ page = 1 }: ReportsListProps) {
   )
 
   const serialized: ReportListItem[] = scans.map((scan, index) => {
-    const ledger = scan.tokenLedgers[0]
+    const ledger = scan.scanLedgers[0]
     return {
       id: scan.id,
       createdAt: scan.createdAt.toISOString(),
@@ -78,12 +69,14 @@ export async function ReportsList({ page = 1 }: ReportsListProps) {
             modelId: scan.usage.modelId,
             inputTokens: scan.usage.inputTokens,
             outputTokens: scan.usage.outputTokens,
+            cachedTokens: scan.usage.cachedTokens,
+            reasoningTokens: scan.usage.reasoningTokens,
             totalTokens: scan.usage.totalTokens,
             latencyMs: scan.usage.latencyMs,
             estimatedCostMicros: scan.usage.estimatedCostMicros,
           }
         : null,
-      creditsCharged: getCreditsCharged(ledger),
+      scansDebited: getScansDebited(ledger),
       result: scan.result
         ? {
             overallBand: scan.result.overallBand,

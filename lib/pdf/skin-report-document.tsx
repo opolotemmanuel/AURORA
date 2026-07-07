@@ -36,12 +36,13 @@ type SkinReportDocumentProps = {
   scanDate?: string
   logoSrc?: string
   captureMode?: string
-  creditsCharged?: number | null
   usage?: {
     modelId: string
     totalTokens: number
     inputTokens: number
     outputTokens: number
+    cachedTokens?: number
+    reasoningTokens?: number | null
   } | null
   productImageDataUris?: Map<string, string>
 }
@@ -261,10 +262,6 @@ export function SkinReportDocument({
           </Text>
           <Text style={[reportStyles.body, { marginTop: 6 }]}>
             {assessment.doshaTyping.note}
-          </Text>
-          <Text style={[reportStyles.meta, { marginTop: 6 }]}>
-            Cosmetic Ayurvedic wellness guidance only — not a medical constitution
-            diagnosis.
           </Text>
         </ReportSection>
 

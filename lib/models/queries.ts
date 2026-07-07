@@ -13,11 +13,11 @@ export const getUserScanTier = cache(async (userId: string): Promise<ScanTier> =
       select: { scanTier: true },
     }),
   )
-  return user?.scanTier ?? "start"
+  return user?.scanTier ?? "starter"
 })
 
 export const getScanModelForTier = cache(async (tier: ScanTier) => {
-  const stillTier: ScanTier = tier === "pro" ? "regular" : tier
+  const stillTier: ScanTier = tier === "pro" ? "thinking" : tier
 
   return withDbRetry(() =>
     prisma.aiModelRate.findFirst({
@@ -48,7 +48,7 @@ export const getActiveScanModel = cache(async () => {
   return withDbRetry(() =>
     prisma.aiModelRate.findFirst({
       where: {
-        assignedTier: "start",
+        assignedTier: "starter",
         isActive: true,
         supportsVision: true,
       },

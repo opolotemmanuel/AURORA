@@ -7,25 +7,7 @@ import { filterCatalogRecommendations } from "@/lib/products/validate-catalog-re
 import { SKIN_DISCLAIMER } from "@/lib/scan/constants"
 import { normalizeDimensions } from "@/lib/scan/normalize-dimensions"
 import { skinAssessmentSchema } from "@/lib/scan/schemas"
-import type { UsageInput } from "@/lib/tokens/pricing"
-
-function mapUsage(
-  provider: UsageInput["provider"],
-  modelId: string,
-  usageMetadata: {
-    promptTokenCount?: number
-    responseTokenCount?: number
-    cachedContentTokenCount?: number
-  } | undefined,
-): UsageInput {
-  return {
-    provider,
-    modelId,
-    inputTokens: usageMetadata?.promptTokenCount ?? 0,
-    outputTokens: usageMetadata?.responseTokenCount ?? 0,
-    cachedTokens: usageMetadata?.cachedContentTokenCount ?? 0,
-  }
-}
+import { mapGeminiUsageMetadata } from "@/lib/ai/providers/gemini-usage"
 
 function sanitizeAssessment(
   assessment: ReturnType<typeof skinAssessmentSchema.parse>,
@@ -112,7 +94,7 @@ export async function analyzeWithGemini(
 
   return {
     assessment,
-    usage: mapUsage(
+    usage: mapGeminiUsageMetadata(
       input.model.provider,
       input.model.modelId,
       response.usageMetadata,

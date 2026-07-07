@@ -16,18 +16,3 @@ export const REPORT_SECTION_TITLES = {
 } as const
 
 export const REPORT_FORMAT_VERSION = "1.2"
-
-export function getScanTokenCost(): number {
-  const raw = process.env.SCAN_TOKEN_COST
-  const parsed = raw ? Number.parseInt(raw, 10) : 1000
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1000
-}
-
-export function getMinScanCredits(): number {
-  const raw = process.env.SCAN_TOKEN_COST_MIN
-  if (raw) {
-    const parsed = Number.parseInt(raw, 10)
-    if (Number.isFinite(parsed) && parsed > 0) return parsed
-  }
-  return getScanTokenCost()
-}

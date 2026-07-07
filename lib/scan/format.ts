@@ -16,19 +16,12 @@ const SKIN_HEADLINE: Record<AssessmentBand, string> = {
   not_assessed: "Not fully assessed in this scan",
 }
 
-const BAND_SCALE_HINT =
-  "Bands reflect cosmetic concern level from a photo — lower is better. They are not a medical score."
-
 export function formatBand(band: AssessmentBand) {
   return BAND_LABEL[band]
 }
 
 export function formatSkinHeadline(band: AssessmentBand) {
   return SKIN_HEADLINE[band]
-}
-
-export function formatBandScaleHint() {
-  return BAND_SCALE_HINT
 }
 
 const CLIMATE_BAND_LABEL: Record<string, string> = {

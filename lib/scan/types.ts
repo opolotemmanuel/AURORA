@@ -17,7 +17,7 @@ export type ScanWizardStep =
 
 export type CaptureMode = "upload" | "camera" | "live"
 
-export type ScanTier = "start" | "regular" | "pro"
+export type ScanTier = "starter" | "thinking" | "pro"
 
 export type LiveScanPayload = {
   transcript: string
@@ -109,7 +109,7 @@ export type AnalyzeScanResult =
       assessment: SkinAssessment
       scanId: string
       reportId: string
-      creditsCharged: number
+      scansDebited: 1
       climateContext: ScanClimateContext | null
     }
   | { ok: false; error: string }

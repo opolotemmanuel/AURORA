@@ -103,7 +103,7 @@ export function UsersTable({ initialUsers }: { initialUsers: AdminUser[] }) {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="sm" disabled={loadingId === user.id}>
-                      {SCAN_TIER_LABELS[user.scanTier ?? "start"]}
+                      {SCAN_TIER_LABELS[user.scanTier ?? "starter"]}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">

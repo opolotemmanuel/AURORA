@@ -10,22 +10,6 @@ import { resolveProductImageDataUris } from "@/lib/pdf/product-images"
 import { SkinReportDocument } from "@/lib/pdf/skin-report-document"
 import { fromScanResult } from "@/lib/scan/persist"
 
-type ScanDebitMetadata = {
-  creditsCharged?: number
-  modelId?: string
-}
-
-function getCreditsCharged(
-  ledger: { delta: number; metadata: unknown } | undefined,
-): number | null {
-  if (!ledger) return null
-  const metadata = ledger.metadata as ScanDebitMetadata | null
-  if (metadata?.creditsCharged != null) {
-    return metadata.creditsCharged
-  }
-  return Math.abs(ledger.delta)
-}
-
 export async function generateSkinReportPdf(scanId: string, userId: string) {
   registerReportFonts()
 
@@ -37,11 +21,6 @@ export async function generateSkinReportPdf(scanId: string, userId: string) {
         usage: true,
         user: { select: { name: true } },
         report: true,
-        tokenLedgers: {
-          where: { reason: "scan_debit" },
-          take: 1,
-          orderBy: { createdAt: "desc" },
-        },
       },
     }),
   )
@@ -60,7 +39,6 @@ export async function generateSkinReportPdf(scanId: string, userId: string) {
     month: "long",
     day: "numeric",
   })
-  const creditsCharged = getCreditsCharged(scan.tokenLedgers[0])
   const productImageDataUris = await resolveProductImageDataUris(
     assessment.recommendations.map((item) => item.imageUrl),
   )
@@ -73,7 +51,6 @@ export async function generateSkinReportPdf(scanId: string, userId: string) {
       scanDate={scanDate}
       logoSrc={getBrandLogoDataUri()}
       captureMode={scan.captureMode}
-      creditsCharged={creditsCharged}
       productImageDataUris={productImageDataUris}
       usage={
         scan.usage
@@ -81,22 +58,14 @@ export async function generateSkinReportPdf(scanId: string, userId: string) {
               modelId: scan.usage.modelId,
               inputTokens: scan.usage.inputTokens,
               outputTokens: scan.usage.outputTokens,
+              cachedTokens: scan.usage.cachedTokens,
+              reasoningTokens: scan.usage.reasoningTokens,
               totalTokens: scan.usage.totalTokens,
             }
           : null
       }
     />,
   )
-
-  if (scan.report && !scan.report.generatedAt) {
-    const reportId = scan.report.id
-    await withDbRetry(() =>
-      prisma.report.update({
-        where: { id: reportId },
-        data: { generatedAt: new Date() },
-      }),
-    )
-  }
 
   return buffer
 }

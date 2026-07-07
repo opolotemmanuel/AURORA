@@ -7,7 +7,19 @@ import { requireProScanTier, ScanAccessError } from "@/lib/scan/access"
 import { toUserFacingScanError } from "@/lib/scan/errors"
 
 export async function POST() {
-  const session = await getSession()
+  let session
+  try {
+    session = await getSession()
+  } catch (err) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: toUserFacingScanError(err),
+      },
+      { status: 503 },
+    )
+  }
+
   if (!session) {
     return NextResponse.json(
       { ok: false, error: "Please sign in to run a live scan." },

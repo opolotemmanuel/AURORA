@@ -136,7 +136,7 @@ export function PrivacyControls({
         <div className="space-y-4">
           <PrivacyAction
             title="All personal data"
-            description="Deletes profile, location, scans, and token history. Account remains for sign-in."
+            description="Deletes profile, location, scans, and scan allowance history. Account remains for sign-in."
             confirmLabel="Delete all personal data"
             pending={actionPending === "all"}
             onConfirm={() => run(deleteAllPersonalDataAction, "all")}

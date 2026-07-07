@@ -1,14 +1,19 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { IconPlayerStop, IconSparkles, IconVideo } from "@tabler/icons-react"
-import { GoogleGenAI } from "@google/genai"
+import {
+  IconLoader2,
+  IconPlayerStop,
+  IconSparkles,
+  IconSun,
+  IconUser,
+  IconVideo,
+} from "@tabler/icons-react"
+import { GoogleGenAI, type LiveServerMessage } from "@google/genai"
 
 import { AnimatedBadge } from "@/components/motion/animated-badge"
+import { ScanAnalyzingOverlay } from "@/components/scan/scan-analyzing-overlay"
 import { ScanCameraPicker } from "@/components/scan/scan-camera-picker"
-import { ScanDashboardLink } from "@/components/scan/scan-close-button"
-import { ScanStepFrame } from "@/components/scan/scan-step-frame"
-import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { useScanCameraDevices } from "@/hooks/use-scan-camera-devices"
@@ -24,6 +29,7 @@ type ScanLivePanelProps = {
     sessionDurationMs: number
   }) => void
   onCancel: () => void
+  onErrorChange?: (hasError: boolean) => void
 }
 
 const INITIAL_QUALITY: QualityCheckResult = {
@@ -37,6 +43,9 @@ const INITIAL_QUALITY: QualityCheckResult = {
   passed: false,
 }
 
+const LIVE_OBSERVATION_PROMPT =
+  "Begin cosmetic skin observation. Describe what you see briefly."
+
 type LiveTokenResponse =
   | { ok: true; token: string; modelId: string; apiVersion: "v1alpha" }
   | { ok: false; error: string }
@@ -45,6 +54,10 @@ type LiveSessionHandle = {
   close: () => void
   sendRealtimeInput: (params: {
     video?: { data: string; mimeType: string }
+  }) => void
+  sendClientContent: (params: {
+    turns?: string
+    turnComplete?: boolean
   }) => void
 }
 
@@ -58,13 +71,55 @@ function bufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary)
 }
 
-export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
+function extractLiveMessageText(message: LiveServerMessage): string[] {
+  const lines: string[] = []
+  const content = message.serverContent
+
+  if (content?.outputTranscription?.text) {
+    lines.push(content.outputTranscription.text)
+  }
+  if (content?.inputTranscription?.text) {
+    lines.push(content.inputTranscription.text)
+  }
+  if (content?.modelTurn?.parts) {
+    for (const part of content.modelTurn.parts) {
+      if (part.text) lines.push(part.text)
+    }
+  }
+
+  const aggregated = message.text
+  if (aggregated) lines.push(aggregated)
+
+  return lines
+}
+
+function getLiveObservationText(
+  connectingLive: boolean,
+  transcriptPreview: string,
+  quality: QualityCheckResult,
+): string {
+  if (connectingLive) return "Connecting to Aura…"
+  if (transcriptPreview) return transcriptPreview
+  if (!quality.faceDetected) return "Keep one face centered in frame"
+  if (quality.lightingBand !== "ok") return "Use even, natural lighting when possible"
+  return "Hold still — Aura is observing your skin"
+}
+
+export function ScanLivePanel({
+  onComplete,
+  onCancel,
+  onErrorChange,
+}: ScanLivePanelProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const sessionRef = useRef<LiveSessionHandle | null>(null)
   const transcriptRef = useRef<string[]>([])
   const bestFrameRef = useRef<Blob | null>(null)
   const startedAtRef = useRef<number>(0)
   const frameTimerRef = useRef<number | null>(null)
+  const sessionStartedRef = useRef(false)
+  const finishingRef = useRef(false)
+  const qualityCheckingRef = useRef(false)
+  const qualityRef = useRef<QualityCheckResult>(INITIAL_QUALITY)
 
   const {
     devices,
@@ -90,13 +145,26 @@ export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
   const [streaming, setStreaming] = useState(false)
   const [connectingLive, setConnectingLive] = useState(false)
   const [liveError, setLiveError] = useState<string | null>(null)
-  const [statusLabel, setStatusLabel] = useState("Connecting to live analysis…")
   const [quality, setQuality] = useState<QualityCheckResult>(INITIAL_QUALITY)
   const [transcriptPreview, setTranscriptPreview] = useState("")
   const [finishing, setFinishing] = useState(false)
 
+  qualityRef.current = quality
+
+  finishingRef.current = finishing
+
   const error = liveError ?? cameraError
   const pickerLocked = switching || streaming || finishing
+  const lightingOk = quality.lightingBand === "ok"
+  const showConnectingOverlay = connectingLive && !error
+
+  useEffect(() => {
+    onErrorChange?.(Boolean(error))
+  }, [error, onErrorChange])
+
+  useEffect(() => {
+    return () => onErrorChange?.(false)
+  }, [onErrorChange])
 
   const captureFrameBlob = useCallback(async (): Promise<Blob | null> => {
     const video = videoRef.current
@@ -119,12 +187,18 @@ export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
     })
   }, [shouldMirror])
 
+  const captureFrameBlobRef = useRef(captureFrameBlob)
+  captureFrameBlobRef.current = captureFrameBlob
+
   const appendTranscript = useCallback((line: string) => {
     const trimmed = line.trim()
     if (!trimmed) return
     transcriptRef.current.push(trimmed)
     setTranscriptPreview(transcriptRef.current.slice(-3).join(" "))
   }, [])
+
+  const appendTranscriptRef = useRef(appendTranscript)
+  appendTranscriptRef.current = appendTranscript
 
   const teardownLiveSession = useCallback(() => {
     if (frameTimerRef.current !== null) {
@@ -133,17 +207,69 @@ export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
     }
     sessionRef.current?.close()
     sessionRef.current = null
+    sessionStartedRef.current = false
     setStreaming(false)
     setConnectingLive(false)
+  }, [])
+
+  const startFrameLoop = useCallback(() => {
+    if (frameTimerRef.current !== null) return
+
+    frameTimerRef.current = window.setInterval(() => {
+      void (async () => {
+        const videoEl = videoRef.current
+        const liveSession = sessionRef.current
+        if (!videoEl || !liveSession) return
+
+        const blob = await captureFrameBlobRef.current()
+        if (!blob) return
+
+        const gate = qualityRef.current
+        if (gate.passed || gate.faceDetected) {
+          bestFrameRef.current = blob
+        }
+
+        const arrayBuffer = await blob.arrayBuffer()
+        liveSession.sendRealtimeInput({
+          video: {
+            data: bufferToBase64(arrayBuffer),
+            mimeType: "image/jpeg",
+          },
+        })
+      })()
+    }, 1000)
   }, [])
 
   useEffect(() => {
     if (!ready || finishing) return
 
+    const interval = window.setInterval(() => {
+      void (async () => {
+        const video = videoRef.current
+        if (!video || video.videoWidth === 0 || qualityCheckingRef.current) return
+
+        qualityCheckingRef.current = true
+        try {
+          const result = await runQualityGate(video)
+          setQuality(result)
+        } catch {
+          // Best-effort quality hints during live preview
+        } finally {
+          qualityCheckingRef.current = false
+        }
+      })()
+    }, 400)
+
+    return () => window.clearInterval(interval)
+  }, [finishing, ready])
+
+  useEffect(() => {
+    if (!ready || finishing || sessionStartedRef.current) return
+
     let cancelled = false
+    sessionStartedRef.current = true
     setConnectingLive(true)
     setLiveError(null)
-    setStatusLabel("Connecting to live analysis…")
 
     async function startLiveSession() {
       try {
@@ -158,6 +284,7 @@ export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
             tokenData.ok ? "Could not start live scan." : tokenData.error,
           )
           setConnectingLive(false)
+          sessionStartedRef.current = false
           return
         }
 
@@ -173,72 +300,47 @@ export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
               if (cancelled) return
               setStreaming(true)
               setConnectingLive(false)
-              setStatusLabel("Live scan active — hold still and face the camera")
               startedAtRef.current = Date.now()
+              startFrameLoop()
             },
             onmessage: (message) => {
-              const content = message.serverContent
-              if (content?.outputTranscription?.text) {
-                appendTranscript(content.outputTranscription.text)
-              }
-              if (content?.modelTurn?.parts) {
-                for (const part of content.modelTurn.parts) {
-                  if (part.text) appendTranscript(part.text)
-                }
+              for (const line of extractLiveMessageText(message)) {
+                appendTranscriptRef.current(line)
               }
             },
             onerror: (event) => {
               if (!cancelled) {
                 setLiveError(event.message || "Live scan connection error")
+                setConnectingLive(false)
               }
             },
             onclose: () => {
+              if (cancelled || finishingRef.current) return
               setStreaming(false)
+              setConnectingLive(false)
+              setLiveError("Live connection lost. Try again.")
             },
           },
         })
 
         if (cancelled) {
           session.close()
+          sessionStartedRef.current = false
           return
         }
 
         sessionRef.current = session as LiveSessionHandle
-
-        frameTimerRef.current = window.setInterval(() => {
-          void (async () => {
-            const videoEl = videoRef.current
-            const liveSession = sessionRef.current
-            if (!videoEl || !liveSession) return
-
-            const blob = await captureFrameBlob()
-            if (!blob) return
-
-            try {
-              const gate = await runQualityGate(videoEl)
-              setQuality(gate)
-              if (gate.passed || gate.faceDetected) {
-                bestFrameRef.current = blob
-              }
-            } catch {
-              // Quality hints are best-effort during live streaming
-            }
-
-            const arrayBuffer = await blob.arrayBuffer()
-            liveSession.sendRealtimeInput({
-              video: {
-                data: bufferToBase64(arrayBuffer),
-                mimeType: "image/jpeg",
-              },
-            })
-          })()
-        }, 1000)
+        sessionRef.current.sendClientContent({
+          turns: LIVE_OBSERVATION_PROMPT,
+          turnComplete: true,
+        })
       } catch (err) {
         if (!cancelled) {
           setLiveError(
             err instanceof Error ? err.message : "Could not start live scan.",
           )
           setConnectingLive(false)
+          sessionStartedRef.current = false
         }
       }
     }
@@ -249,18 +351,11 @@ export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
       cancelled = true
       teardownLiveSession()
     }
-  }, [
-    activeDeviceId,
-    appendTranscript,
-    captureFrameBlob,
-    finishing,
-    ready,
-    teardownLiveSession,
-  ])
+  }, [finishing, ready, startFrameLoop, teardownLiveSession])
 
   const handleFinish = useCallback(async () => {
+    finishingRef.current = true
     setFinishing(true)
-    setStatusLabel("Finalizing your live scan…")
 
     teardownLiveSession()
     stopStream()
@@ -283,54 +378,63 @@ export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
     })
   }, [captureFrameBlob, onComplete, stopStream, teardownLiveSession])
 
-  return (
-    <ScanStepFrame
-      headerTrailing={
-        <>
-          <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
-            Cancel
-          </Button>
-          <ScanDashboardLink variant="action" />
-        </>
-      }
-    >
-      <ScanStepShell
-        title="Live scan"
-        description="Pro — real-time cosmetic skin analysis via camera"
-      >
-      <Alert>
-        <AlertDescription>
-          Cosmetic guidance only — not a medical diagnosis. Video frames are
-          analyzed in memory and are not stored.
-        </AlertDescription>
-      </Alert>
+  const observationText = getLiveObservationText(
+    connectingLive,
+    transcriptPreview,
+    quality,
+  )
 
-      <div className="relative overflow-hidden rounded-[1.5rem] border border-border">
-        <video
-          ref={onVideoRef}
-          playsInline
-          muted
-          className={cn(
-            "mx-auto aspect-[3/4] h-[min(48svh,20rem)] w-full bg-muted object-cover",
-            shouldMirror && "scale-x-[-1]",
-          )}
-        />
-        <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3">
-          <div className="flex flex-wrap gap-2">
-            <AnimatedBadge
-              status={streaming ? "success" : error ? "danger" : "loading"}
-              size="sm"
+  return (
+    <div className="space-y-4">
+      <div className="relative isolate overflow-hidden rounded-[1.75rem] border border-border bg-background">
+          <video
+            ref={onVideoRef}
+            autoPlay
+            playsInline
+            muted
+            className={cn(
+              "mx-auto aspect-[3/4] h-[min(48svh,20rem)] w-full object-cover",
+              shouldMirror && "scale-x-[-1]",
+            )}
+          />
+
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/70 via-transparent to-background/80" />
+
+          {showConnectingOverlay ? <ScanAnalyzingOverlay /> : null}
+
+          <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-2 p-3">
+            <div
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-medium",
+                showConnectingOverlay &&
+                  "border-primary/30 bg-primary/10 text-primary",
+                streaming &&
+                  "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                error &&
+                  !streaming &&
+                  "border-destructive/30 bg-destructive/10 text-destructive",
+              )}
             >
-              <IconVideo className="size-3.5" />
-              {streaming ? "Live" : error ? "Error" : "Connecting"}
-            </AnimatedBadge>
-            {quality.passed ? (
-              <AnimatedBadge status="success" size="sm">
-                Face detected
-              </AnimatedBadge>
-            ) : null}
+              {showConnectingOverlay ? (
+                <>
+                  <IconLoader2 className="size-3.5 animate-spin" aria-hidden />
+                  <IconVideo className="size-3.5" aria-hidden />
+                  Connecting…
+                </>
+              ) : streaming ? (
+                <>
+                  <IconVideo className="size-3.5" aria-hidden />
+                  Live — hold still
+                </>
+              ) : (
+                <>
+                  <IconVideo className="size-3.5" aria-hidden />
+                  Error
+                </>
+              )}
+            </div>
             <ScanCameraPicker
-              variant="badge"
+              variant="header"
               devices={devices}
               activeDeviceId={activeDeviceId}
               activeLabel={activeLabel}
@@ -339,67 +443,78 @@ export function ScanLivePanel({ onComplete, onCancel }: ScanLivePanelProps) {
               switching={switching}
             />
           </div>
-          <ScanCameraPicker
-            variant="header"
-            devices={devices}
-            activeDeviceId={activeDeviceId}
-            activeLabel={activeLabel}
-            onSelect={(deviceId) => void selectDevice(deviceId)}
-            disabled={pickerLocked}
-            switching={switching}
-          />
+
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div
+              aria-hidden
+              className="absolute inset-0 bg-background/35 mask-[radial-gradient(ellipse_36%_43%_at_50%_50%,transparent_98%,black_100%)]"
+            />
+            <div className="relative h-[62%] w-[72%] rounded-[50%] border-2 border-primary/70" />
+          </div>
+
+          <div className="absolute inset-x-0 bottom-0 z-10 p-3">
+            <div className="flex flex-wrap justify-center gap-2">
+              <AnimatedBadge
+                status={quality.faceDetected ? "success" : "warning"}
+                size="sm"
+                icon={<IconUser className="size-3" />}
+              >
+                {quality.faceDetected ? "Face detected" : "Find your face"}
+              </AnimatedBadge>
+              <AnimatedBadge
+                status={lightingOk ? "success" : "warning"}
+                size="sm"
+                icon={<IconSun className="size-3" />}
+              >
+                {lightingOk ? "Lighting OK" : "Adjust lighting"}
+              </AnimatedBadge>
+              <ScanCameraPicker
+                variant="badge"
+                devices={devices}
+                activeDeviceId={activeDeviceId}
+                activeLabel={activeLabel}
+                onSelect={(deviceId) => void selectDevice(deviceId)}
+                disabled={pickerLocked}
+                switching={switching}
+              />
+            </div>
+          </div>
         </div>
-      </div>
 
-      <p className="text-sm text-muted-foreground">{statusLabel}</p>
-
-      {streaming && devices.length > 1 ? (
-        <p className="text-xs text-muted-foreground">
-          Finish the live session before switching cameras.
-        </p>
-      ) : null}
-
-      {transcriptPreview ? (
         <div className="rounded-xl border border-border bg-muted/30 p-3 text-sm">
           <div className="mb-1 flex items-center gap-1.5 font-medium text-foreground">
             <IconSparkles className="size-4" />
             Live observations
           </div>
-          <p className="text-muted-foreground">{transcriptPreview}</p>
+          <p className="text-muted-foreground">{observationText}</p>
         </div>
-      ) : null}
 
-      {error ? (
-        <Alert variant="destructive">
-          <AlertTitle>Live scan unavailable</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      ) : null}
+        {error ? (
+          <Alert variant="destructive">
+            <AlertTitle>Live scan unavailable</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
 
-      <div className="flex flex-wrap gap-3">
-        <Button
-          type="button"
-          className="gap-2"
-          disabled={!ready || finishing || Boolean(error)}
-          onClick={() => void handleFinish()}
-        >
-          <IconPlayerStop className="size-4" />
-          {finishing ? "Finishing…" : "Finish scan"}
-        </Button>
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Back
+        <div className="mx-auto grid w-full max-w-sm grid-cols-2 gap-3">
+          <Button
+            type="button"
+            className="w-full gap-2"
+            disabled={!ready || finishing || Boolean(error)}
+            onClick={() => void handleFinish()}
+          >
+            <IconPlayerStop className="size-4" />
+            {finishing ? "Finishing…" : "Finish scan"}
+          </Button>
+          <Button
+            type="button"
+            className="w-full"
+            variant="outline"
+            onClick={onCancel}
+          >
+            Back
         </Button>
       </div>
-
-      <ul className="space-y-1 text-xs text-muted-foreground">
-        <li className={cn(quality.faceDetected && "text-foreground")}>
-          Keep one face centered in frame
-        </li>
-        <li className={cn(quality.lightingBand === "ok" && "text-foreground")}>
-          Use even, natural lighting when possible
-        </li>
-      </ul>
-    </ScanStepShell>
-    </ScanStepFrame>
+    </div>
   )
 }

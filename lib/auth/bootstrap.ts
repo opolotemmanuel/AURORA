@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db/client"
-import { getSignupTokenBonus } from "@/lib/onboarding/constants"
-import { grantTokens } from "@/lib/tokens/wallet"
+import { getFreeStarterScans } from "@/lib/onboarding/constants"
+import { grantScans } from "@/lib/scans/balance"
 
 export async function ensureUserRecords(userId: string, email: string, name?: string) {
   await Promise.all([
@@ -14,9 +14,9 @@ export async function ensureUserRecords(userId: string, email: string, name?: st
       create: { userId },
       update: {},
     }),
-    prisma.tokenWallet.upsert({
+    prisma.scanBalance.upsert({
       where: { userId },
-      create: { userId, balance: 0 },
+      create: { userId, remaining: 0 },
       update: {},
     }),
   ])
@@ -47,16 +47,17 @@ export async function ensureUserRecords(userId: string, email: string, name?: st
   }
 }
 
-export async function grantSignupBonusIfNeeded(userId: string) {
-  const existing = await prisma.tokenLedger.findFirst({
+export async function grantFreeStarterScansIfNeeded(userId: string) {
+  const existing = await prisma.scanLedger.findFirst({
     where: { userId, reason: "signup_bonus" },
   })
   if (existing) return
 
-  await grantTokens({
+  await grantScans({
     userId,
-    amount: getSignupTokenBonus(),
+    amount: getFreeStarterScans(),
     reason: "signup_bonus",
-    metadata: { note: "Welcome bonus" },
+    tier: "starter",
+    metadata: { note: "Free Starter scans" },
   })
 }

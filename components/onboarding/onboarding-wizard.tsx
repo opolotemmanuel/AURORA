@@ -825,8 +825,8 @@ export function OnboardingWizard({
               <OnboardingStepItem>
                 <h1 className="font-heading text-2xl font-medium">You&apos;re all set</h1>
                 <p className="text-sm text-muted-foreground">
-                  Your profile is saved. Free starter tokens have been added to your
-                  wallet.
+                  Your profile is saved. Three free Starter scans have been added to your
+                  account.
                 </p>
               </OnboardingStepItem>
               <OnboardingStepActions

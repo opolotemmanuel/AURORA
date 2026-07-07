@@ -114,7 +114,6 @@ export function ScanDetailModal({
               <ReportDocumentHeader
                 scanDate={scanDate}
                 captureMode={scan.captureMode}
-                creditsCharged={scan.creditsCharged}
                 usage={scan.usage}
               />
 

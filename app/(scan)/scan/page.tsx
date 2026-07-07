@@ -8,7 +8,7 @@ async function ScanWizardLoader() {
   const session = await getSession()
   const userScanTier = session
     ? await getUserScanTier(session.user.id)
-    : "start"
+    : "starter"
 
   return <ScanWizard userScanTier={userScanTier} />
 }

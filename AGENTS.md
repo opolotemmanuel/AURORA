@@ -97,7 +97,7 @@ lib/
   pdf/          # React-PDF report document + generate-skin-report
   scan/         # types, quality gate, mediapipe, mock analysis, persist, save action
   products/     # catalog schemas, admin actions, seed map
-  tokens/       # wallet grant/debit helpers
+  scans/        # scan balance grant/debit, packs, cost helpers
 components/
   ui/           # shared shadcn primitives only
   layouts/      # route-group shells (marketing, scan, auth, onboarding, dashboard)
@@ -221,13 +221,75 @@ Implemented at `/scan` via `components/scan/scan-wizard.tsx`.
 | Persist | `lib/scan/analyze-action.ts` | Atomic analyze + save + debit; `imageRetained: false` always |
 | PDF download | `lib/pdf/`, `app/api/reports/[scanId]/pdf/` | Generated on demand from DB; text-only (no photo) |
 | History | `app/(dashboard)/reports/`, `components/reports/` | Modal + PDF per saved scan |
-| Tokens | `lib/tokens/wallet.ts`, `SCAN_TOKEN_COST` env | Debited on save (`scan_debit`) |
+| Scan allowance | `lib/scans/balance.ts` | 1 scan debited per successful analysis (`scan_debit`) |
 
 **Privacy:** Cropped photo lives in browser memory (`URL.createObjectURL`) for the session only. Revoke on rescan. Never write `imageStorageKey` unless explicit opt-in retention is added later.
 
 **Output:** Coarse `AssessmentBand` labels only — no fake health percentages. Use `formatBand()` / `formatSkinHeadline()` from `lib/scan/format.ts`.
 
 **Desktop camera:** Resizable embedded preview via `hooks/use-scan-camera-height.ts` (preference in `localStorage`).
+
+**Model selection:** `User.scanTier` → `AiModelRate.assignedTier` (not `isScanDefault`).
+
+## Pricing & scan allowances
+
+Users have **one active tier** at a time (`User.scanTier`) and a **single scan balance** (`ScanBalance.remaining`). Each successful analysis debits **1 scan** — no metered credits.
+
+### Tiers and models
+
+| Tier | Model | Thinking | Still scan | Live scan |
+|------|-------|----------|------------|-----------|
+| **Starter** | `gemini-2.5-flash` | low | yes | no |
+| **Thinking** | `gemini-3.5-flash` | medium | yes | no |
+| **Pro** | `gemini-3.5-flash` still + `gemini-3.1-flash-live` | medium / none | yes (Thinking model) | yes (Pro live model) |
+
+Tier assignment lives in `lib/models/queries.ts` (`getScanModelForTier`, `getLiveScanModel`).
+
+### Free tier
+
+- New users get **3 free Starter scans** on onboarding complete (`signup_bonus` ledger entry, idempotent).
+- Env override: `FREE_STARTER_SCANS` (default `3`).
+
+### Paid packs (catalog in `ScanPack` table)
+
+| Tier | Pack | Scans | Price |
+|------|------|-------|-------|
+| Starter | Standard | 20 | $9.99 |
+| Starter | Volume | 50 | $19.99 |
+| Thinking | Standard | 12 | $14.99 |
+| Thinking | Volume | 30 | $34.99 |
+| Pro | Standard | 10 | $24.99 |
+| Pro | Volume | 25 | $49.99 |
+
+Seed via `npm run db:seed-packs`. Payment (Stripe) is **planned** — until then use admin grant or manual `pack_grant`.
+
+### Single-tier upgrade rule
+
+Changing tier **replaces** `scansRemaining` with the new pack size. Unused scans on the old tier are forfeited. Show confirmation in checkout UI when payment ships.
+
+### Profit floor (when adding packs)
+
+```
+minPriceCents = ceil(scanCount × tierP95CostMicros × 1.3 / (1 - targetMarginBps/10000) / 10000)
+```
+
+- `tierP95CostMicros` = p95 of `ScanUsage.estimatedCostMicros` per tier (recompute quarterly from production data).
+- Default `targetMarginBps = 7000` (70% gross margin floor).
+- `1.3` = safety buffer for usage spikes and infra.
+
+### Internal cost tracking
+
+`ScanUsage.estimatedCostMicros` records provider cost per scan for admin margin monitoring — **not** exposed to users.
+
+### Key modules
+
+| Concern | Location |
+|---------|----------|
+| Balance grant/debit | `lib/scans/balance.ts` |
+| Pack catalog | `lib/scans/packs.ts`, `ScanPack` model |
+| Provider cost estimate | `lib/scans/cost.ts` |
+| Ledger labels | `lib/dashboard/ledger-label.ts` |
+| Admin grant | `lib/admin/actions.ts` → `grantAdminScansAction` |
 
 ## TypeScript
 
@@ -252,15 +314,15 @@ Implemented at `/scan` via `components/scan/scan-wizard.tsx`.
 
 - PostgreSQL on Neon; schema in `prisma/schema.prisma`; client from `generated/prisma` via `lib/db/client.ts`.
 - `lib/db/client.ts` normalizes `DATABASE_URL` (strips `channel_binding`, sets `sslmode=verify-full` for Neon + node-pg).
-- Key domain models: `Scan`, `ScanResult`, `Report`, `Product`, `TokenWallet`, `TokenLedger`.
+- Key domain models: `Scan`, `ScanResult`, `Report`, `Product`, `ScanBalance`, `ScanLedger`, `ScanPack`.
 - Follow workspace Prisma conventions: relations on both sides, `createdAt`/`updatedAt`, indexes on frequently queried fields.
 - Run `npx prisma migrate dev` after schema changes.
 
 ## AI Adapter
 
 - All vision/text model calls go through **`lib/ai/adapter.ts`** (`analyzeSkin`).
-- Default provider **Google Gemini** (`GEMINI_API_KEY`); active model from `AiModelRate` DB row (`isScanDefault`).
-- `analyzeScanAction` persists result server-side with metered token debit.
+- Default provider **Google Gemini** (`GEMINI_API_KEY`); model from `User.scanTier` → `AiModelRate.assignedTier`.
+- `analyzeScanAction` persists result server-side and debits 1 scan from `ScanBalance`.
 - The adapter exposes a stable app-level interface (e.g. `analyzeSkin(image): SkinAssessment`); swap provider by changing adapter internals only.
 - Read [Google AI Gemini API docs](https://ai.google.dev/gemini-api/docs) at implementation time — model IDs and APIs change.
 - Coarse band output only (see Non-Negotiables).

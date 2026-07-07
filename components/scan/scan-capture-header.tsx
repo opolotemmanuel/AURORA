@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { IconCamera, IconUpload, IconVideo } from "@tabler/icons-react"
 
 import { TabsList, TabsTrigger } from "@/components/motion/tabs"
@@ -9,9 +10,13 @@ import { Badge } from "@/components/ui/badge"
 
 type ScanCaptureHeaderProps = {
   isPro: boolean
+  trailingActions?: ReactNode
 }
 
-export function ScanCaptureHeader({ isPro }: ScanCaptureHeaderProps) {
+export function ScanCaptureHeader({
+  isPro,
+  trailingActions,
+}: ScanCaptureHeaderProps) {
   return (
     <ScanFlowHeader
       trailing={
@@ -41,6 +46,7 @@ export function ScanCaptureHeader({ isPro }: ScanCaptureHeaderProps) {
               )}
             </TabsTrigger>
           </TabsList>
+          {trailingActions}
           <ScanDashboardLink variant="action" />
         </>
       }

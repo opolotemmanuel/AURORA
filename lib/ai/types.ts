@@ -1,5 +1,5 @@
 import type { SkinAssessment } from "@/lib/scan/types"
-import type { UsageInput } from "@/lib/tokens/pricing"
+import type { UsageInput } from "@/lib/scans/cost"
 
 export type CatalogProductContext = {
   slug: string

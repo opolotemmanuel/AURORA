@@ -7,15 +7,14 @@ import { prisma } from "@/lib/db/client"
 import { getScanModelForTier, getUserScanTier } from "@/lib/models/queries"
 import { enrichRecommendationsWithImages } from "@/lib/products/enrich-recommendations"
 import { requireProScanTier, ScanAccessError } from "@/lib/scan/access"
-import { getMinScanCredits } from "@/lib/scan/constants"
 import {
   logScanAnalysisError,
   toUserFacingScanError,
 } from "@/lib/scan/errors"
 import { persistScanResult } from "@/lib/scan/persist-scan-result"
 import type { AnalyzeScanResult } from "@/lib/scan/types"
-import { computeScanCreditCost } from "@/lib/tokens/pricing"
-import { getBalance } from "@/lib/tokens/wallet"
+import { getScansRemaining } from "@/lib/scans/balance"
+import { estimateScanProviderCost } from "@/lib/scans/cost"
 
 type RunLiveAnalyzeScanInput = {
   userId: string
@@ -47,9 +46,12 @@ export async function runLiveAnalyzeScan(
     }
   }
 
-  const balance = await getBalance(input.userId)
-  if (balance < getMinScanCredits()) {
-    return { ok: false, error: toUserFacingScanError(new Error("Insufficient credits")) }
+  const remaining = await getScansRemaining(input.userId)
+  if (remaining < 1) {
+    return {
+      ok: false,
+      error: toUserFacingScanError(new Error("No scans remaining")),
+    }
   }
 
   const location = await ensureClimateForScan(input.userId)
@@ -74,10 +76,7 @@ export async function runLiveAnalyzeScan(
     return { ok: false, error: toUserFacingScanError(err) }
   }
 
-  const pricing = await computeScanCreditCost(analysis.usage)
-  if (balance < pricing.credits) {
-    return { ok: false, error: toUserFacingScanError(new Error("Insufficient credits")) }
-  }
+  const costEstimate = await estimateScanProviderCost(analysis.usage)
 
   const enrichedAssessment = {
     ...analysis.assessment,
@@ -95,7 +94,7 @@ export async function runLiveAnalyzeScan(
       userId: input.userId,
       assessment: enrichedAssessment,
       usage: analysis.usage,
-      pricing,
+      estimatedCostMicros: costEstimate?.costMicros ?? null,
       latencyMs: analysis.latencyMs + input.sessionDurationMs,
       captureMode: "live",
       location,
@@ -107,15 +106,18 @@ export async function runLiveAnalyzeScan(
       assessment: enrichedAssessment,
       scanId: saved.scan.id,
       reportId: saved.report.id,
-      creditsCharged: pricing.credits,
+      scansDebited: 1,
       climateContext,
     }
   } catch (err) {
     if (
       err instanceof Error &&
-      err.message === "Insufficient token balance"
+      err.message === "Insufficient scan balance"
     ) {
-      return { ok: false, error: toUserFacingScanError(new Error("Insufficient credits")) }
+      return {
+        ok: false,
+        error: toUserFacingScanError(new Error("No scans remaining")),
+      }
     }
     logScanAnalysisError("live-persist", err)
     return {

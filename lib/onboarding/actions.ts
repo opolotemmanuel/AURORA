@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
 
 import { auth } from "@/lib/auth/server"
-import { grantSignupBonusIfNeeded } from "@/lib/auth/bootstrap"
+import { grantFreeStarterScansIfNeeded } from "@/lib/auth/bootstrap"
 import { requireSession } from "@/lib/auth/session"
 import { shouldSyncClimate } from "@/lib/climate/sync"
 import { refreshClimateForPlace } from "@/lib/climate/context"
@@ -296,7 +296,7 @@ export async function completeOnboardingAction() {
     }),
   )
 
-  await grantSignupBonusIfNeeded(session.user.id)
+  await grantFreeStarterScansIfNeeded(session.user.id)
   revalidatePath("/onboarding")
   revalidatePath("/scan")
   revalidatePath("/dashboard")

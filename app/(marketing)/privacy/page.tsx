@@ -35,7 +35,7 @@ export default function PrivacyPage() {
             <li>Account information such as email, name, and authentication method.</li>
             <li>Onboarding profile data including skin type, routine, lifestyle, and location for climate-aware guidance.</li>
             <li>Scan metadata and cosmetic assessment results stored in your report.</li>
-            <li>Usage data such as token wallet activity and scan history.</li>
+            <li>Usage data such as scan allowance activity and scan history.</li>
           </ul>
         </section>
 

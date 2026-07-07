@@ -1,16 +1,20 @@
+import { formatTokenBreakdown } from "@/lib/tokens/format-usage"
+
 type ScanDebitMetadata = {
   modelId?: string
   inputTokens?: number
   outputTokens?: number
-  creditsCharged?: number
+  cachedTokens?: number
+  reasoningTokens?: number
 }
 
 const REASON_LABELS: Record<string, string> = {
   scan_debit: "Scan",
-  signup_bonus: "Signup bonus",
+  signup_bonus: "Free Starter scans",
   admin_grant: "Admin grant",
-  admin_debit: "Admin debit",
-  promotion: "Promotion",
+  pack_grant: "Scan pack",
+  tier_upgrade: "Tier upgrade",
+  adjustment: "Adjustment",
 }
 
 function humanizeReason(reason: string): string {
@@ -31,12 +35,18 @@ export function getLedgerDetail(reason: string, metadata: unknown): string | nul
     return null
   }
 
-  const tokens =
-    data.inputTokens != null && data.outputTokens != null
-      ? `${data.inputTokens.toLocaleString()} in / ${data.outputTokens.toLocaleString()} out`
-      : null
+  if (data.inputTokens == null || data.outputTokens == null) {
+    return data.modelId
+  }
 
-  return tokens ? `${data.modelId} · ${tokens}` : data.modelId
+  const tokens = formatTokenBreakdown({
+    inputTokens: data.inputTokens,
+    outputTokens: data.outputTokens,
+    cachedTokens: data.cachedTokens,
+    reasoningTokens: data.reasoningTokens,
+  })
+
+  return `${data.modelId} · ${tokens}`
 }
 
 export function getLedgerFullLabel(reason: string, metadata: unknown): string {

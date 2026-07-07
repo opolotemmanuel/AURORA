@@ -20,9 +20,9 @@ export const MARKETING_FAQ_ITEMS: MarketingFaqItem[] = [
       "By default, we store your report and assessment data, not your scan photo. You can delete scans, profile details, or your entire account anytime from the dashboard.",
   },
   {
-    question: "What are scan tokens?",
+    question: "How do scan allowances work?",
     answer:
-      "Each scan uses one token from your wallet. New accounts receive a signup bonus. Additional tokens may be added through promotions or admin grants.",
+      "Each saved analysis uses one scan from your tier allowance. New accounts receive three free Starter scans. Additional scans can be purchased by tier when billing is available.",
   },
   {
     question: "What do the skin bands mean?",

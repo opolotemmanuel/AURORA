@@ -7,64 +7,74 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { prisma } from "@/lib/db/client"
-import { getScanTokenCost } from "@/lib/scan/constants"
-import {
-  formatCreditUsdValue,
-  getCreditValueMicros,
-  getPricingMarginBps,
-} from "@/lib/tokens/pricing"
 import { SCAN_TIER_LABELS } from "@/lib/models/types"
+import { listActiveScanPacks } from "@/lib/scans/packs"
 
 function formatMicroUsdPer1M(micros: number): string {
   return `$${(micros / 1_000_000).toFixed(4)}`
 }
 
-export async function PricingReferenceCard() {
-  const rates = await prisma.aiModelRate.findMany({
-    where: { isActive: true },
-    orderBy: [{ provider: "asc" }, { modelId: "asc" }],
-  })
+function formatPrice(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`
+}
 
-  const creditValueMicros = getCreditValueMicros()
-  const marginBps = getPricingMarginBps()
-  const marginPercent = (marginBps / 100).toFixed(1)
-  const flatFloor = getScanTokenCost()
+export async function PricingReferenceCard() {
+  const [rates, packs] = await Promise.all([
+    prisma.aiModelRate.findMany({
+      where: { isActive: true },
+      orderBy: [{ provider: "asc" }, { modelId: "asc" }],
+    }),
+    listActiveScanPacks(),
+  ])
 
   return (
-    <section className="space-y-4 rounded-none border border-border p-4">
+    <section className="space-y-6 rounded-none border border-border p-4">
       <div>
-        <h2 className="font-heading text-lg font-medium">Pricing reference</h2>
+        <h2 className="font-heading text-lg font-medium">Scan packs</h2>
         <p className="text-sm text-muted-foreground">
-          Usage-based debits convert provider token costs into Aura credits. Mock
-          scans use the flat floor until real AI usage is recorded. Manage models
-          on the{" "}
+          Fixed scan allowances per tier. Payment integration is planned — use
+          admin grant until Stripe is wired.
+        </p>
+      </div>
+
+      {packs.length > 0 ? (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Pack</TableHead>
+              <TableHead>Tier</TableHead>
+              <TableHead>Scans</TableHead>
+              <TableHead>Price</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {packs.map((pack) => (
+              <TableRow key={pack.id}>
+                <TableCell className="font-medium">{pack.label}</TableCell>
+                <TableCell>{SCAN_TIER_LABELS[pack.tier]}</TableCell>
+                <TableCell>{pack.scanCount}</TableCell>
+                <TableCell>{formatPrice(pack.priceCents)}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          No scan packs seeded yet. Run{" "}
+          <code className="font-mono text-xs">npm run db:seed-packs</code>.
+        </p>
+      )}
+
+      <div>
+        <h2 className="font-heading text-lg font-medium">Model cost reference</h2>
+        <p className="text-sm text-muted-foreground">
+          Internal provider rates for margin monitoring. Manage models on the{" "}
           <a href="/admin/models" className="text-foreground underline">
             models page
           </a>
           .
         </p>
       </div>
-
-      <dl className="grid gap-3 text-sm sm:grid-cols-3">
-        <div>
-          <dt className="text-muted-foreground">Credit value</dt>
-          <dd className="font-medium">
-            1 credit = {formatCreditUsdValue(1)} (
-            {creditValueMicros.toLocaleString()} micro-USD)
-          </dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Margin</dt>
-          <dd className="font-medium">{marginPercent}%</dd>
-        </div>
-        <div>
-          <dt className="text-muted-foreground">Flat scan floor</dt>
-          <dd className="font-medium">
-            {flatFloor.toLocaleString()} credits (
-            {formatCreditUsdValue(flatFloor)})
-          </dd>
-        </div>
-      </dl>
 
       {rates.length > 0 ? (
         <Table>

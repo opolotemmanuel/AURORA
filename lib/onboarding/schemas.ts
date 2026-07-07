@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { SCAN_TIERS } from "@/lib/models/types"
+
 export const consentSchema = z.object({
   photoProcessingConsent: z.boolean().refine((v) => v === true, {
     message: "You must consent to photo processing to continue.",
@@ -99,8 +101,13 @@ export const passwordSchema = z
     path: ["confirmPassword"],
   })
 
-export const tokenGrantSchema = z.object({
+export const scanGrantSchema = z.object({
   userId: z.string().min(1),
   amount: z.number().int().positive(),
+  tier: z.enum(SCAN_TIERS).optional(),
+  packId: z.string().optional(),
   reason: z.string().max(500).optional(),
 })
+
+/** @deprecated Use scanGrantSchema */
+export const tokenGrantSchema = scanGrantSchema

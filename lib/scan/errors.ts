@@ -5,7 +5,7 @@ const FRIENDLY_BY_MESSAGE: Record<string, string> = {
     "Scan analysis isn't configured yet. Ask an admin to set an active vision model.",
   "GEMINI_API_KEY is not configured":
     "Skin analysis is temporarily unavailable. Try again later.",
-  "Insufficient credits": "You don't have enough credits for this scan.",
+  "No scans remaining": "You don't have any scans left. Upgrade to continue.",
   "Invalid scan image": "That image couldn't be processed. Try another photo.",
   "Could not save scan result":
     "Your analysis completed but couldn't be saved. Please try again.",
@@ -32,6 +32,16 @@ export function toUserFacingScanError(err: unknown): string {
   if (err instanceof Error) {
     const known = FRIENDLY_BY_MESSAGE[err.message]
     if (known) return known
+
+    const code =
+      "code" in err && typeof err.code === "string" ? err.code : undefined
+    if (code && /ETIMEDOUT|ECONNRESET|ECONNREFUSED|P1001|P1008|P1017/.test(code)) {
+      return "The server is temporarily unavailable. Please try again in a moment."
+    }
+
+    if (/timeout|timed out|ETIMEDOUT|ECONN/i.test(err.message)) {
+      return "The server is temporarily unavailable. Please try again in a moment."
+    }
 
     if (isInternalErrorMessage(err.message)) {
       if (isLocationDbError(err.message)) {

@@ -15,7 +15,9 @@
     "db:generate": "prisma generate",
     "db:seed-admin": "npx tsx scripts/seed-admin.ts",
     "db:seed-products": "npx tsx scripts/seed-products.ts",
-    "db:seed-rates": "npx tsx scripts/seed-model-rates.ts"
+    "db:seed-rates": "npx tsx scripts/seed-model-rates.ts",
+    "db:seed-packs": "npx tsx scripts/seed-scan-packs.ts",
+    "db:reset-domain": "npx tsx scripts/reset-domain-data.ts"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.19",

@@ -54,7 +54,7 @@ const ADMIN: NavSection = {
   items: [
     { href: "/admin", label: "Analytics", icon: IconChartBar },
     { href: "/admin/users", label: "Users", icon: IconUsers },
-    { href: "/admin/tokens", label: "Tokens", icon: IconCoin },
+    { href: "/admin/tokens", label: "Scans", icon: IconCoin },
     { href: "/admin/models", label: "Models", icon: IconBrain },
     { href: "/admin/products", label: "Products", icon: IconPackage },
     { href: "/admin/feedback", label: "Feedback", icon: IconMessage },

@@ -20,10 +20,6 @@ export function ReportDoshaBlock({ doshaTyping }: ReportDoshaBlockProps) {
       {doshaTyping.note ? (
         <p className="leading-relaxed text-muted-foreground">{doshaTyping.note}</p>
       ) : null}
-      <p className="text-xs text-muted-foreground">
-        Cosmetic Ayurvedic wellness guidance only — not a medical constitution
-        diagnosis.
-      </p>
     </div>
   )
 }

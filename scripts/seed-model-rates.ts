@@ -6,6 +6,7 @@ import "dotenv/config"
 
 import type { ScanTier } from "../generated/prisma/client"
 import { prisma } from "../lib/db/client"
+import { withDbRetry } from "../lib/db/retry"
 
 type ModelSeed = {
   modelId: string
@@ -32,7 +33,7 @@ const MODELS: ModelSeed[] = [
     isScanDefault: true,
     supportsVision: true,
     supportsLive: false,
-    assignedTier: "start",
+    assignedTier: "starter",
     thinkingLevel: "low",
   },
   {
@@ -45,7 +46,7 @@ const MODELS: ModelSeed[] = [
     isScanDefault: false,
     supportsVision: true,
     supportsLive: false,
-    assignedTier: "regular",
+    assignedTier: "thinking",
     thinkingLevel: "medium",
   },
   {
@@ -90,32 +91,46 @@ const MODELS: ModelSeed[] = [
   },
 ]
 
-async function main() {
-  for (const model of MODELS) {
-    await prisma.aiModelRate.upsert({
-      where: {
-        provider_modelId: {
-          provider: "gemini",
-          modelId: model.modelId,
+async function upsertModel(model: ModelSeed) {
+  return withDbRetry(
+    () =>
+      prisma.aiModelRate.upsert({
+        where: {
+          provider_modelId: {
+            provider: "gemini",
+            modelId: model.modelId,
+          },
         },
-      },
-      create: {
-        provider: "gemini",
-        ...model,
-      },
-      update: {
-        displayName: model.displayName,
-        inputMicrosPer1M: model.inputMicrosPer1M,
-        outputMicrosPer1M: model.outputMicrosPer1M,
-        cachedInputMicrosPer1M: model.cachedInputMicrosPer1M,
-        isActive: model.isActive,
-        isScanDefault: model.isScanDefault,
-        supportsVision: model.supportsVision,
-        supportsLive: model.supportsLive,
-        assignedTier: model.assignedTier,
-        thinkingLevel: model.thinkingLevel,
-      },
-    })
+        create: {
+          provider: "gemini",
+          ...model,
+        },
+        update: {
+          displayName: model.displayName,
+          inputMicrosPer1M: model.inputMicrosPer1M,
+          outputMicrosPer1M: model.outputMicrosPer1M,
+          cachedInputMicrosPer1M: model.cachedInputMicrosPer1M,
+          isActive: model.isActive,
+          isScanDefault: model.isScanDefault,
+          supportsVision: model.supportsVision,
+          supportsLive: model.supportsLive,
+          assignedTier: model.assignedTier,
+          thinkingLevel: model.thinkingLevel,
+        },
+      }),
+    5,
+  )
+}
+
+async function main() {
+  // Clear tier slots once (avoids unique constraint on assignedTier during upsert).
+  await withDbRetry(
+    () => prisma.aiModelRate.updateMany({ data: { assignedTier: null } }),
+    5,
+  )
+
+  for (const model of MODELS) {
+    await upsertModel(model)
   }
 
   console.log(`Seeded ${MODELS.length} Gemini model rates`)

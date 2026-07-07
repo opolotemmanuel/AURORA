@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { downloadReportPdf } from "@/lib/reports/download-report-pdf"
 import type { SkinAssessment } from "@/lib/scan/types"
+import { formatTokenBreakdownWithTotal } from "@/lib/tokens/format-usage"
 import { cn } from "@/lib/utils"
 
 export type ReportListItem = {
@@ -22,11 +23,13 @@ export type ReportListItem = {
   status: string
   captureMode: string
   locationSnapshot: unknown
-  creditsCharged: number | null
+  scansDebited: number | null
   usage: {
     modelId: string
     inputTokens: number
     outputTokens: number
+    cachedTokens: number
+    reasoningTokens: number | null
     totalTokens: number
     latencyMs: number | null
     estimatedCostMicros: number | null
@@ -141,11 +144,11 @@ export function ReportsListClient({
                   ) : null}
                 </div>
                 <div className="text-right text-sm">
-                  {scan.creditsCharged != null ? (
+                  {scan.scansDebited != null ? (
                     <>
-                      <p className="text-muted-foreground">Credits</p>
+                      <p className="text-muted-foreground">Scans</p>
                       <p className="font-medium tabular-nums">
-                        {scan.creditsCharged.toLocaleString()}
+                        {scan.scansDebited.toLocaleString()}
                       </p>
                     </>
                   ) : null}
@@ -156,7 +159,13 @@ export function ReportsListClient({
                 <p className="mt-3 text-xs text-muted-foreground">
                   {scan.usage.modelId}
                   {" · "}
-                  {scan.usage.totalTokens.toLocaleString()} tokens
+                  {formatTokenBreakdownWithTotal({
+                    inputTokens: scan.usage.inputTokens,
+                    outputTokens: scan.usage.outputTokens,
+                    cachedTokens: scan.usage.cachedTokens,
+                    reasoningTokens: scan.usage.reasoningTokens ?? undefined,
+                    totalTokens: scan.usage.totalTokens,
+                  })}
                 </p>
               ) : null}
 

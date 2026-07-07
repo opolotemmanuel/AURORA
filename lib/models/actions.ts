@@ -88,7 +88,7 @@ export async function assignModelToTierAction(
     }
   } else if (tier !== null) {
     if (!target.supportsVision) {
-      throw new Error("Start and Regular tiers require a vision-capable model")
+      throw new Error("Starter and Thinking tiers require a vision-capable model")
     }
     if (target.supportsLive) {
       throw new Error("Live models can only be assigned to the Pro tier")
@@ -107,7 +107,7 @@ export async function assignModelToTierAction(
       where: { id: modelRateId },
       data: {
         assignedTier: tier,
-        isScanDefault: tier === "start",
+        isScanDefault: tier === "starter",
       },
     })
   })
@@ -117,5 +117,5 @@ export async function assignModelToTierAction(
 
 /** @deprecated Use assignModelToTierAction */
 export async function setActiveScanModelAction(id: string) {
-  await assignModelToTierAction(id, { tier: "start" })
+  await assignModelToTierAction(id, { tier: "starter" })
 }

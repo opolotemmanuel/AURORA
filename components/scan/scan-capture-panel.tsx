@@ -1,16 +1,19 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { IconRefresh } from "@tabler/icons-react"
 import { toast } from "sonner"
 
 import { Tabs, TabsContent } from "@/components/motion/tabs"
 import { ScanCameraHints } from "@/components/scan/scan-camera-hints"
 import { ScanCameraView } from "@/components/scan/scan-camera-view"
 import { ScanCaptureHeader } from "@/components/scan/scan-capture-header"
+import { ScanHeaderActionButton } from "@/components/scan/scan-header-action"
 import { ScanLivePanel } from "@/components/scan/scan-live-panel"
 import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import { ScanUploadPanel } from "@/components/scan/scan-upload-panel"
 import type { CaptureMode, ScanTier } from "@/lib/scan/types"
+import { CAPTURE_COPY } from "@/lib/scan/capture-copy"
 
 type ScanCapturePanelProps = {
   mode: CaptureMode
@@ -24,25 +27,6 @@ type ScanCapturePanelProps = {
     sessionDurationMs: number
   }) => void
 }
-
-const CAPTURE_COPY: Record<
-  CaptureMode,
-  { title: string; description: string }
-> = {
-  upload: {
-    title: "Upload your photo",
-    description: "Choose a clear, well-lit photo of your face",
-  },
-  camera: {
-    title: "Take a photo",
-    description: "Position your face in the frame; we'll check lighting live",
-  },
-  live: {
-    title: "Live scan",
-    description: "Real-time guidance with Aurora Pro",
-  },
-}
-
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false)
 
@@ -67,14 +51,19 @@ export function ScanCapturePanel({
   const isMobile = useIsMobile()
   const isPro = userScanTier === "pro"
   const copy = CAPTURE_COPY[mode]
+  const [liveHasError, setLiveHasError] = useState(false)
+  const [liveSessionKey, setLiveSessionKey] = useState(0)
 
-  if (mode === "live" && isPro) {
-    return (
-      <ScanLivePanel
-        onComplete={onLiveComplete}
-        onCancel={() => onModeChange("upload")}
-      />
-    )
+  useEffect(() => {
+    if (mode !== "live") {
+      setLiveHasError(false)
+    }
+  }, [mode])
+
+  const handleLiveRetry = () => {
+    setLiveHasError(false)
+    setLiveSessionKey((key) => key + 1)
+    onModeChange("upload")
   }
 
   if (isMobile && mode === "camera") {
@@ -109,7 +98,18 @@ export function ScanCapturePanel({
         variant="segment"
         className="relative w-full max-w-2xl overflow-visible"
       >
-        <ScanCaptureHeader isPro={isPro} />
+        <ScanCaptureHeader
+          isPro={isPro}
+          trailingActions={
+            liveHasError && mode === "live" ? (
+              <ScanHeaderActionButton
+                label="Retry"
+                icon={<IconRefresh className="size-3.5" />}
+                onClick={handleLiveRetry}
+              />
+            ) : null
+          }
+        />
 
         <div className="relative overflow-visible">
           <ScanStepShell
@@ -131,8 +131,10 @@ export function ScanCapturePanel({
             <TabsContent value="live" className="mt-0">
               {mode === "live" && isPro ? (
                 <ScanLivePanel
+                  key={liveSessionKey}
                   onComplete={onLiveComplete}
                   onCancel={() => onModeChange("upload")}
+                  onErrorChange={setLiveHasError}
                 />
               ) : (
                 <div className="rounded-xl border border-border p-6 text-sm text-muted-foreground">

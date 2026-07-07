@@ -1,18 +1,20 @@
 import Image from "next/image"
 
 import brandIcon from "@/app/icon.png"
+import { formatTokenBreakdownWithTotal } from "@/lib/tokens/format-usage"
 import { cn } from "@/lib/utils"
 
 export type ReportDocumentHeaderProps = {
   scanDate: string
   userName?: string
   captureMode?: string
-  creditsCharged?: number | null
   usage?: {
     modelId: string
     totalTokens: number
     inputTokens: number
     outputTokens: number
+    cachedTokens?: number
+    reasoningTokens?: number | null
   } | null
   className?: string
 }
@@ -21,7 +23,6 @@ export function ReportDocumentHeader({
   scanDate,
   userName,
   captureMode,
-  creditsCharged,
   usage,
   className,
 }: ReportDocumentHeaderProps) {
@@ -31,50 +32,43 @@ export function ReportDocumentHeader({
   if (userName) metaItems.push(`Prepared for ${userName}`)
   if (captureMode) metaItems.push(captureMode)
 
-  const tokenItems: string[] = []
-  if (creditsCharged != null) {
-    tokenItems.push(`${creditsCharged.toLocaleString()} credits`)
-  }
+  const usageItems: string[] = []
   if (usage) {
-    tokenItems.push(`${usage.totalTokens.toLocaleString()} tokens`)
-    tokenItems.push(usage.modelId)
+    usageItems.push(
+      formatTokenBreakdownWithTotal({
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        cachedTokens: usage.cachedTokens,
+        reasoningTokens: usage.reasoningTokens ?? undefined,
+        totalTokens: usage.totalTokens,
+      }),
+    )
   }
 
   return (
-    <header className={cn("font-sans border-b border-border pb-5", className)}>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <Image
-            src={brandIcon}
-            alt=""
-            width={32}
-            height={32}
-            className="size-9 shrink-0 rounded-md"
-            style={{ width: "auto", height: "auto" }}
-          />
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-foreground">
-              Aurora Organics
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Skin Intelligence Report
-            </p>
-          </div>
+    <header
+      className={cn(
+        "flex flex-wrap items-start justify-between gap-4 border-b border-border pb-4",
+        className,
+      )}
+    >
+      <div className="flex items-center gap-3">
+        <Image
+          src={brandIcon}
+          alt="Aura"
+          width={40}
+          height={40}
+          className="size-10 rounded-lg"
+        />
+        <div>
+          <p className="font-heading text-lg font-medium">Skin intelligence report</p>
+          {metaItems.length > 0 ? (
+            <p className="text-sm text-muted-foreground">{metaItems.join(" · ")}</p>
+          ) : null}
         </div>
-
-        {metaItems.length > 0 ? (
-          <div className="text-right text-xs text-muted-foreground">
-            {metaItems.map((item) => (
-              <p key={item}>{item}</p>
-            ))}
-          </div>
-        ) : null}
       </div>
-
-      {tokenItems.length > 0 ? (
-        <p className="mt-3 text-xs tabular-nums text-muted-foreground">
-          {tokenItems.join(" · ")}
-        </p>
+      {usageItems.length > 0 ? (
+        <p className="text-xs text-muted-foreground">{usageItems.join(" · ")}</p>
       ) : null}
     </header>
   )

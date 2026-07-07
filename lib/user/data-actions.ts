@@ -88,10 +88,10 @@ export async function deleteAllPersonalDataAction() {
 
   await prisma.$transaction([
     prisma.scan.deleteMany({ where: { userId: session.user.id } }),
-    prisma.tokenLedger.deleteMany({ where: { userId: session.user.id } }),
-    prisma.tokenWallet.update({
+    prisma.scanLedger.deleteMany({ where: { userId: session.user.id } }),
+    prisma.scanBalance.update({
       where: { userId: session.user.id },
-      data: { balance: 0, lifetimeUsed: 0, lifetimeGranted: 0 },
+      data: { remaining: 0, lifetimeUsed: 0, lifetimeGranted: 0 },
     }),
     prisma.userProfile.update({
       where: { userId: session.user.id },
@@ -145,8 +145,8 @@ export async function deleteAccountAction() {
 
   await prisma.$transaction([
     prisma.scan.deleteMany({ where: { userId: session.user.id } }),
-    prisma.tokenLedger.deleteMany({ where: { userId: session.user.id } }),
-    prisma.tokenWallet.deleteMany({ where: { userId: session.user.id } }),
+    prisma.scanLedger.deleteMany({ where: { userId: session.user.id } }),
+    prisma.scanBalance.deleteMany({ where: { userId: session.user.id } }),
     prisma.userProfile.deleteMany({ where: { userId: session.user.id } }),
     prisma.userLocation.deleteMany({ where: { userId: session.user.id } }),
   ])

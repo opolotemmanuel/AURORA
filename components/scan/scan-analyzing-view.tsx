@@ -1,9 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { IconRefresh } from "@tabler/icons-react"
 
 import { AnimatedBadge } from "@/components/motion/animated-badge"
 import { ScanAnalyzingOverlay } from "@/components/scan/scan-analyzing-overlay"
+import { ScanDashboardLink } from "@/components/scan/scan-close-button"
+import { ScanHeaderActionButton } from "@/components/scan/scan-header-action"
 import { ScanStepFrame } from "@/components/scan/scan-step-frame"
 import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -52,9 +55,9 @@ type ScanAnalyzingViewProps = {
   onComplete: (result: {
     assessment: SkinAssessment
     scanId: string
-    creditsCharged: number
     climateContext: ScanClimateContext | null
   }) => void
+  onRetry?: () => void
 }
 
 export function ScanAnalyzingView({
@@ -62,6 +65,7 @@ export function ScanAnalyzingView({
   imageBlob,
   livePayload,
   onComplete,
+  onRetry,
 }: ScanAnalyzingViewProps) {
   const [toolCalls, setToolCalls] = useState<AnalysisToolCall[]>(() =>
     ANALYSIS_STEPS.map((step) => ({ ...step, status: "pending" as const })),
@@ -180,7 +184,6 @@ export function ScanAnalyzingView({
         onComplete({
           assessment: result.assessment,
           scanId: result.scanId,
-          creditsCharged: result.creditsCharged,
           climateContext: result.climateContext,
         })
       } catch {
@@ -207,7 +210,20 @@ export function ScanAnalyzingView({
   const activePhase = toolCalls.findIndex((call) => call.status === "running")
 
   return (
-    <ScanStepFrame>
+    <ScanStepFrame
+      headerTrailing={
+        error && onRetry ? (
+          <>
+            <ScanHeaderActionButton
+              label="Retry"
+              icon={<IconRefresh className="size-3.5" />}
+              onClick={onRetry}
+            />
+            <ScanDashboardLink variant="action" />
+          </>
+        ) : undefined
+      }
+    >
       <ScanStepShell
         title="Analyzing your scan"
         description={description}

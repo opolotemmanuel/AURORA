@@ -9,7 +9,7 @@ export default function UsagePage() {
     <div className="space-y-8">
       <DashboardPageHeader
         title="Usage"
-        description="Token balance and consumption across scans and AI activity."
+        description="Scan balance and usage across your saved analyses."
       />
 
       <Suspense fallback={<UsageStatsSkeleton />}>

@@ -22,7 +22,7 @@ export function TokensTabs({ pricing, grant }: TokensTabsProps) {
           Pricing preferences
         </TabsTrigger>
         <TabsTrigger value="grant" pending={tabPending === "grant"}>
-          Grant tokens
+          Grant scans
         </TabsTrigger>
       </TabsList>
 

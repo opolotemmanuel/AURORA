@@ -1,12 +1,12 @@
 import { Suspense } from "react"
 
 import { PricingReferenceCard } from "@/components/admin/pricing-reference-card"
-import { TokenGrantPanel } from "@/components/admin/token-grant-panel"
+import { ScanGrantPanel } from "@/components/admin/scan-grant-panel"
 import { TokensTabs } from "@/components/admin/tokens-tabs"
 import { DashboardPageHeader } from "@/components/dashboard/page-header"
 import { Skeleton } from "@/components/ui/skeleton"
 
-function TokenGrantSkeleton() {
+function ScanGrantSkeleton() {
   return (
     <div className="space-y-4 rounded-none border border-border p-4">
       <Skeleton className="h-6 w-32" />
@@ -37,8 +37,8 @@ export default function AdminTokensPage() {
   return (
     <div className="space-y-8">
       <DashboardPageHeader
-        title="Tokens"
-        description="Review credit pricing and grant simulated tokens to users."
+        title="Scans"
+        description="Review scan pack pricing and grant scans to users."
         badge="Admin"
       />
       <Suspense>
@@ -49,8 +49,8 @@ export default function AdminTokensPage() {
             </Suspense>
           }
           grant={
-            <Suspense fallback={<TokenGrantSkeleton />}>
-              <TokenGrantPanel />
+            <Suspense fallback={<ScanGrantSkeleton />}>
+              <ScanGrantPanel />
             </Suspense>
           }
         />

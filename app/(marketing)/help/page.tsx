@@ -32,7 +32,7 @@ export default function HelpPage() {
               </Link>
               . You can upload a photo or use your camera. On-device checks help
               ensure good lighting and framing before analysis. Each scan uses one
-              token from your wallet; your report is saved to your dashboard and
+              allowance from your tier; your report is saved to your dashboard and
               can be downloaded as a PDF.
             </p>
           </section>

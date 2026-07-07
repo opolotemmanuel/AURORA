@@ -12,7 +12,7 @@ export async function UsageStats() {
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Available" value={stats.balance.toLocaleString()} />
+        <StatCard label="Remaining" value={stats.remaining.toLocaleString()} />
         <StatCard label="Used" value={stats.lifetimeUsed.toLocaleString()} />
         <StatCard label="Granted" value={stats.lifetimeGranted.toLocaleString()} />
       </div>
@@ -20,14 +20,14 @@ export async function UsageStats() {
       <div className="rounded-none border border-border bg-card p-5">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h2 className="font-heading text-sm font-medium">Credits used</h2>
+            <h2 className="font-heading text-sm font-medium">Scans used</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {stats.lifetimeUsed.toLocaleString()} of{" "}
               {stats.lifetimeGranted.toLocaleString()} granted
             </p>
           </div>
           <p className="text-sm text-muted-foreground">
-            {stats.balance.toLocaleString()} available
+            {stats.remaining.toLocaleString()} remaining
           </p>
         </div>
         <Progress
@@ -40,7 +40,7 @@ export async function UsageStats() {
       </div>
 
       <div className="rounded-none border border-border bg-card p-5">
-        <h2 className="font-heading text-sm font-medium">Daily token usage</h2>
+        <h2 className="font-heading text-sm font-medium">Daily scans used</h2>
         <div className="mt-4">
           <UsageBarChart data={stats.dailyUsage} />
         </div>

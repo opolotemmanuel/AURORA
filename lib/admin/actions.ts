@@ -6,25 +6,49 @@ import type { ScanTier } from "@/generated/prisma/client"
 import { requireAdmin } from "@/lib/auth/session"
 import { ASSIGNABLE_ROLES, type AppRole } from "@/lib/dashboard/nav"
 import { SCAN_TIERS } from "@/lib/models/types"
-import { tokenGrantSchema } from "@/lib/onboarding/schemas"
+import { scanGrantSchema } from "@/lib/onboarding/schemas"
 import { prisma } from "@/lib/db/client"
-import { grantTokens } from "@/lib/tokens/wallet"
+import { grantPackScans, grantScans } from "@/lib/scans/balance"
 import { z } from "zod"
 
-export async function grantAdminTokensAction(input: unknown) {
+export async function grantAdminScansAction(input: unknown) {
   const session = await requireAdmin()
-  const data = tokenGrantSchema.parse(input)
+  const data = scanGrantSchema.parse(input)
 
-  await grantTokens({
-    userId: data.userId,
-    amount: data.amount,
-    reason: "admin_grant",
-    grantedById: session.user.id,
-    metadata: data.reason ? { reason: data.reason } : undefined,
-  })
+  if (data.packId) {
+    await grantPackScans({
+      packId: data.packId,
+      userId: data.userId,
+      grantedById: session.user.id,
+      metadata: data.reason ? { reason: data.reason } : undefined,
+    })
+  } else {
+    if (data.tier) {
+      await prisma.user.update({
+        where: { id: data.userId },
+        data: { scanTier: data.tier },
+      })
+    }
+
+    await grantScans({
+      userId: data.userId,
+      amount: data.amount,
+      reason: "admin_grant",
+      tier: data.tier,
+      grantedById: session.user.id,
+      replaceBalance: Boolean(data.tier),
+      metadata: data.reason ? { reason: data.reason } : undefined,
+    })
+  }
 
   revalidatePath("/admin")
   revalidatePath("/admin/tokens")
+  revalidatePath("/admin/scans")
+}
+
+/** @deprecated Use grantAdminScansAction */
+export async function grantAdminTokensAction(input: unknown) {
+  return grantAdminScansAction(input)
 }
 
 export async function setUserRoleAction(userId: string, role: AppRole) {

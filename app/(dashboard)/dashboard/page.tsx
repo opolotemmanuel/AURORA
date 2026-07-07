@@ -12,7 +12,7 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <DashboardPageHeader
         title="Overview"
-        description="Your credits, recent scans, and skin reports in one place."
+        description="Your scan allowance, recent activity, and skin reports in one place."
       />
 
       <section className="rounded-none border border-border bg-card p-5 sm:p-6">

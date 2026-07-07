@@ -87,8 +87,8 @@ export function deriveAgeBand(dateOfBirth: Date): AgeBand {
   return "age_65_plus"
 }
 
-export function getSignupTokenBonus(): number {
-  const raw = process.env.SIGNUP_TOKEN_BONUS
-  const parsed = raw ? Number.parseInt(raw, 10) : 10_000
-  return Number.isFinite(parsed) ? parsed : 10_000
+export function getFreeStarterScans(): number {
+  const raw = process.env.FREE_STARTER_SCANS
+  const parsed = raw ? Number.parseInt(raw, 10) : 3
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : 3
 }

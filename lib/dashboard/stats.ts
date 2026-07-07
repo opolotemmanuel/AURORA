@@ -7,23 +7,24 @@ import { withDbRetry } from "@/lib/db/retry"
 export const getUserDashboardStats = cache(async (userId: string) => {
   await connection()
   return withDbRetry(async () => {
-    const [wallet, scanCount, ledgerAgg] = await Promise.all([
-      prisma.tokenWallet.findUnique({ where: { userId } }),
+    const [balance, scanCount, ledgerAgg] = await Promise.all([
+      prisma.scanBalance.findUnique({ where: { userId } }),
       prisma.scan.count({ where: { userId } }),
-      prisma.tokenLedger.aggregate({
+      prisma.scanLedger.aggregate({
         where: { userId, delta: { lt: 0 } },
         _sum: { delta: true },
       }),
     ])
 
     const [recentLedger, profile, location] = await Promise.all([
-      prisma.tokenLedger.findMany({
+      prisma.scanLedger.findMany({
         where: { userId },
         orderBy: { createdAt: "desc" },
         take: 14,
         select: {
           delta: true,
           reason: true,
+          tier: true,
           createdAt: true,
           metadata: true,
         },
@@ -48,9 +49,9 @@ export const getUserDashboardStats = cache(async (userId: string) => {
     )
 
     return {
-      balance: wallet?.balance ?? 0,
-      lifetimeUsed: wallet?.lifetimeUsed ?? 0,
-      lifetimeGranted: wallet?.lifetimeGranted ?? 0,
+      remaining: balance?.remaining ?? 0,
+      lifetimeUsed: balance?.lifetimeUsed ?? 0,
+      lifetimeGranted: balance?.lifetimeGranted ?? 0,
       scanCount,
       totalDebited: Math.abs(ledgerAgg._sum.delta ?? 0),
       profile,
@@ -73,11 +74,11 @@ export const getAdminDashboardStats = cache(async () => {
     ])
 
     const [totalGranted, totalUsed, usersByRole] = await Promise.all([
-      prisma.tokenLedger.aggregate({
+      prisma.scanLedger.aggregate({
         where: { delta: { gt: 0 } },
         _sum: { delta: true },
       }),
-      prisma.tokenLedger.aggregate({
+      prisma.scanLedger.aggregate({
         where: { delta: { lt: 0 } },
         _sum: { delta: true },
       }),
@@ -87,7 +88,7 @@ export const getAdminDashboardStats = cache(async () => {
       }),
     ])
 
-    const [scansByStatus, recentUsers, tokenActivity] = await Promise.all([
+    const [scansByStatus, recentUsers, scanActivity] = await Promise.all([
       prisma.scan.groupBy({
         by: ["status"],
         _count: { status: true },
@@ -103,7 +104,7 @@ export const getAdminDashboardStats = cache(async () => {
           createdAt: true,
         },
       }),
-      prisma.tokenLedger.findMany({
+      prisma.scanLedger.findMany({
         where: { createdAt: { gte: thirtyDaysAgo } },
         orderBy: { createdAt: "desc" },
         take: 100,
@@ -112,11 +113,11 @@ export const getAdminDashboardStats = cache(async () => {
     ])
 
     const grantsByDay = bucketLedgerByDay(
-      tokenActivity.filter((e) => e.delta > 0),
+      scanActivity.filter((e) => e.delta > 0),
       14,
     )
     const usageByDay = bucketLedgerByDay(
-      tokenActivity.filter((e) => e.delta < 0),
+      scanActivity.filter((e) => e.delta < 0),
       14,
     )
 

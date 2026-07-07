@@ -1,5 +1,6 @@
 "use server"
 
+import type { Prisma } from "@/generated/prisma/client"
 import { revalidatePath } from "next/cache"
 
 import { toLocationSnapshot } from "@/lib/climate/context"
@@ -15,13 +16,11 @@ import { REPORT_FORMAT_VERSION } from "@/lib/scan/constants"
 import { toScanResultData } from "@/lib/scan/persist"
 import { saveScanResultSchema } from "@/lib/scan/schemas"
 import type { SkinAssessment } from "@/lib/scan/types"
-import { DEFAULT_MOCK_USAGE } from "@/lib/tokens/constants"
-import {
-  computeScanCreditCost,
-  pricingResultToLedgerMetadata,
-  type UsageInput,
-} from "@/lib/tokens/pricing"
-import { debitTokensInTransaction, getBalance } from "@/lib/tokens/wallet"
+import { DEFAULT_MOCK_USAGE } from "@/lib/scans/constants"
+import { getScansRemaining, debitScanInTransaction } from "@/lib/scans/balance"
+import { estimateScanProviderCost } from "@/lib/scans/cost"
+import type { UsageInput } from "@/lib/scans/cost"
+import { getUsageTotalTokens } from "@/lib/tokens/format-usage"
 import type { z } from "zod"
 
 type SaveScanResultInput = z.input<typeof saveScanResultSchema> | SkinAssessment
@@ -60,12 +59,12 @@ export async function saveScanResultAction(
   const resultData = toScanResultData(validatedAssessment)
   const usage: UsageInput = parsed.usage ?? DEFAULT_MOCK_USAGE
 
-  const pricing = await computeScanCreditCost(usage)
-  const balance = await getBalance(session.user.id)
-
-  if (balance < pricing.credits) {
-    return { ok: false, error: "Insufficient credits" }
+  const remaining = await getScansRemaining(session.user.id)
+  if (remaining < 1) {
+    return { ok: false, error: "No scans remaining" }
   }
+
+  const costEstimate = await estimateScanProviderCost(usage)
 
   const [profile, location] = await Promise.all([
     prisma.userProfile.findUnique({ where: { userId: session.user.id } }),
@@ -122,10 +121,7 @@ export async function saveScanResultAction(
         })
 
         if (hasMeteredUsage(usage)) {
-          const totalTokens =
-            usage.inputTokens +
-            usage.outputTokens +
-            (usage.cachedTokens ?? 0)
+          const totalTokens = getUsageTotalTokens(usage)
 
           await tx.scanUsage.create({
             data: {
@@ -135,19 +131,24 @@ export async function saveScanResultAction(
               inputTokens: usage.inputTokens,
               outputTokens: usage.outputTokens,
               cachedTokens: usage.cachedTokens ?? 0,
+              reasoningTokens: usage.reasoningTokens ?? null,
               totalTokens,
-              estimatedCostMicros: pricing.costMicros,
+              estimatedCostMicros: costEstimate?.costMicros ?? null,
+              rawUsage: (usage.rawUsage ?? undefined) as
+                | Prisma.InputJsonValue
+                | undefined,
             },
           })
         }
 
-        await debitTokensInTransaction(tx, {
+        await debitScanInTransaction(tx, {
           userId: session.user.id,
-          amount: pricing.credits,
           reason: "scan_debit",
           scanId: created.id,
-          provider: usage.provider,
-          metadata: pricingResultToLedgerMetadata(usage, pricing),
+          metadata: {
+            modelId: usage.modelId,
+            estimatedCostMicros: costEstimate?.costMicros ?? null,
+          },
         })
 
         return { scan: created, report }
@@ -165,9 +166,9 @@ export async function saveScanResultAction(
   } catch (err) {
     if (
       err instanceof Error &&
-      err.message === "Insufficient token balance"
+      err.message === "Insufficient scan balance"
     ) {
-      return { ok: false, error: "Insufficient credits" }
+      return { ok: false, error: "No scans remaining" }
     }
     return { ok: false, error: "Could not save scan result" }
   }

@@ -1,19 +1,17 @@
 import { NextResponse } from "next/server"
 
-import { getSession } from "@/lib/auth/session"
+import { requireApiSession } from "@/lib/auth/api-session"
 import { toUserFacingScanError } from "@/lib/scan/errors"
 import { runLiveAnalyzeScan } from "@/lib/scan/run-live-analyze"
 
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png", "image/webp"])
 
 export async function POST(request: Request) {
-  const session = await getSession()
-  if (!session) {
-    return NextResponse.json(
-      { ok: false, error: "Please sign in to run a live scan." },
-      { status: 401 },
-    )
+  const authResult = await requireApiSession()
+  if ("response" in authResult) {
+    return authResult.response
   }
+  const { session } = authResult
 
   let formData: FormData
   try {

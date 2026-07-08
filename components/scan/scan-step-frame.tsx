@@ -1,6 +1,5 @@
 import type { ReactNode } from "react"
 
-import { ScanDashboardLink } from "@/components/scan/scan-close-button"
 import { ScanFlowHeader } from "@/components/scan/scan-flow-header"
 import { cn } from "@/lib/utils"
 
@@ -26,7 +25,7 @@ export function ScanStepFrame({
     >
       <ScanFlowHeader
         className={headerClassName}
-        trailing={headerTrailing ?? <ScanDashboardLink variant="action" />}
+        trailing={headerTrailing ?? undefined}
       />
       {children}
     </div>

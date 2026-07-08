@@ -11,6 +11,7 @@ import {
 import { ReportDocumentHeader } from "@/components/reports/report-document-header"
 import { SkinReportDocument } from "@/components/reports/skin-report-document"
 import { ScanFeedbackWidget } from "@/components/scan/scan-feedback-widget"
+import { ScanFollowUpChat } from "@/components/scan/scan-follow-up-chat"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -109,7 +110,7 @@ export function ScanDetailModal({
         className="sm:max-w-5xl"
       >
         <div className="relative flex min-h-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-20 sm:px-6">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-44 sm:px-6">
             <div className="mx-auto max-w-3xl space-y-6">
               <ReportDocumentHeader
                 scanDate={scanDate}
@@ -125,13 +126,15 @@ export function ScanDetailModal({
           </div>
 
           <div className="pointer-events-none absolute inset-x-0 bottom-14 z-30 flex justify-end px-4 sm:bottom-16 sm:px-6">
-            <ScanFeedbackWidget
-              scanId={scan.id}
-              existingFeedback={scan.feedback}
-              position="bottom-right"
-              anchored
-              className="pointer-events-auto"
-            />
+            <div className="pointer-events-auto flex flex-col items-end gap-3">
+              <ScanFollowUpChat scanId={scan.id} />
+              <ScanFeedbackWidget
+                scanId={scan.id}
+                existingFeedback={scan.feedback}
+                position="bottom-right"
+                anchored
+              />
+            </div>
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3 sm:px-6">

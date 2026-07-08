@@ -1,6 +1,7 @@
 import type { Prisma, ScanLedgerReason, ScanTier } from "@/generated/prisma/client"
 
 import { prisma } from "@/lib/db/client"
+import { chatTokensForScanGrant } from "@/lib/chat/token-budget"
 import { getUserScanTier } from "@/lib/models/queries"
 
 type GrantInput = {
@@ -46,6 +47,7 @@ export async function grantScans(input: GrantInput) {
   }
 
   const tier = await resolveTier(input.userId, input.tier)
+  const tokenGrant = chatTokensForScanGrant(input.amount, tier)
 
   return prisma.$transaction(async (tx) => {
     const balance = await tx.scanBalance.upsert({
@@ -54,15 +56,18 @@ export async function grantScans(input: GrantInput) {
         userId: input.userId,
         remaining: input.amount,
         lifetimeGranted: input.amount,
+        tokenBudgetRemaining: tokenGrant,
       },
       update: input.replaceBalance
         ? {
             remaining: input.amount,
             lifetimeGranted: { increment: input.amount },
+            tokenBudgetRemaining: tokenGrant,
           }
         : {
             remaining: { increment: input.amount },
             lifetimeGranted: { increment: input.amount },
+            tokenBudgetRemaining: { increment: tokenGrant },
           },
     })
 

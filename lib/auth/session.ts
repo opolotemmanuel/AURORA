@@ -1,21 +1,17 @@
 import { cache } from "react"
-import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { getAuthContext } from "@/lib/auth/context"
-import { auth } from "@/lib/auth/server"
+import { resolveSession } from "@/lib/auth/resolve-session"
 import { prisma } from "@/lib/db/client"
 import { withDbRetry } from "@/lib/db/retry"
 
 export const getSession = cache(async () => {
-  const requestHeaders = await headers()
-  return withDbRetry(
-    () =>
-      auth.api.getSession({
-        headers: requestHeaders,
-      }),
-    3,
-  )
+  const result = await resolveSession()
+  if (result.status === "ok") {
+    return result.session
+  }
+  return null
 })
 
 export async function requireSession() {

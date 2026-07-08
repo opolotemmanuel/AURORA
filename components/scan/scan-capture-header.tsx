@@ -1,22 +1,16 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { IconCamera, IconUpload, IconVideo } from "@tabler/icons-react"
+import { IconCamera, IconSparkles, IconUpload } from "@tabler/icons-react"
 
 import { TabsList, TabsTrigger } from "@/components/motion/tabs"
-import { ScanDashboardLink } from "@/components/scan/scan-close-button"
 import { ScanFlowHeader } from "@/components/scan/scan-flow-header"
-import { Badge } from "@/components/ui/badge"
 
 type ScanCaptureHeaderProps = {
-  isPro: boolean
   trailingActions?: ReactNode
 }
 
-export function ScanCaptureHeader({
-  isPro,
-  trailingActions,
-}: ScanCaptureHeaderProps) {
+export function ScanCaptureHeader({ trailingActions }: ScanCaptureHeaderProps) {
   return (
     <ScanFlowHeader
       trailing={
@@ -30,24 +24,12 @@ export function ScanCaptureHeader({
               <IconCamera className="size-3.5" />
               <span className="hidden sm:inline">Camera</span>
             </TabsTrigger>
-            <TabsTrigger
-              value="live"
-              className="gap-1.5 px-3 data-[disabled=true]:opacity-50"
-              data-disabled={!isPro}
-            >
-              <IconVideo className="size-3.5" />
-              <span className="hidden sm:inline">Live</span>
-              {!isPro ? (
-                <Badge variant="secondary" className="ml-1 hidden sm:inline-flex">
-                  Pro
-                </Badge>
-              ) : (
-                <Badge className="ml-1 hidden sm:inline-flex">Pro</Badge>
-              )}
+            <TabsTrigger value="advice" className="gap-1.5 px-3">
+              <IconSparkles className="size-3.5" />
+              <span className="hidden sm:inline">Advice</span>
             </TabsTrigger>
           </TabsList>
           {trailingActions}
-          <ScanDashboardLink variant="action" />
         </>
       }
     />

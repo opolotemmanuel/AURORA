@@ -15,7 +15,7 @@ export type ScanWizardStep =
   | "analyzing"
   | "results"
 
-export type CaptureMode = "upload" | "camera" | "live"
+export type CaptureMode = "upload" | "camera" | "live" | "advice"
 
 export type ScanTier = "starter" | "thinking" | "pro"
 

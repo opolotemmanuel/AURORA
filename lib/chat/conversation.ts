@@ -1,0 +1,225 @@
+import type { ChatConversationKind, ChatMessageRole } from "@/generated/prisma/client"
+
+import type { ChatHistoryMessage } from "@/lib/ai/providers/gemini-chat"
+import type { ChatImageInput } from "@/lib/chat/image"
+import { prisma } from "@/lib/db/client"
+import { MAX_CHAT_TURNS_PER_CONVERSATION } from "@/lib/scans/constants"
+
+export type ChatMessageRecord = {
+  id: string
+  role: ChatMessageRole
+  content: string
+  blocked: boolean
+  createdAt: Date
+  imageMimeType?: string | null
+  imageData?: Buffer | Uint8Array | null
+}
+
+export async function createAdviceConversation(userId: string) {
+  return prisma.chatConversation.create({
+    data: {
+      userId,
+      kind: "advice",
+    },
+  })
+}
+
+export async function listAdviceConversations(
+  userId: string,
+  page = 1,
+  pageSize = 20,
+) {
+  const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
+  const skip = (safePage - 1) * pageSize
+  const where = { userId, kind: "advice" as const }
+
+  const [conversations, totalCount] = await Promise.all([
+    prisma.chatConversation.findMany({
+      where,
+      orderBy: { updatedAt: "desc" },
+      skip,
+      take: pageSize,
+      include: {
+        messages: {
+          where: { role: "user" },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+        _count: { select: { messages: true } },
+      },
+    }),
+    prisma.chatConversation.count({ where }),
+  ])
+
+  return {
+    conversations,
+    totalCount,
+    totalPages: Math.max(1, Math.ceil(totalCount / pageSize)),
+    page: safePage,
+  }
+}
+
+export async function getConversationForUser(
+  conversationId: string,
+  userId: string,
+) {
+  return prisma.chatConversation.findFirst({
+    where: { id: conversationId, userId },
+    include: {
+      messages: { orderBy: { createdAt: "asc" } },
+    },
+  })
+}
+
+export async function getOrCreateConversation(input: {
+  userId: string
+  kind: ChatConversationKind
+  scanId?: string
+  conversationId?: string
+}) {
+  if (input.conversationId) {
+    const existing = await getConversationForUser(
+      input.conversationId,
+      input.userId,
+    )
+    if (!existing) {
+      throw new Error("Conversation not found")
+    }
+    if (input.scanId && existing.scanId !== input.scanId) {
+      throw new Error("Conversation does not match scan")
+    }
+    if (existing.kind !== input.kind) {
+      throw new Error("Conversation kind mismatch")
+    }
+    return existing
+  }
+
+  if (input.kind === "follow_up" && input.scanId) {
+    const existing = await prisma.chatConversation.findFirst({
+      where: {
+        userId: input.userId,
+        scanId: input.scanId,
+        kind: "follow_up",
+      },
+      include: {
+        messages: { orderBy: { createdAt: "asc" } },
+      },
+    })
+    if (existing) {
+      return existing
+    }
+  }
+
+  if (input.kind === "advice") {
+    const existing = await prisma.chatConversation.findFirst({
+      where: {
+        userId: input.userId,
+        kind: "advice",
+      },
+      orderBy: { updatedAt: "desc" },
+      include: {
+        messages: { orderBy: { createdAt: "asc" } },
+      },
+    })
+    if (existing) {
+      return existing
+    }
+  }
+
+  return prisma.chatConversation.create({
+    data: {
+      userId: input.userId,
+      scanId: input.scanId,
+      kind: input.kind,
+    },
+    include: {
+      messages: { orderBy: { createdAt: "asc" } },
+    },
+  })
+}
+
+export function toChatHistory(
+  messages: ChatMessageRecord[],
+): ChatHistoryMessage[] {
+  return messages
+    .filter((m) => !m.blocked && m.role !== "system_refusal")
+    .map((m) => {
+      const entry: ChatHistoryMessage = {
+        role: m.role === "user" ? "user" : "assistant",
+        content: m.content,
+      }
+      if (m.imageMimeType && m.imageData && m.imageData.byteLength > 0) {
+        entry.image = {
+          mimeType: m.imageMimeType as ChatImageInput["mimeType"],
+          data: Buffer.from(m.imageData),
+        }
+      }
+      return entry
+    })
+}
+
+export async function countRecentUserMessages(
+  userId: string,
+  windowMs: number,
+): Promise<number> {
+  const since = new Date(Date.now() - windowMs)
+  return prisma.chatMessage.count({
+    where: {
+      conversation: { userId },
+      role: "user",
+      createdAt: { gte: since },
+    },
+  })
+}
+
+export function assertConversationTurnLimit(messageCount: number) {
+  const userTurns = Math.ceil(messageCount / 2)
+  if (userTurns >= MAX_CHAT_TURNS_PER_CONVERSATION) {
+    throw new Error("Conversation turn limit reached")
+  }
+}
+
+export async function appendChatMessages(input: {
+  conversationId: string
+  userContent: string
+  userBlocked: boolean
+  userImage?: ChatImageInput
+  assistantContent: string
+  assistantRole: ChatMessageRole
+  inputTokens: number
+  outputTokens: number
+  totalTokens: number
+}) {
+  return prisma.$transaction([
+    prisma.chatMessage.create({
+      data: {
+        conversationId: input.conversationId,
+        role: "user",
+        content: input.userContent,
+        blocked: input.userBlocked,
+        imageMimeType: input.userImage?.mimeType,
+        imageData: input.userImage?.buffer
+          ? new Uint8Array(input.userImage.buffer)
+          : undefined,
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+      },
+    }),
+    prisma.chatMessage.create({
+      data: {
+        conversationId: input.conversationId,
+        role: input.assistantRole,
+        content: input.assistantContent,
+        blocked: false,
+        inputTokens: input.inputTokens,
+        outputTokens: input.outputTokens,
+        totalTokens: input.totalTokens,
+      },
+    }),
+    prisma.chatConversation.update({
+      where: { id: input.conversationId },
+      data: { updatedAt: new Date() },
+    }),
+  ])
+}

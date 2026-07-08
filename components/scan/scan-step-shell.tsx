@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 type ScanStepShellProps = {
   title: string
   description?: string
+  headerActions?: ReactNode
   children: ReactNode
   className?: string
 }
@@ -14,6 +15,7 @@ type ScanStepShellProps = {
 export function ScanStepShell({
   title,
   description,
+  headerActions,
   children,
   className,
 }: ScanStepShellProps) {
@@ -24,12 +26,17 @@ export function ScanStepShell({
         className,
       )}
     >
-      <div className="space-y-2 px-1">
-        <p className="font-heading text-sm font-semibold text-foreground">
-          {title}
-        </p>
-        {description ? (
-          <p className="text-xs text-muted-foreground">{description}</p>
+      <div className="flex items-start justify-between gap-3 px-1">
+        <div className="min-w-0 space-y-2">
+          <p className="font-heading text-sm font-semibold text-foreground">
+            {title}
+          </p>
+          {description ? (
+            <p className="text-xs text-muted-foreground">{description}</p>
+          ) : null}
+        </div>
+        {headerActions ? (
+          <div className="shrink-0 pt-0.5">{headerActions}</div>
         ) : null}
       </div>
       {children}

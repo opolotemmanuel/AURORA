@@ -14,7 +14,6 @@ import { AnimatePresence, motion } from "motion/react"
 import { AnimatedBadge } from "@/components/motion/animated-badge"
 import { Button } from "@/components/ui/button"
 import { ScanCameraPicker } from "@/components/scan/scan-camera-picker"
-import { ScanDashboardLink } from "@/components/scan/scan-close-button"
 import {
   SCAN_CAMERA_HEIGHT,
   useScanCameraHeight,
@@ -241,7 +240,7 @@ export function ScanCameraView({
               <IconArrowLeft className="size-4" />
             </button>
           ) : (
-            <ScanDashboardLink variant="icon" />
+            <div />
           )
         ) : (
           <div />

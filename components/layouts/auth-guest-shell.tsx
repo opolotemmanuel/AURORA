@@ -1,17 +1,24 @@
 import { Suspense } from "react"
 import { redirect } from "next/navigation"
 
-import { getAuthContext } from "@/lib/auth/context"
+import { AuthUnavailable } from "@/components/auth/auth-unavailable"
+import { resolveAuth } from "@/lib/auth/context"
 
 async function AuthGuestGate({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const ctx = await getAuthContext()
-  if (ctx) {
+  const result = await resolveAuth()
+
+  if (result.kind === "db_unavailable") {
+    return <AuthUnavailable />
+  }
+
+  if (result.kind === "authenticated") {
     redirect("/scan")
   }
+
   return children
 }
 

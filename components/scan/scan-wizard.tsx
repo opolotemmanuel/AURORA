@@ -14,17 +14,12 @@ import type {
   CaptureMode,
   LiveScanPayload,
   ScanClimateContext,
-  ScanTier,
   ScanWizardStep,
   SkinAssessment,
 } from "@/lib/scan/types"
 import { cn } from "@/lib/utils"
 
-type ScanWizardProps = {
-  userScanTier: ScanTier
-}
-
-export function ScanWizard({ userScanTier }: ScanWizardProps) {
+export function ScanWizard() {
   const [step, setStep] = useState<ScanWizardStep>("capture")
   const [captureMode, setCaptureMode] = useState<CaptureMode>("upload")
   const [rawPreviewUrl, setRawPreviewUrl] = useState<string | null>(null)
@@ -81,25 +76,6 @@ export function ScanWizard({ userScanTier }: ScanWizardProps) {
     setReportOpen(false)
     setStep("edit")
   }, [croppedPreviewUrl])
-
-  const handleLiveComplete = useCallback(
-    (result: {
-      transcript: string
-      bestFrameBlob: Blob
-      previewUrl: string
-      sessionDurationMs: number
-    }) => {
-      trackUrl(result.previewUrl)
-      setCroppedPreviewUrl(result.previewUrl)
-      setImageBlob(result.bestFrameBlob)
-      setLivePayload({
-        transcript: result.transcript,
-        sessionDurationMs: result.sessionDurationMs,
-      })
-      setStep("analyzing")
-    },
-    [trackUrl],
-  )
 
   const handleImageSelected = useCallback(
     (file: File, previewUrl: string, _source: CaptureMode) => {
@@ -164,10 +140,8 @@ export function ScanWizard({ userScanTier }: ScanWizardProps) {
             {step === "capture" ? (
               <ScanCapturePanel
                 mode={captureMode}
-                userScanTier={userScanTier}
                 onModeChange={setCaptureMode}
                 onImageSelected={handleImageSelected}
-                onLiveComplete={handleLiveComplete}
               />
             ) : null}
 

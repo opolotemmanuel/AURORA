@@ -40,6 +40,7 @@ const YOUR_DATA: NavSection = {
   items: [
     { href: "/dashboard/profile", label: "Profile", icon: IconUser },
     { href: "/reports", label: "Reports", icon: IconReport },
+    { href: "/chats", label: "Skin advice", icon: IconMessage },
     { href: "/dashboard/privacy", label: "Privacy", icon: IconLock },
   ],
 }

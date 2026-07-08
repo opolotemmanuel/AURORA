@@ -1,21 +1,32 @@
-import { redirect } from "next/navigation"
+import type { ReactNode } from "react"
 
 import { ImpersonationBanner } from "@/components/admin/impersonation-banner"
 import { DashboardShell } from "@/components/layouts/dashboard-shell"
-import { getAuthContext } from "@/lib/auth/context"
+import {
+  AuthShellGate,
+  getResolvedAuthContext,
+} from "@/components/layouts/auth-shell-gate"
 
 export async function DashboardAuthShell({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: ReactNode
 }>) {
-  const ctx = await getAuthContext()
-  if (!ctx) {
-    redirect("/login")
-  }
+  return (
+    <AuthShellGate onboardingRedirect="/onboarding?callbackUrl=%2Fdashboard">
+      <DashboardAuthShellInner>{children}</DashboardAuthShellInner>
+    </AuthShellGate>
+  )
+}
 
-  if (!ctx.onboardingCompleted) {
-    redirect("/onboarding?callbackUrl=%2Fdashboard")
+async function DashboardAuthShellInner({
+  children,
+}: Readonly<{
+  children: ReactNode
+}>) {
+  const ctx = await getResolvedAuthContext()
+  if (!ctx) {
+    return null
   }
 
   const isImpersonating = Boolean(

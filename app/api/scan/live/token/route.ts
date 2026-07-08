@@ -1,31 +1,17 @@
 import { NextResponse } from "next/server"
 
 import { createLiveScanToken } from "@/lib/ai/providers/gemini-live"
-import { getSession } from "@/lib/auth/session"
+import { requireApiSession } from "@/lib/auth/api-session"
 import { getLiveScanModel } from "@/lib/models/queries"
 import { requireProScanTier, ScanAccessError } from "@/lib/scan/access"
 import { toUserFacingScanError } from "@/lib/scan/errors"
 
 export async function POST() {
-  let session
-  try {
-    session = await getSession()
-  } catch (err) {
-    return NextResponse.json(
-      {
-        ok: false,
-        error: toUserFacingScanError(err),
-      },
-      { status: 503 },
-    )
+  const authResult = await requireApiSession()
+  if ("response" in authResult) {
+    return authResult.response
   }
-
-  if (!session) {
-    return NextResponse.json(
-      { ok: false, error: "Please sign in to run a live scan." },
-      { status: 401 },
-    )
-  }
+  const { session } = authResult
 
   try {
     await requireProScanTier(session.user.id)

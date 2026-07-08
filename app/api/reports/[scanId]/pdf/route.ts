@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { getSession } from "@/lib/auth/session"
+import { requireApiSession } from "@/lib/auth/api-session"
 import { generateSkinReportPdf } from "@/lib/pdf/generate-skin-report"
 
 type RouteContext = {
@@ -8,10 +8,11 @@ type RouteContext = {
 }
 
 export async function GET(_request: Request, context: RouteContext) {
-  const session = await getSession()
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  const authResult = await requireApiSession()
+  if ("response" in authResult) {
+    return authResult.response
   }
+  const { session } = authResult
 
   const { scanId } = await context.params
 

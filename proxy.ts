@@ -33,6 +33,10 @@ export const config = {
       missing: [{ type: "header", key: "next-router-prefetch" }],
     },
     {
+      source: "/chats/:path*",
+      missing: [{ type: "header", key: "next-router-prefetch" }],
+    },
+    {
       source: "/settings/:path*",
       missing: [{ type: "header", key: "next-router-prefetch" }],
     },

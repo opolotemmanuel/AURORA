@@ -5,7 +5,6 @@ import { IconRefresh } from "@tabler/icons-react"
 
 import { AnimatedBadge } from "@/components/motion/animated-badge"
 import { ScanAnalyzingOverlay } from "@/components/scan/scan-analyzing-overlay"
-import { ScanDashboardLink } from "@/components/scan/scan-close-button"
 import { ScanHeaderActionButton } from "@/components/scan/scan-header-action"
 import { ScanStepFrame } from "@/components/scan/scan-step-frame"
 import { ScanStepShell } from "@/components/scan/scan-step-shell"
@@ -219,7 +218,6 @@ export function ScanAnalyzingView({
               icon={<IconRefresh className="size-3.5" />}
               onClick={onRetry}
             />
-            <ScanDashboardLink variant="action" />
           </>
         ) : undefined
       }

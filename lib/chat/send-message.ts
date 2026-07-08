@@ -1,0 +1,322 @@
+import type { ChatConversationKind } from "@/generated/prisma/client"
+
+import { chatAboutSkin } from "@/lib/ai/adapter"
+import { chatImageToDataUrl } from "@/lib/chat/image"
+import {
+  appendChatMessages,
+  assertConversationTurnLimit,
+  countRecentUserMessages,
+  getConversationForUser,
+  getOrCreateConversation,
+  toChatHistory,
+} from "@/lib/chat/conversation"
+import {
+  debitChatTokens,
+} from "@/lib/chat/token-budget"
+import { prisma } from "@/lib/db/client"
+import { CHAT_REFUSAL_MESSAGE } from "@/lib/ai/prompts/chat"
+import { CHAT_RATE_LIMIT_PER_MINUTE } from "@/lib/scans/constants"
+import { getUsageTotalTokens } from "@/lib/tokens/format-usage"
+
+import type { ChatImageInput } from "@/lib/chat/image"
+
+export type SendChatMessageInput = {
+  userId: string
+  message: string
+  kind: ChatConversationKind
+  scanId?: string
+  conversationId?: string
+  image?: ChatImageInput
+}
+
+export type SendChatMessageResult =
+  | {
+      ok: true
+      conversationId: string
+      assistantMessage: string
+      blocked: boolean
+      estimatedMessagesRemaining: number
+    }
+  | { ok: false; error: string; status: number }
+
+export async function sendChatMessage(
+  input: SendChatMessageInput,
+): Promise<SendChatMessageResult> {
+  const trimmed = input.message.trim()
+  const hasImage = Boolean(input.image?.buffer.byteLength)
+  if (!trimmed && !hasImage) {
+    return { ok: false, error: "Message or image is required.", status: 400 }
+  }
+
+  const userContent = trimmed || "Shared a skin photo for advice."
+
+  if (input.kind === "follow_up") {
+    if (!input.scanId) {
+      return { ok: false, error: "Scan id is required.", status: 400 }
+    }
+    const scan = await prisma.scan.findFirst({
+      where: {
+        id: input.scanId,
+        userId: input.userId,
+        status: "completed",
+      },
+      include: { result: true },
+    })
+    if (!scan?.result) {
+      return { ok: false, error: "Scan not found.", status: 404 }
+    }
+  }
+
+  const recentCount = await countRecentUserMessages(input.userId, 60_000)
+  if (recentCount >= CHAT_RATE_LIMIT_PER_MINUTE) {
+    return {
+      ok: false,
+      error: "Too many messages. Please wait a moment.",
+      status: 429,
+    }
+  }
+
+  let conversation
+  try {
+    conversation = await getOrCreateConversation({
+      userId: input.userId,
+      kind: input.kind,
+      scanId: input.scanId,
+      conversationId: input.conversationId,
+    })
+  } catch {
+    return { ok: false, error: "Conversation not found.", status: 404 }
+  }
+
+  try {
+    assertConversationTurnLimit(conversation.messages.length)
+  } catch {
+    return {
+      ok: false,
+      error: "This conversation has reached its message limit.",
+      status: 400,
+    }
+  }
+
+  const history = toChatHistory(conversation.messages)
+  const chatResult = await chatAboutSkin({
+    userId: input.userId,
+    kind: input.kind,
+    scanId: input.scanId,
+    userMessage: userContent,
+    history,
+    image: input.image
+      ? { mimeType: input.image.mimeType, data: input.image.buffer }
+      : undefined,
+  })
+
+  if (!chatResult.allowed) {
+    if (chatResult.reason === "Insufficient chat token budget") {
+      return {
+        ok: false,
+        error: "Insufficient chat token budget. Purchase more scans to continue.",
+        status: 402,
+      }
+    }
+
+    await appendChatMessages({
+      conversationId: conversation.id,
+      userContent,
+      userBlocked: true,
+      userImage: input.image,
+      assistantContent: CHAT_REFUSAL_MESSAGE,
+      assistantRole: "system_refusal",
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
+    })
+
+    const budget = await import("@/lib/chat/token-budget").then((m) =>
+      m.getTokenBudget(input.userId),
+    )
+
+    return {
+      ok: true,
+      conversationId: conversation.id,
+      assistantMessage: CHAT_REFUSAL_MESSAGE,
+      blocked: true,
+      estimatedMessagesRemaining: budget.estimatedMessagesRemaining,
+    }
+  }
+
+  const totalTokens = getUsageTotalTokens(chatResult.usage)
+
+  await appendChatMessages({
+    conversationId: conversation.id,
+    userContent,
+    userBlocked: false,
+    userImage: input.image,
+    assistantContent: chatResult.reply,
+    assistantRole: "assistant",
+    inputTokens: chatResult.usage.inputTokens,
+    outputTokens: chatResult.usage.outputTokens,
+    totalTokens,
+  })
+
+  await debitChatTokens({
+    userId: input.userId,
+    tokens: totalTokens,
+    conversationId: conversation.id,
+    scanId: input.scanId,
+    metadata: {
+      modelId: chatResult.usage.modelId,
+      inputTokens: chatResult.usage.inputTokens,
+      outputTokens: chatResult.usage.outputTokens,
+    },
+  })
+
+  const budget = await import("@/lib/chat/token-budget").then((m) =>
+    m.getTokenBudget(input.userId),
+  )
+
+  return {
+    ok: true,
+    conversationId: conversation.id,
+    assistantMessage: chatResult.reply,
+    blocked: false,
+    estimatedMessagesRemaining: budget.estimatedMessagesRemaining,
+  }
+}
+
+function mapMessageForClient(m: {
+  id: string
+  role: string
+  content: string
+  blocked: boolean
+  createdAt: Date
+  imageMimeType: string | null
+  imageData: Buffer | Uint8Array | null
+}) {
+  return {
+    id: m.id,
+    role: m.role,
+    content: m.content,
+    blocked: m.blocked,
+    createdAt: m.createdAt.toISOString(),
+    imageUrl: m.imageMimeType
+      ? chatImageToDataUrl(m.imageMimeType, m.imageData)
+      : null,
+  }
+}
+
+export async function loadChatConversation(
+  conversationId: string,
+  userId: string,
+) {
+  const conversation = await getConversationForUser(conversationId, userId)
+  if (!conversation) {
+    return null
+  }
+
+  const budget = await import("@/lib/chat/token-budget").then((m) =>
+    m.getTokenBudget(userId),
+  )
+
+  return {
+    id: conversation.id,
+    kind: conversation.kind,
+    scanId: conversation.scanId,
+    messages: conversation.messages.map(mapMessageForClient),
+    estimatedMessagesRemaining: budget.estimatedMessagesRemaining,
+  }
+}
+
+export async function createNewAdviceConversation(userId: string) {
+  const { createAdviceConversation } = await import("@/lib/chat/conversation")
+  const conversation = await createAdviceConversation(userId)
+  const budget = await import("@/lib/chat/token-budget").then((m) =>
+    m.getTokenBudget(userId),
+  )
+
+  return {
+    id: conversation.id,
+    kind: "advice" as const,
+    scanId: null,
+    messages: [],
+    estimatedMessagesRemaining: budget.estimatedMessagesRemaining,
+  }
+}
+
+export async function loadAdviceConversation(
+  userId: string,
+  conversationId?: string,
+) {
+  const conversation = conversationId
+    ? await prisma.chatConversation.findFirst({
+        where: { id: conversationId, userId, kind: "advice" },
+        include: { messages: { orderBy: { createdAt: "asc" } } },
+      })
+    : await prisma.chatConversation.findFirst({
+        where: { userId, kind: "advice" },
+        orderBy: { updatedAt: "desc" },
+        include: { messages: { orderBy: { createdAt: "asc" } } },
+      })
+
+  const budget = await import("@/lib/chat/token-budget").then((m) =>
+    m.getTokenBudget(userId),
+  )
+
+  if (!conversation) {
+    return {
+      id: null,
+      kind: "advice" as const,
+      scanId: null,
+      messages: [] as {
+        id: string
+        role: string
+        content: string
+        blocked: boolean
+        createdAt: string
+      }[],
+      estimatedMessagesRemaining: budget.estimatedMessagesRemaining,
+    }
+  }
+
+  return {
+    id: conversation.id,
+    kind: conversation.kind,
+    scanId: conversation.scanId,
+    messages: conversation.messages.map(mapMessageForClient),
+    estimatedMessagesRemaining: budget.estimatedMessagesRemaining,
+  }
+}
+
+export async function loadFollowUpConversation(scanId: string, userId: string) {
+  const conversation = await prisma.chatConversation.findFirst({
+    where: { userId, scanId, kind: "follow_up" },
+    include: { messages: { orderBy: { createdAt: "asc" } } },
+  })
+
+  const budget = await import("@/lib/chat/token-budget").then((m) =>
+    m.getTokenBudget(userId),
+  )
+
+  if (!conversation) {
+    return {
+      id: null,
+      kind: "follow_up" as const,
+      scanId,
+      messages: [] as {
+        id: string
+        role: string
+        content: string
+        blocked: boolean
+        createdAt: string
+      }[],
+      estimatedMessagesRemaining: budget.estimatedMessagesRemaining,
+    }
+  }
+
+  return {
+    id: conversation.id,
+    kind: conversation.kind,
+    scanId: conversation.scanId,
+    messages: conversation.messages.map(mapMessageForClient),
+    estimatedMessagesRemaining: budget.estimatedMessagesRemaining,
+  }
+}

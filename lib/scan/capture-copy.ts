@@ -8,15 +8,19 @@ export const CAPTURE_COPY: Record<
   { title: string; description: string }
 > = {
   upload: {
-    title: "Upload your photo",
-    description: "Choose a clear, well-lit photo of your face",
+    title: "Scan your skin",
+    description: "Clear photo → personalized guidance & product picks",
   },
   camera: {
-    title: "Take a photo",
-    description: "Position your face in the frame; we'll check lighting live",
+    title: "Scan your skin",
+    description: "Live lighting check, then your skin report",
   },
   live: {
-    title: "Live scan",
-    description: "Real-time guidance with Aurora Pro",
+    title: "Live skin scan",
+    description: "Real-time Pro guidance",
+  },
+  advice: {
+    title: "Skin advice",
+    description: "Ask about routines, concerns & recommendations",
   },
 }

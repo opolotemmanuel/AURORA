@@ -35,9 +35,10 @@ model User {
   scanBalance   ScanBalance?
   scanLedgers   ScanLedger[] @relation("ScanLedgerUser")
   grantedScans  ScanLedger[] @relation("ScanGrantedBy")
-  scans         Scan[]
-  scanFeedbacks ScanFeedback[]
-  products      Product[]     @relation("ProductCreator")
+  scans              Scan[]
+  scanFeedbacks      ScanFeedback[]
+  chatConversations  ChatConversation[]
+  products           Product[]     @relation("ProductCreator")
 
   @@unique([email])
   @@map("user")
@@ -202,8 +203,20 @@ enum ScanLedgerReason {
   admin_grant
   pack_grant
   scan_debit
+  chat_token_debit
   tier_upgrade
   adjustment
+}
+
+enum ChatConversationKind {
+  advice
+  follow_up
+}
+
+enum ChatMessageRole {
+  user
+  assistant
+  system_refusal
 }
 
 enum AiProvider {
@@ -326,14 +339,16 @@ model UserLocation {
 }
 
 model ScanBalance {
-  id              String   @id @default(cuid())
-  userId          String   @unique
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  remaining       Int      @default(0)
-  lifetimeUsed    Int      @default(0)
-  lifetimeGranted Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  remaining             Int      @default(0)
+  lifetimeUsed          Int      @default(0)
+  lifetimeGranted       Int      @default(0)
+  tokenBudgetRemaining  BigInt   @default(0)
+  lifetimeTokensUsed    BigInt   @default(0)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   @@map("scan_balance")
 }
@@ -421,8 +436,9 @@ model Scan {
   usage            ScanUsage?
   result           ScanResult?
   report           Report?
-  feedback         ScanFeedback?
-  scanLedgers      ScanLedger[]
+  feedback          ScanFeedback?
+  scanLedgers       ScanLedger[]
+  chatConversations ChatConversation[]
 
   @@index([userId])
   @@index([status])
@@ -494,4 +510,40 @@ model ScanFeedback {
   @@index([userId])
   @@index([createdAt])
   @@map("scan_feedback")
+}
+
+model ChatConversation {
+  id        String               @id @default(cuid())
+  userId    String
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  scanId    String?
+  scan      Scan?                @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  kind      ChatConversationKind
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  messages  ChatMessage[]
+
+  @@index([userId])
+  @@index([scanId])
+  @@index([userId, kind])
+  @@map("chat_conversation")
+}
+
+model ChatMessage {
+  id             String           @id @default(cuid())
+  conversationId String
+  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           ChatMessageRole
+  content        String
+  imageMimeType  String?
+  imageData      Bytes?
+  inputTokens    Int              @default(0)
+  outputTokens   Int              @default(0)
+  totalTokens    Int              @default(0)
+  blocked        Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+
+  @@index([conversationId])
+  @@index([conversationId, createdAt])
+  @@map("chat_message")
 }

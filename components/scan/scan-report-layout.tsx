@@ -6,7 +6,6 @@ import { IconCrop, IconFileText, IconRefresh } from "@tabler/icons-react"
 import { ScanFlowHeader } from "@/components/scan/scan-flow-header"
 import { ScanHeaderActionButton } from "@/components/scan/scan-header-action"
 import { ScanImagePanel } from "@/components/scan/scan-image-panel"
-import { ScanDashboardLink } from "@/components/scan/scan-close-button"
 import { cn } from "@/lib/utils"
 
 type ScanReportLayoutProps = {
@@ -57,7 +56,6 @@ export function ScanReportLayout({
                   onClick={onRescan}
                 />
               ) : null}
-              <ScanDashboardLink variant="action" />
               {onViewReport ? (
                 <ScanHeaderActionButton
                   label="View report"

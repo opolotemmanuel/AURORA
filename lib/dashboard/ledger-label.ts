@@ -1,5 +1,12 @@
 import { formatTokenBreakdown } from "@/lib/tokens/format-usage"
 
+type ChatDebitMetadata = {
+  tokensDebited?: number
+  modelId?: string
+  inputTokens?: number
+  outputTokens?: number
+}
+
 type ScanDebitMetadata = {
   modelId?: string
   inputTokens?: number
@@ -10,6 +17,7 @@ type ScanDebitMetadata = {
 
 const REASON_LABELS: Record<string, string> = {
   scan_debit: "Scan",
+  chat_token_debit: "Skin advice chat",
   signup_bonus: "Free Starter scans",
   admin_grant: "Admin grant",
   pack_grant: "Scan pack",
@@ -26,6 +34,18 @@ export function getLedgerShortLabel(reason: string): string {
 }
 
 export function getLedgerDetail(reason: string, metadata: unknown): string | null {
+  if (reason === "chat_token_debit") {
+    const data = metadata as ChatDebitMetadata | null
+    if (!data?.tokensDebited) {
+      return null
+    }
+    const parts = [`${data.tokensDebited.toLocaleString()} tokens`]
+    if (data.modelId) {
+      parts.push(data.modelId)
+    }
+    return parts.join(" · ")
+  }
+
   if (reason !== "scan_debit") {
     return null
   }

@@ -6,6 +6,7 @@ import { IconDownload, IconLoader2 } from "@tabler/icons-react"
 import { ReportDocumentHeader } from "@/components/reports/report-document-header"
 import { SkinReportDocument } from "@/components/reports/skin-report-document"
 import { ScanFeedbackWidget } from "@/components/scan/scan-feedback-widget"
+import { ScanFollowUpChat } from "@/components/scan/scan-follow-up-chat"
 import { ScanReportLayout } from "@/components/scan/scan-report-layout"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -59,7 +60,7 @@ export function ScanResultsView({
         onReEdit={onReEdit}
         onViewReport={onViewReport}
       >
-        <div className="mx-auto max-w-3xl space-y-6 pb-20">
+        <div className="mx-auto max-w-3xl space-y-6 pb-44">
           <ReportDocumentHeader scanDate={formattedDate} />
 
           <Alert>
@@ -99,7 +100,8 @@ export function ScanResultsView({
         <div className="pointer-events-none fixed inset-x-0 bottom-4 z-30 px-4">
           <div className="mx-auto grid w-full max-w-5xl lg:grid-cols-[minmax(0,280px)_1fr] lg:gap-8">
             <div className="hidden lg:block" aria-hidden />
-            <div className="pointer-events-auto justify-self-end">
+            <div className="pointer-events-auto flex flex-col items-end gap-3">
+              <ScanFollowUpChat scanId={scanId} />
               <ScanFeedbackWidget
                 scanId={scanId}
                 position="bottom-right"

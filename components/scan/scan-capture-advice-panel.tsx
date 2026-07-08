@@ -42,6 +42,7 @@ export function ScanCaptureAdvicePanel() {
         mode="advice"
         inline
         hideAdviceHeader
+        startFresh
         placeholder="Ask about routines, concerns & recommendations…"
         suggestions={ADVICE_SUGGESTIONS}
         onToolbarStateChange={setToolbar}

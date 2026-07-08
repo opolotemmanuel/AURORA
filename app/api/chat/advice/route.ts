@@ -64,9 +64,16 @@ export async function GET(request: Request) {
   const conversationId =
     new URL(request.url).searchParams.get("conversationId") ?? undefined
 
-  const conversation = await loadAdviceConversation(
-    session.user.id,
-    conversationId,
-  )
-  return NextResponse.json({ ok: true, conversation })
+  try {
+    const conversation = await loadAdviceConversation(
+      session.user.id,
+      conversationId,
+    )
+    return NextResponse.json({ ok: true, conversation })
+  } catch (err) {
+    return NextResponse.json(
+      { ok: false, error: toUserFacingChatError(err, 500) },
+      { status: 500 },
+    )
+  }
 }

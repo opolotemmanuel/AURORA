@@ -10,8 +10,7 @@ import {
 
 import { ReportDocumentHeader } from "@/components/reports/report-document-header"
 import { SkinReportDocument } from "@/components/reports/skin-report-document"
-import { ScanFeedbackWidget } from "@/components/scan/scan-feedback-widget"
-import { ScanFollowUpChat } from "@/components/scan/scan-follow-up-chat"
+import { ScanReportChatDock } from "@/components/scan/scan-report-chat-dock"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -126,13 +125,10 @@ export function ScanDetailModal({
           </div>
 
           <div className="pointer-events-none absolute inset-x-0 bottom-14 z-30 flex justify-end px-4 sm:bottom-16 sm:px-6">
-            <div className="pointer-events-auto flex flex-col items-end gap-3">
-              <ScanFollowUpChat scanId={scan.id} />
-              <ScanFeedbackWidget
+            <div className="pointer-events-auto">
+              <ScanReportChatDock
                 scanId={scan.id}
                 existingFeedback={scan.feedback}
-                position="bottom-right"
-                anchored
               />
             </div>
           </div>

@@ -69,10 +69,18 @@ export async function GET(_request: Request, context: RouteContext) {
   const { session } = authResult
 
   const { scanId } = await context.params
-  const conversation = await loadFollowUpConversation(
-    scanId,
-    session.user.id,
-  )
 
-  return NextResponse.json({ ok: true, conversation })
+  try {
+    const conversation = await loadFollowUpConversation(
+      scanId,
+      session.user.id,
+    )
+
+    return NextResponse.json({ ok: true, conversation })
+  } catch (err) {
+    return NextResponse.json(
+      { ok: false, error: toUserFacingChatError(err, 500) },
+      { status: 500 },
+    )
+  }
 }

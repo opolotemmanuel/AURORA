@@ -76,20 +76,24 @@ export async function sendChatMessage(
     }
   }
 
-  let conversation
-  try {
-    conversation = await getOrCreateConversation({
-      userId: input.userId,
-      kind: input.kind,
-      scanId: input.scanId,
-      conversationId: input.conversationId,
-    })
-  } catch {
-    return { ok: false, error: "Conversation not found.", status: 404 }
+  let conversation: Awaited<ReturnType<typeof getConversationForUser>> | null =
+    null
+
+  if (input.conversationId || input.kind === "follow_up") {
+    try {
+      conversation = await getOrCreateConversation({
+        userId: input.userId,
+        kind: input.kind,
+        scanId: input.scanId,
+        conversationId: input.conversationId,
+      })
+    } catch {
+      return { ok: false, error: "Conversation not found.", status: 404 }
+    }
   }
 
   try {
-    assertConversationTurnLimit(conversation.messages.length)
+    assertConversationTurnLimit(conversation?.messages.length ?? 0)
   } catch {
     return {
       ok: false,
@@ -98,7 +102,7 @@ export async function sendChatMessage(
     }
   }
 
-  const history = toChatHistory(conversation.messages)
+  const history = conversation ? toChatHistory(conversation.messages) : []
   const chatResult = await chatAboutSkin({
     userId: input.userId,
     kind: input.kind,
@@ -119,8 +123,10 @@ export async function sendChatMessage(
       }
     }
 
-    await appendChatMessages({
-      conversationId: conversation.id,
+    const savedConversationId = await appendChatMessages({
+      conversationId: conversation?.id,
+      userId: input.userId,
+      kind: input.kind,
       userContent,
       userBlocked: true,
       userImage: input.image,
@@ -137,7 +143,7 @@ export async function sendChatMessage(
 
     return {
       ok: true,
-      conversationId: conversation.id,
+      conversationId: savedConversationId,
       assistantMessage: CHAT_REFUSAL_MESSAGE,
       blocked: true,
       estimatedMessagesRemaining: budget.estimatedMessagesRemaining,
@@ -146,8 +152,10 @@ export async function sendChatMessage(
 
   const totalTokens = getUsageTotalTokens(chatResult.usage)
 
-  await appendChatMessages({
-    conversationId: conversation.id,
+  const savedConversationId = await appendChatMessages({
+    conversationId: conversation?.id,
+    userId: input.userId,
+    kind: input.kind,
     userContent,
     userBlocked: false,
     userImage: input.image,
@@ -161,7 +169,7 @@ export async function sendChatMessage(
   await debitChatTokens({
     userId: input.userId,
     tokens: totalTokens,
-    conversationId: conversation.id,
+    conversationId: savedConversationId,
     scanId: input.scanId,
     metadata: {
       modelId: chatResult.usage.modelId,
@@ -176,7 +184,7 @@ export async function sendChatMessage(
 
   return {
     ok: true,
-    conversationId: conversation.id,
+    conversationId: savedConversationId,
     assistantMessage: chatResult.reply,
     blocked: false,
     estimatedMessagesRemaining: budget.estimatedMessagesRemaining,
@@ -226,15 +234,13 @@ export async function loadChatConversation(
   }
 }
 
-export async function createNewAdviceConversation(userId: string) {
-  const { createAdviceConversation } = await import("@/lib/chat/conversation")
-  const conversation = await createAdviceConversation(userId)
+export async function loadEmptyAdviceSession(userId: string) {
   const budget = await import("@/lib/chat/token-budget").then((m) =>
     m.getTokenBudget(userId),
   )
 
   return {
-    id: conversation.id,
+    id: null,
     kind: "advice" as const,
     scanId: null,
     messages: [],
@@ -246,16 +252,14 @@ export async function loadAdviceConversation(
   userId: string,
   conversationId?: string,
 ) {
-  const conversation = conversationId
-    ? await prisma.chatConversation.findFirst({
-        where: { id: conversationId, userId, kind: "advice" },
-        include: { messages: { orderBy: { createdAt: "asc" } } },
-      })
-    : await prisma.chatConversation.findFirst({
-        where: { userId, kind: "advice" },
-        orderBy: { updatedAt: "desc" },
-        include: { messages: { orderBy: { createdAt: "asc" } } },
-      })
+  if (!conversationId) {
+    return loadEmptyAdviceSession(userId)
+  }
+
+  const conversation = await prisma.chatConversation.findFirst({
+    where: { id: conversationId, userId, kind: "advice" },
+    include: { messages: { orderBy: { createdAt: "asc" } } },
+  })
 
   const budget = await import("@/lib/chat/token-budget").then((m) =>
     m.getTokenBudget(userId),

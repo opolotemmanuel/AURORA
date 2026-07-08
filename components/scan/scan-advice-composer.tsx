@@ -43,10 +43,14 @@ type ScanAdviceComposerProps = {
   initialConversationId?: string
   /** Hide the in-chat advice title/actions row (toolbar lives in outer header). */
   hideAdviceHeader?: boolean
+  /** Pin input to the bottom with messages scrolling above (dashboard chat detail). */
+  dockInput?: boolean
   /** Sync new-chat controls to an outer header toolbar. */
   onToolbarStateChange?: (
     state: Pick<AdviceChatToolbarProps, "onNewChat" | "startingNew" | "disabled">,
   ) => void
+  /** Start with a blank advice conversation instead of resuming the latest. */
+  startFresh?: boolean
 }
 
 const MORPH_OPEN_EASE = [0.34, 1.25, 0.64, 1] as const
@@ -54,6 +58,7 @@ const MORPH_CLOSE_EASE = [0.22, 1, 0.36, 1] as const
 
 const MESSAGE_LIST_HEIGHT = {
   inline: "min-h-52 max-h-80",
+  docked: "min-h-0 flex-1",
   floating: "min-h-52 max-h-[min(55vh,400px)]",
 } as const
 
@@ -110,7 +115,9 @@ export function ScanAdviceComposer({
   inline = false,
   initialConversationId,
   hideAdviceHeader = false,
+  dockInput = false,
   onToolbarStateChange,
+  startFresh = false,
 }: ScanAdviceComposerProps) {
   const reduce = useReducedMotion()
   const listRef = useRef<HTMLDivElement>(null)
@@ -148,6 +155,27 @@ export function ScanAdviceComposer({
   useEffect(() => {
     let cancelled = false
 
+    async function loadConversation(
+      res: Response,
+      data: {
+        ok: boolean
+        error?: string
+        conversation?: {
+          id: string | null
+          messages: ChatMessageItem[]
+          estimatedMessagesRemaining: number
+        }
+      },
+    ) {
+      if (!data.ok || !data.conversation) {
+        setError(toUserFacingChatError(data.error, res.status))
+        return
+      }
+      setConversationId(data.conversation.id)
+      setMessages(data.conversation.messages)
+      setEstimatedRemaining(data.conversation.estimatedMessagesRemaining)
+    }
+
     async function load() {
       setLoading(true)
       setError(null)
@@ -156,34 +184,51 @@ export function ScanAdviceComposer({
           const res = await fetch(`/api/scan/${scanId}/chat`)
           const data = (await res.json()) as {
             ok: boolean
+            error?: string
             conversation?: {
               id: string | null
               messages: ChatMessageItem[]
               estimatedMessagesRemaining: number
             }
           }
-          if (!cancelled && data.ok && data.conversation) {
-            setConversationId(data.conversation.id)
-            setMessages(data.conversation.messages)
-            setEstimatedRemaining(data.conversation.estimatedMessagesRemaining)
+          if (!cancelled) {
+            await loadConversation(res, data)
+          }
+        } else if (
+          startFresh &&
+          !conversationId &&
+          !initialConversationId
+        ) {
+          const res = await fetch("/api/chat/advice")
+          const data = (await res.json()) as {
+            ok: boolean
+            error?: string
+            conversation?: {
+              id: string | null
+              messages: ChatMessageItem[]
+              estimatedMessagesRemaining: number
+            }
+          }
+          if (!cancelled) {
+            await loadConversation(res, data)
           }
         } else {
-          const query = conversationId
-            ? `?conversationId=${encodeURIComponent(conversationId)}`
+          const activeConversationId = conversationId ?? initialConversationId
+          const query = activeConversationId
+            ? `?conversationId=${encodeURIComponent(activeConversationId)}`
             : ""
           const res = await fetch(`/api/chat/advice${query}`)
           const data = (await res.json()) as {
             ok: boolean
+            error?: string
             conversation?: {
               id: string | null
               messages: ChatMessageItem[]
               estimatedMessagesRemaining: number
             }
           }
-          if (!cancelled && data.ok && data.conversation) {
-            setConversationId(data.conversation.id)
-            setMessages(data.conversation.messages)
-            setEstimatedRemaining(data.conversation.estimatedMessagesRemaining)
+          if (!cancelled) {
+            await loadConversation(res, data)
           }
         }
       } catch {
@@ -201,7 +246,7 @@ export function ScanAdviceComposer({
     return () => {
       cancelled = true
     }
-  }, [conversationId, initialConversationId, mode, scanId])
+  }, [conversationId, initialConversationId, mode, scanId, startFresh])
 
   function detachPendingImage() {
     setPendingImage(null)
@@ -224,14 +269,16 @@ export function ScanAdviceComposer({
     setError(null)
     detachPendingImage()
     setDraft("")
+    setConversationId(null)
+    setMessages([])
 
     try {
-      const res = await fetch("/api/chat/advice/new", { method: "POST" })
+      const res = await fetch("/api/chat/advice")
       const data = (await res.json()) as {
         ok: boolean
         error?: string
         conversation?: {
-          id: string
+          id: string | null
           messages: ChatMessageItem[]
           estimatedMessagesRemaining: number
         }
@@ -418,7 +465,10 @@ export function ScanAdviceComposer({
       className={cn(
         "pointer-events-auto overflow-hidden bg-background",
         inline
-          ? "w-full rounded-2xl"
+          ? cn(
+              "w-full",
+              dockInput ? "flex h-full min-h-0 flex-col rounded-none" : "rounded-2xl",
+            )
           : open
             ? "w-[min(92vw,380px)] rounded-[2rem] p-3 shadow-lg"
             : "h-12 w-auto rounded-full p-0 shadow-lg",
@@ -434,7 +484,12 @@ export function ScanAdviceComposer({
           <span className="text-sm font-medium">{label}</span>
         </button>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div
+          className={cn(
+            "flex flex-col",
+            dockInput ? "min-h-0 flex-1 gap-0" : "gap-3",
+          )}
+        >
           {mode === "advice" && !hideAdviceHeader && !inline ? (
             <div className="flex items-center justify-between gap-2 px-1">
               <div className="flex items-center gap-2">
@@ -496,7 +551,11 @@ export function ScanAdviceComposer({
             ref={listRef}
             className={cn(
               "chat-message-scroll flex flex-col gap-3 overflow-y-auto bg-background px-1 py-1",
-              inline ? MESSAGE_LIST_HEIGHT.inline : MESSAGE_LIST_HEIGHT.floating,
+              dockInput
+                ? MESSAGE_LIST_HEIGHT.docked
+                : inline
+                  ? MESSAGE_LIST_HEIGHT.inline
+                  : MESSAGE_LIST_HEIGHT.floating,
             )}
           >
             {loading ? (
@@ -524,6 +583,13 @@ export function ScanAdviceComposer({
             )}
           </div>
 
+          <div
+            className={cn(
+              "space-y-3",
+              dockInput &&
+                "shrink-0 border-t border-border bg-background px-1 pt-3 pb-6",
+            )}
+          >
           {estimatedRemaining != null ? (
             <p className="px-1 text-xs text-muted-foreground">
               ~{estimatedRemaining} messages left
@@ -606,13 +672,18 @@ export function ScanAdviceComposer({
               )}
             </Button>
           </div>
+          </div>
         </div>
       )}
     </motion.div>
   )
 
   if (inline) {
-    return <div className={cn("w-full", className)}>{panel}</div>
+    return (
+      <div className={cn("w-full", dockInput && "h-full min-h-0", className)}>
+        {panel}
+      </div>
+    )
   }
 
   return (

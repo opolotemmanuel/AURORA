@@ -21,7 +21,7 @@ export default async function ChatDetailPage({ params }: ChatDetailPageProps) {
   const copy = CAPTURE_COPY.advice
 
   return (
-    <div className="mx-auto w-full max-w-2xl">
+    <div className="-my-8 mx-auto flex h-[calc(100svh-3rem)] w-full max-w-2xl min-h-0 flex-col pt-8 md:h-svh">
       <AdviceChatDetail
         conversationId={conversation.id}
         title={copy.title}

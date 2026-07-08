@@ -15,15 +15,6 @@ export type ChatMessageRecord = {
   imageData?: Buffer | Uint8Array | null
 }
 
-export async function createAdviceConversation(userId: string) {
-  return prisma.chatConversation.create({
-    data: {
-      userId,
-      kind: "advice",
-    },
-  })
-}
-
 export async function listAdviceConversations(
   userId: string,
   page = 1,
@@ -31,7 +22,28 @@ export async function listAdviceConversations(
 ) {
   const safePage = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
   const skip = (safePage - 1) * pageSize
-  const where = { userId, kind: "advice" as const }
+  const assistantReplyRoles: ChatMessageRole[] = ["assistant", "system_refusal"]
+  const where = {
+    userId,
+    kind: "advice" as const,
+    messages: {
+      some: {
+        role: { in: assistantReplyRoles },
+      },
+    },
+  }
+
+  await prisma.chatConversation.deleteMany({
+    where: {
+      userId,
+      kind: "advice",
+      messages: {
+        none: {
+          role: { in: assistantReplyRoles },
+        },
+      },
+    },
+  })
 
   const [conversations, totalCount] = await Promise.all([
     prisma.chatConversation.findMany({
@@ -108,34 +120,20 @@ export async function getOrCreateConversation(input: {
     if (existing) {
       return existing
     }
-  }
 
-  if (input.kind === "advice") {
-    const existing = await prisma.chatConversation.findFirst({
-      where: {
+    return prisma.chatConversation.create({
+      data: {
         userId: input.userId,
-        kind: "advice",
+        scanId: input.scanId,
+        kind: "follow_up",
       },
-      orderBy: { updatedAt: "desc" },
       include: {
         messages: { orderBy: { createdAt: "asc" } },
       },
     })
-    if (existing) {
-      return existing
-    }
   }
 
-  return prisma.chatConversation.create({
-    data: {
-      userId: input.userId,
-      scanId: input.scanId,
-      kind: input.kind,
-    },
-    include: {
-      messages: { orderBy: { createdAt: "asc" } },
-    },
-  })
+  throw new Error("Conversation not found")
 }
 
 export function toChatHistory(
@@ -180,7 +178,9 @@ export function assertConversationTurnLimit(messageCount: number) {
 }
 
 export async function appendChatMessages(input: {
-  conversationId: string
+  conversationId?: string
+  userId?: string
+  kind?: ChatConversationKind
   userContent: string
   userBlocked: boolean
   userImage?: ChatImageInput
@@ -189,11 +189,60 @@ export async function appendChatMessages(input: {
   inputTokens: number
   outputTokens: number
   totalTokens: number
-}) {
-  return prisma.$transaction([
-    prisma.chatMessage.create({
+}): Promise<string> {
+  if (input.conversationId) {
+    await prisma.$transaction([
+      prisma.chatMessage.create({
+        data: {
+          conversationId: input.conversationId,
+          role: "user",
+          content: input.userContent,
+          blocked: input.userBlocked,
+          imageMimeType: input.userImage?.mimeType,
+          imageData: input.userImage?.buffer
+            ? new Uint8Array(input.userImage.buffer)
+            : undefined,
+          inputTokens: 0,
+          outputTokens: 0,
+          totalTokens: 0,
+        },
+      }),
+      prisma.chatMessage.create({
+        data: {
+          conversationId: input.conversationId,
+          role: input.assistantRole,
+          content: input.assistantContent,
+          blocked: false,
+          inputTokens: input.inputTokens,
+          outputTokens: input.outputTokens,
+          totalTokens: input.totalTokens,
+        },
+      }),
+      prisma.chatConversation.update({
+        where: { id: input.conversationId },
+        data: { updatedAt: new Date() },
+      }),
+    ])
+    return input.conversationId
+  }
+
+  if (!input.userId || input.kind !== "advice") {
+    throw new Error("Conversation id is required")
+  }
+
+  const userId = input.userId
+
+  return prisma.$transaction(async (tx) => {
+    const conversation = await tx.chatConversation.create({
       data: {
-        conversationId: input.conversationId,
+        userId,
+        kind: "advice",
+      },
+    })
+
+    await tx.chatMessage.create({
+      data: {
+        conversationId: conversation.id,
         role: "user",
         content: input.userContent,
         blocked: input.userBlocked,
@@ -205,10 +254,11 @@ export async function appendChatMessages(input: {
         outputTokens: 0,
         totalTokens: 0,
       },
-    }),
-    prisma.chatMessage.create({
+    })
+
+    await tx.chatMessage.create({
       data: {
-        conversationId: input.conversationId,
+        conversationId: conversation.id,
         role: input.assistantRole,
         content: input.assistantContent,
         blocked: false,
@@ -216,10 +266,8 @@ export async function appendChatMessages(input: {
         outputTokens: input.outputTokens,
         totalTokens: input.totalTokens,
       },
-    }),
-    prisma.chatConversation.update({
-      where: { id: input.conversationId },
-      data: { updatedAt: new Date() },
-    }),
-  ])
+    })
+
+    return conversation.id
+  })
 }

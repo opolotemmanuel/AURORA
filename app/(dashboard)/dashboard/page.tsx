@@ -15,6 +15,15 @@ import {
   listScans,
   saveAuditLog,
 } from "@/lib/backend/report-store"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 export const dynamic = "force-dynamic"
 
@@ -58,75 +67,95 @@ export default async function DashboardPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <Panel title="Recent Reports" description="Latest cosmetic reports saved in PostgreSQL">
-          {recentReports.length ? (
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <table className="min-w-[720px] w-full text-left text-sm">
-                <thead className="bg-muted text-xs text-muted-foreground">
-                  <tr>
-                    <th className="px-3 py-3 font-medium">Report</th>
-                    <th className="px-3 py-3 font-medium">AI</th>
-                    <th className="px-3 py-3 font-medium">Summary</th>
-                    <th className="px-3 py-3 font-medium">Created</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentReports.map((report) => (
-                    <tr key={report.id} className="border-t border-border hover:bg-muted/60">
-                      <td className="px-3 py-3">
-                        <Link href={`/api/reports/${report.id}/print`} className="font-medium text-primary hover:underline">
-                          {report.shortId}
-                        </Link>
-                      </td>
-                      <td className="px-3 py-3">{formatValue(report.aiSource)}</td>
-                      <td className="px-3 py-3"><p className="max-w-72 truncate text-muted-foreground">{report.summary}</p></td>
-                      <td className="px-3 py-3 text-muted-foreground">{formatDate(report.createdAt)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <EmptyState label="No cosmetic reports have been created yet. Completed scans will appear here." />
-          )}
-        </Panel>
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Reports</CardTitle>
+            <CardDescription>Latest cosmetic reports saved in PostgreSQL</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {recentReports.length ? (
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Report</TableHead>
+                      <TableHead>AI</TableHead>
+                      <TableHead>Summary</TableHead>
+                      <TableHead>Created</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {recentReports.map((report) => (
+                      <TableRow key={report.id}>
+                        <TableCell>
+                          <Link href={`/api/reports/${report.id}/print`} className="font-medium text-primary hover:underline">
+                            {report.shortId}
+                          </Link>
+                        </TableCell>
+                        <TableCell>{formatValue(report.aiSource)}</TableCell>
+                        <TableCell className="whitespace-normal">
+                          <p className="max-w-72 truncate text-muted-foreground">{report.summary}</p>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{formatDate(report.createdAt)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <EmptyState label="No cosmetic reports have been created yet. Completed scans will appear here." />
+            )}
+          </CardContent>
+        </Card>
 
-        <Panel title="Scan Sources" description="Counts from persisted scan records">
-          {Object.keys(sourceCounts).length ? (
-            <div className="space-y-3">
-              {Object.entries(sourceCounts).map(([source, count]) => (
-                <div key={source} className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted p-4">
-                  <span className="flex items-center gap-2 text-sm font-medium">
-                    <IconCamera className="size-4 text-primary" />
-                    {formatValue(source)}
-                  </span>
-                  <span className="text-2xl font-semibold">{count}</span>
+        <Card>
+          <CardHeader>
+            <CardTitle>Scan Sources</CardTitle>
+            <CardDescription>Counts from persisted scan records</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {Object.keys(sourceCounts).length ? (
+              <div className="space-y-3">
+                {Object.entries(sourceCounts).map(([source, count]) => (
+                  <div key={source} className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted p-4">
+                    <span className="flex items-center gap-2 text-sm font-medium">
+                      <IconCamera className="size-4 text-primary" />
+                      {formatValue(source)}
+                    </span>
+                    <span className="text-2xl font-semibold">{count}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <EmptyState label="No scan source records exist yet." />
+            )}
+          </CardContent>
+        </Card>
+      </section>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>AI Provider Events</CardTitle>
+          <CardDescription>Most recent Gemini success/fallback records</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {recentProviderEvents.length ? (
+            <div className="grid gap-3 lg:grid-cols-3">
+              {recentProviderEvents.map((event) => (
+                <div key={event.id} className="rounded-lg border border-border bg-muted p-4">
+                  <p className="text-sm font-medium">{formatValue(event.status)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {event.provider} - {event.model}
+                  </p>
+                  <p className="mt-3 text-xs text-muted-foreground">{formatDate(event.createdAt)}</p>
                 </div>
               ))}
             </div>
           ) : (
-            <EmptyState label="No scan source records exist yet." />
+            <EmptyState label="No AI provider events have been recorded yet." />
           )}
-        </Panel>
-      </section>
-
-      <Panel title="AI Provider Events" description="Most recent Gemini success/fallback records">
-        {recentProviderEvents.length ? (
-          <div className="grid gap-3 lg:grid-cols-3">
-            {recentProviderEvents.map((event) => (
-              <div key={event.id} className="rounded-lg border border-border bg-muted p-4">
-                <p className="text-sm font-medium">{formatValue(event.status)}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {event.provider} - {event.model}
-                </p>
-                <p className="mt-3 text-xs text-muted-foreground">{formatDate(event.createdAt)}</p>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <EmptyState label="No AI provider events have been recorded yet." />
-        )}
-      </Panel>
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -143,30 +172,20 @@ function MetricCard({
   icon: React.ComponentType<{ className?: string }>
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="mt-2 text-3xl font-semibold">{value}</p>
+    <Card>
+      <CardContent>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm text-muted-foreground">{label}</p>
+            <p className="mt-2 text-3xl font-semibold">{value}</p>
+          </div>
+          <div className="grid size-11 place-items-center rounded-lg bg-primary text-primary-foreground">
+            <Icon className="size-5" />
+          </div>
         </div>
-        <div className="grid size-11 place-items-center rounded-lg bg-primary text-primary-foreground">
-          <Icon className="size-5" />
-        </div>
-      </div>
-      <p className="mt-4 text-sm text-muted-foreground">{detail}</p>
-    </div>
-  )
-}
-
-function Panel({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
-  return (
-    <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
-      <div className="mb-5">
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      </div>
-      {children}
-    </section>
+        <p className="mt-4 text-sm text-muted-foreground">{detail}</p>
+      </CardContent>
+    </Card>
   )
 }
 

@@ -1,12 +1,21 @@
+import { AccessDenied } from "@/components/admin/access-denied"
 import { AdminDashboard } from "@/components/admin/admin-dashboard"
 import { getAdminAnalytics } from "@/lib/backend/admin-analytics"
 import { saveAuditLog } from "@/lib/backend/report-store"
-import { requireAdminAccess } from "@/lib/auth/admin"
+import { AdminAccessError, requireAdminAccess } from "@/lib/auth/admin"
 
 export const dynamic = "force-dynamic"
 
 export default async function AdminPage() {
-  const auth = requireAdminAccess("admin:read")
+  let auth
+  try {
+    auth = await requireAdminAccess("admin:read")
+  } catch (error) {
+    if (error instanceof AdminAccessError) {
+      return <AccessDenied note={error.access.note} />
+    }
+    throw error
+  }
 
   await saveAuditLog({
     actorId: auth.principal.id,

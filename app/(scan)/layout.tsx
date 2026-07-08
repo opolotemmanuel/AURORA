@@ -1,9 +1,18 @@
-import { ScanShell } from "@/components/layouts/scan-shell"
+import { redirect } from "next/navigation"
 
-export default function ScanLayout({
+import { ScanShell } from "@/components/layouts/scan-shell"
+import { getSession } from "@/lib/auth/session"
+
+export default async function ScanLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const session = await getSession()
+
+  if (!session) {
+    redirect("/login")
+  }
+
   return <ScanShell>{children}</ScanShell>
 }

@@ -8,7 +8,7 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 export async function GET() {
-  const auth = assertAdminAccess("analytics:read")
+  const auth = await assertAdminAccess("analytics:read")
 
   if (!auth.allowed) {
     return NextResponse.json({ success: false, error: "Admin access required." }, { status: 401 })

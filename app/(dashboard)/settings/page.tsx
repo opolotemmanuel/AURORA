@@ -27,8 +27,20 @@ import {
 } from "@/lib/backend/settings-service"
 import { listProducts } from "@/lib/backend/product-service"
 import { saveAuditLog } from "@/lib/backend/report-store"
-import { requireAdminAccess } from "@/lib/auth/admin"
-import { cn } from "@/lib/utils"
+import { AdminAccessError, requireAdminAccess } from "@/lib/auth/admin"
+import { AccessDenied } from "@/components/admin/access-denied"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 export const dynamic = "force-dynamic"
 
@@ -43,7 +55,16 @@ const moduleIcons: Record<string, ComponentType<{ className?: string }>> = {
 }
 
 export default async function SettingsPage() {
-  const auth = requireAdminAccess("settings:manage")
+  let auth
+  try {
+    auth = await requireAdminAccess("settings:manage")
+  } catch (error) {
+    if (error instanceof AdminAccessError) {
+      return <AccessDenied note={error.access.note} />
+    }
+    throw error
+  }
+
   const [modules, products] = await Promise.all([getEnterpriseSettingsModules(), listProducts()])
 
   await saveAuditLog({
@@ -74,79 +95,81 @@ export default async function SettingsPage() {
         <SummaryCard label="Configuration previews" value={countPreviewModules(modules)} detail="Not presented as active settings" />
       </section>
 
-      <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-border pb-5 lg:flex-row lg:items-start lg:justify-between">
+      <Card>
+        <CardHeader className="flex-row items-start justify-between gap-3 space-y-0 border-b border-border pb-(--card-spacing)">
           <div>
             <p className="flex items-center gap-2 text-xs font-semibold tracking-widest text-primary uppercase">
               <IconBuildingStore className="size-4" />
               Product Management
             </p>
-            <h2 className="mt-2 text-xl font-semibold">Aurora Products</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">
+            <CardTitle className="mt-2">Aurora Products</CardTitle>
+            <CardDescription className="mt-2 max-w-3xl leading-6">
               Real PostgreSQL product records used by the recommendation engine. If no active products exist,
               recommendations will return an honest empty result instead of hard-coded live data.
-            </p>
+            </CardDescription>
           </div>
-          <div className="rounded-lg border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
+          <div className="shrink-0 rounded-lg border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
             {products.filter((product) => product.active).length} active / {products.length} total
           </div>
-        </div>
+        </CardHeader>
 
-        <div className="mt-6 grid gap-6">
+        <CardContent className="grid gap-6">
           <ProductForm title="Add Product" action={createProductAction} submitLabel="Add product" />
           <ProductTable products={products} />
-        </div>
-      </section>
+        </CardContent>
+      </Card>
 
       <section className="grid gap-5 xl:grid-cols-2">
         {modules.map((module) => {
           const Icon = moduleIcons[module.title] ?? IconSettings
 
           return (
-            <article key={module.title} className="rounded-lg border border-border bg-card p-5 shadow-sm">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <Card key={module.title}>
+              <CardHeader className="flex-row items-start justify-between gap-4 space-y-0 sm:flex-row">
                 <div className="flex gap-3">
                   <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-muted text-primary">
                     <Icon className="size-5" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold">{module.title}</h2>
-                    <p className="mt-1 text-sm leading-6 text-muted-foreground">{module.description}</p>
+                    <CardTitle>{module.title}</CardTitle>
+                    <CardDescription className="mt-1 leading-6">{module.description}</CardDescription>
                   </div>
                 </div>
                 <StatusPill tone={module.tone} label={module.status} />
-              </div>
+              </CardHeader>
 
-              <div className="mt-5 divide-y divide-border rounded-lg border border-border bg-muted">
-                {module.items.map((item) => (
-                  <div key={`${module.title}-${item.label}`} className="grid gap-2 p-4 sm:grid-cols-[1fr_auto]">
-                    <div>
-                      <p className="text-sm font-medium">{item.label}</p>
-                      <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+              <CardContent>
+                <div className="divide-y divide-border rounded-lg border border-border bg-muted">
+                  {module.items.map((item) => (
+                    <div key={`${module.title}-${item.label}`} className="grid gap-2 p-4 sm:grid-cols-[1fr_auto]">
+                      <div>
+                        <p className="text-sm font-medium">{item.label}</p>
+                        <p className="mt-1 text-xs leading-5 text-muted-foreground">{item.detail}</p>
+                      </div>
+                      <span className="text-left text-sm font-semibold sm:text-right">{item.value}</span>
                     </div>
-                    <span className="text-left text-sm font-semibold sm:text-right">{item.value}</span>
-                  </div>
-                ))}
-              </div>
-            </article>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           )
         })}
       </section>
 
-      <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
-        <div className="flex items-start gap-3">
+      <Card>
+        <CardContent className="flex items-start gap-3">
           <div className="grid size-10 shrink-0 place-items-center rounded-lg bg-muted text-primary">
             <IconKey className="size-5" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold">Secret Handling</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            <CardTitle>Secret Handling</CardTitle>
+            <CardDescription className="mt-2 leading-6">
               This page only displays whether server-side configuration exists. It never displays
               `GEMINI_API_KEY`, `DATABASE_URL`, uploaded image data, or provider credentials.
-            </p>
+            </CardDescription>
           </div>
-        </div>
-      </section>
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -226,13 +249,13 @@ function ProductForm({
         />
         <Field label="Priority" name="priority" type="number" defaultValue={String(product?.priority ?? 50)} required />
         <label className="flex items-center gap-2 text-sm">
-          <input name="active" type="checkbox" defaultChecked={product?.active ?? true} className="size-4 accent-current" />
+          <Checkbox name="active" defaultChecked={product?.active ?? true} />
           Active in recommendation engine
         </label>
       </div>
-      <button className="mt-4 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+      <Button type="submit" className="mt-4">
         {submitLabel}
-      </button>
+      </Button>
     </form>
   )
 }
@@ -249,25 +272,25 @@ function ProductTable({ products }: { products: ProductRow[] }) {
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-muted">
       <div className="hidden overflow-x-auto lg:block">
-        <table className="min-w-[1100px] w-full border-collapse text-left text-sm">
-          <thead className="sticky top-0 z-10 bg-card text-xs text-muted-foreground">
-            <tr className="border-b border-border">
-              <th className="px-3 py-3"><input type="checkbox" aria-label="Select all products" /></th>
-              <th className="px-3 py-3 font-medium">Product</th>
-              <th className="px-3 py-3 font-medium">Category</th>
-              <th className="px-3 py-3 font-medium">Routine</th>
-              <th className="px-3 py-3 font-medium">Status</th>
-              <th className="px-3 py-3 font-medium">Priority</th>
-              <th className="px-3 py-3 font-medium">Recommendations</th>
-              <th className="px-3 py-3 font-medium">Updated</th>
-              <th className="px-3 py-3 font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table className="min-w-[1100px]">
+          <TableHeader className="sticky top-0 z-10 bg-card">
+            <TableRow>
+              <TableHead><Checkbox aria-label="Select all products" /></TableHead>
+              <TableHead>Product</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Routine</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Priority</TableHead>
+              <TableHead>Recommendations</TableHead>
+              <TableHead>Updated</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {products.map((product) => (
-              <tr key={product.databaseId} className="border-b border-border bg-background last:border-b-0 hover:bg-muted/60">
-                <td className="px-3 py-3"><input type="checkbox" aria-label={`Select ${product.name}`} /></td>
-                <td className="px-3 py-3">
+              <TableRow key={product.databaseId} className="bg-background">
+                <TableCell><Checkbox aria-label={`Select ${product.name}`} /></TableCell>
+                <TableCell className="whitespace-normal">
                   <div className="flex min-w-72 gap-3">
                     <ProductImage imagePath={product.imagePath} name={product.name} />
                     <div className="min-w-0">
@@ -276,22 +299,22 @@ function ProductTable({ products }: { products: ProductRow[] }) {
                       <p className="mt-1 max-w-96 truncate text-xs text-muted-foreground">{product.shortDescription}</p>
                     </div>
                   </div>
-                </td>
-                <td className="px-3 py-3">{product.category}</td>
-                <td className="px-3 py-3">{formatValue(product.routineStep)}</td>
-                <td className="px-3 py-3">
-                  <span className="rounded-md border border-border bg-card px-2 py-1 text-xs text-muted-foreground">
+                </TableCell>
+                <TableCell>{product.category}</TableCell>
+                <TableCell>{formatValue(product.routineStep)}</TableCell>
+                <TableCell>
+                  <Badge variant={product.active ? "default" : "secondary"}>
                     {product.active ? "Active" : "Archived"}
-                  </span>
-                </td>
-                <td className="px-3 py-3">{product.priority}</td>
-                <td className="px-3 py-3">{product.recommendationCount}</td>
-                <td className="px-3 py-3">{new Date(product.updatedAt).toLocaleDateString()}</td>
-                <td className="px-3 py-3"><ProductActions product={product} /></td>
-              </tr>
+                  </Badge>
+                </TableCell>
+                <TableCell>{product.priority}</TableCell>
+                <TableCell>{product.recommendationCount}</TableCell>
+                <TableCell>{new Date(product.updatedAt).toLocaleDateString()}</TableCell>
+                <TableCell><ProductActions product={product} /></TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
       <div className="grid gap-3 p-3 lg:hidden">
@@ -304,12 +327,14 @@ function ProductTable({ products }: { products: ProductRow[] }) {
                 <p className="truncate text-xs text-muted-foreground">{product.id}</p>
                 <p className="mt-2 text-sm text-muted-foreground">{product.shortDescription}</p>
               </div>
-              <input type="checkbox" aria-label={`Select ${product.name}`} />
+              <Checkbox aria-label={`Select ${product.name}`} />
             </div>
             <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
               <span className="rounded-md border border-border bg-muted px-2 py-1">{product.category}</span>
               <span className="rounded-md border border-border bg-muted px-2 py-1">{formatValue(product.routineStep)}</span>
-              <span className="rounded-md border border-border bg-muted px-2 py-1">{product.active ? "Active" : "Archived"}</span>
+              <Badge variant={product.active ? "default" : "secondary"}>
+                {product.active ? "Active" : "Archived"}
+              </Badge>
             </div>
             <div className="mt-3">
               <ProductActions product={product} />
@@ -324,7 +349,7 @@ function ProductTable({ products }: { products: ProductRow[] }) {
 function ProductActions({ product }: { product: ProductRow }) {
   return (
     <details className="relative">
-      <summary className="inline-flex cursor-pointer list-none items-center rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground">
+      <summary className="inline-flex h-10 w-fit shrink-0 cursor-pointer list-none items-center justify-center gap-1.5 rounded-none border border-border bg-transparent px-6 text-xs font-semibold tracking-widest text-foreground uppercase hover:bg-muted">
         Actions
       </summary>
       <div className="absolute right-0 z-20 mt-2 w-80 rounded-lg border border-border bg-popover p-3 text-popover-foreground shadow-lg">
@@ -332,16 +357,16 @@ function ProductActions({ product }: { product: ProductRow }) {
         <div className="mt-3 flex flex-wrap gap-2">
           <form action={product.active ? deactivateProductAction : activateProductAction}>
             <input type="hidden" name="id" value={product.databaseId} />
-            <button className="rounded-md border border-border bg-background px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
+            <Button type="submit" variant="outline" size="sm">
               {product.active ? "Deactivate" : "Activate"}
-            </button>
+            </Button>
           </form>
           <form action={deleteProductAction}>
             <input type="hidden" name="id" value={product.databaseId} />
-            <button className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
+            <Button type="submit" variant="outline" size="sm">
               <IconTrash className="size-4" />
               Delete/archive
-            </button>
+            </Button>
           </form>
         </div>
       </div>
@@ -393,26 +418,24 @@ function ProductImage({ imagePath, name }: { imagePath?: string; name: string })
 
 function SummaryCard({ label, value, detail }: { label: string; value: number; detail: string }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-2 text-3xl font-semibold">{value}</p>
-      <p className="mt-3 text-sm text-muted-foreground">{detail}</p>
-    </div>
+    <Card>
+      <CardContent>
+        <p className="text-sm text-muted-foreground">{label}</p>
+        <p className="mt-2 text-3xl font-semibold">{value}</p>
+        <p className="mt-3 text-sm text-muted-foreground">{detail}</p>
+      </CardContent>
+    </Card>
   )
 }
 
 function StatusPill({ tone, label }: { tone: SettingsModuleTone; label: string }) {
   return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 items-center rounded-md border px-2.5 py-1 text-xs font-medium",
-        tone === "ready" && "border-border bg-primary text-primary-foreground",
-        tone === "attention" && "border-border bg-background text-foreground",
-        tone === "preview" && "border-border bg-muted text-muted-foreground",
-      )}
+    <Badge
+      className="shrink-0"
+      variant={tone === "ready" ? "default" : tone === "attention" ? "outline" : "secondary"}
     >
       {label}
-    </span>
+    </Badge>
   )
 }
 

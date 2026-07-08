@@ -2,40 +2,22 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
 import { IconArrowRight } from "@tabler/icons-react"
 
 import { Button } from "@/components/ui/button"
-
-const placeholderSessionKey = "aurora-placeholder-session"
+import { authClient } from "@/lib/auth/client"
 
 export function AuthNavActions() {
   const router = useRouter()
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const { data: session } = authClient.useSession()
 
-  useEffect(() => {
-    function syncSession() {
-      setIsLoggedIn(Boolean(window.localStorage.getItem(placeholderSessionKey)))
-    }
-
-    syncSession()
-    window.addEventListener("storage", syncSession)
-    window.addEventListener("aurora-auth-change", syncSession)
-
-    return () => {
-      window.removeEventListener("storage", syncSession)
-      window.removeEventListener("aurora-auth-change", syncSession)
-    }
-  }, [])
-
-  function logout() {
-    window.localStorage.removeItem(placeholderSessionKey)
-    window.dispatchEvent(new Event("aurora-auth-change"))
-    setIsLoggedIn(false)
+  async function logout() {
+    await authClient.signOut()
     router.push("/")
+    router.refresh()
   }
 
-  if (isLoggedIn) {
+  if (session) {
     return (
       <>
         <Button asChild variant="outline" size="lg">
@@ -49,16 +31,11 @@ export function AuthNavActions() {
   }
 
   return (
-    <>
-      <Button asChild variant="outline" size="lg">
-        <Link href="/login">Login</Link>
-      </Button>
-      <Button asChild size="lg">
-        <Link href="/register">
-          Create Account
-          <IconArrowRight className="size-4" />
-        </Link>
-      </Button>
-    </>
+    <Button asChild size="lg">
+      <Link href="/login">
+        Sign in
+        <IconArrowRight className="size-4" />
+      </Link>
+    </Button>
   )
 }

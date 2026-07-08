@@ -23,7 +23,9 @@ import {
   IconUserCheck,
 } from "@tabler/icons-react"
 
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
 
 const trustItems = [
   { label: "AI Vision", icon: IconBrain, status: "Live" },
@@ -137,11 +139,7 @@ function SectionIntro({
 }
 
 function StatusBadge({ label }: { label: "Live" | "Coming soon" | "Roadmap" }) {
-  return (
-    <span className="rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-      {label}
-    </span>
-  )
+  return <Badge variant={label === "Live" ? "default" : "secondary"}>{label}</Badge>
 }
 
 function HeroSection() {
@@ -179,6 +177,12 @@ function HeroSection() {
               <Link href="#how-it-works">See How It Works</Link>
             </Button>
           </div>
+          <p className="mt-4 text-sm text-muted-foreground">
+            Already have an account?{" "}
+            <Link href="/login" className="font-medium text-primary hover:underline">
+              Sign in
+            </Link>
+          </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {bullets.map((bullet) => (
               <div key={bullet} className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -383,16 +387,18 @@ function HowItWorks() {
         />
         <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {steps.map(({ title, text, icon: Icon }, index) => (
-            <div key={title} className="rounded-xl border border-border bg-card p-6 shadow-sm">
-              <div className="flex items-center justify-between">
-                <span className="flex size-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-                  {index + 1}
-                </span>
-                <Icon className="size-6 text-primary" />
-              </div>
-              <h3 className="mt-6 text-xl font-semibold">{title}</h3>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">{text}</p>
-            </div>
+            <Card key={title}>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <span className="flex size-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                    {index + 1}
+                  </span>
+                  <Icon className="size-6 text-primary" />
+                </div>
+                <h3 className="mt-6 text-xl font-semibold">{title}</h3>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">{text}</p>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>
@@ -429,45 +435,50 @@ function ScanPreview() {
             ))}
           </div>
         </div>
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-                Scan progress
-              </p>
-              <p className="mt-1 font-heading text-xl font-semibold">Quality review</p>
+        <Card className="rounded-2xl">
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                  Scan progress
+                </p>
+                <p className="mt-1 font-heading text-xl font-semibold">Quality review</p>
+              </div>
+              <IconDeviceMobile className="size-7 text-primary" />
             </div>
-            <IconDeviceMobile className="size-7 text-primary" />
-          </div>
-          <div className="mt-6 h-3 rounded-full bg-muted">
-            <div className="h-3 w-4/5 rounded-full bg-primary" />
-          </div>
-          <div className="mt-6 grid gap-4 md:grid-cols-[0.8fr_1fr]">
-            <div className="relative min-h-64 rounded-xl border border-border bg-muted">
-              <div className="absolute inset-x-8 top-8 h-44 rounded-full border border-primary/60" />
-              <div className="absolute inset-x-14 top-20 h-20 rounded-full border border-border" />
-              <div className="absolute inset-x-10 bottom-6 rounded-lg bg-background p-3 text-center text-xs text-muted-foreground">
-                User consent confirmed
+            <div className="mt-6 h-3 rounded-full bg-muted">
+              <div className="h-3 w-4/5 rounded-full bg-primary" />
+            </div>
+            <div className="mt-6 grid gap-4 md:grid-cols-[0.8fr_1fr]">
+              <div className="relative min-h-64 rounded-xl border border-border bg-muted">
+                <div className="absolute inset-x-8 top-8 h-44 rounded-full border border-primary/60" />
+                <div className="absolute inset-x-14 top-20 h-20 rounded-full border border-border" />
+                <div className="absolute inset-x-10 bottom-6 rounded-lg bg-background p-3 text-center text-xs text-muted-foreground">
+                  User consent confirmed
+                </div>
+              </div>
+              <div className="grid content-center gap-3">
+                {checks.map((check) => (
+                  <div key={check} className="flex items-center gap-3 rounded-lg border border-border bg-background p-3">
+                    <span className="flex size-6 items-center justify-center rounded-full bg-primary/10 text-primary">
+                      <IconCheck className="size-4" />
+                    </span>
+                    <span className="text-sm font-medium">{check}</span>
+                  </div>
+                ))}
               </div>
             </div>
-            <div className="grid content-center gap-3">
-              {checks.map((check) => (
-                <div key={check} className="flex items-center gap-3 rounded-lg border border-border bg-background p-3">
-                  <span className="flex size-6 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <IconCheck className="size-4" />
-                  </span>
-                  <span className="text-sm font-medium">{check}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </section>
   )
 }
 
 function FeatureGrid() {
+  const liveFeatures = features.filter((feature) => feature.status === "Live")
+  const upcomingFeatures = features.filter((feature) => feature.status !== "Live")
+
   return (
     <section id="features" className="px-4 py-20 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
@@ -475,17 +486,36 @@ function FeatureGrid() {
           eyebrow="Core features"
           title="A practical skin intelligence layer for modern beauty journeys"
         />
-        <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {features.map(({ title, text, icon: Icon, status }) => (
-            <div key={title} className="rounded-xl border border-border bg-card p-6 shadow-sm">
-              <div className="flex items-start justify-between gap-3">
+        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {liveFeatures.map(({ title, text, icon: Icon }) => (
+            <Card key={title}>
+              <CardContent>
                 <Icon className="size-7 text-primary" />
-                <StatusBadge label={status} />
-              </div>
-              <h3 className="mt-5 text-xl font-semibold">{title}</h3>
-              <p className="mt-3 text-sm leading-6 text-muted-foreground">{text}</p>
-            </div>
+                <h3 className="mt-5 text-xl font-semibold">{title}</h3>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">{text}</p>
+              </CardContent>
+            </Card>
           ))}
+        </div>
+
+        <div className="mt-10 rounded-2xl border border-dashed border-border p-6 sm:p-8">
+          <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+            On the roadmap
+          </p>
+          <div className="mt-5 grid gap-6 sm:grid-cols-3">
+            {upcomingFeatures.map(({ title, text, icon: Icon, status }) => (
+              <div key={title} className="flex gap-3">
+                <Icon className="size-5 shrink-0 text-muted-foreground" />
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold">{title}</h3>
+                    <StatusBadge label={status} />
+                  </div>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">{text}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </section>
@@ -496,23 +526,34 @@ function SecurityPrivacy() {
   return (
     <section id="privacy" className="px-4 py-20 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <SectionIntro
-          eyebrow="Security & privacy"
-          title="Built with privacy at the center"
-          text="The scan experience is designed around consent, minimal retention, and clear user control."
-        />
-        <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {privacyItems.map(([item, Icon]) => (
-            <div key={item} className="rounded-xl border border-border bg-card p-6 shadow-sm">
-              <Icon className="size-6 text-primary" />
-              <h3 className="mt-5 font-heading text-lg font-semibold">{item}</h3>
+        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+          <div>
+            <p className="mb-3 text-xs font-semibold tracking-widest text-primary uppercase">
+              Security & privacy
+            </p>
+            <h2 className="text-3xl font-semibold md:text-4xl">Built with privacy at the center</h2>
+            <p className="mt-4 max-w-xl text-base leading-7 text-muted-foreground">
+              The scan experience is designed around consent, minimal retention, and clear user
+              control.
+            </p>
+          </div>
+          <div>
+            <div className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
+              {privacyItems.map(([item, Icon]) => (
+                <div key={item} className="flex items-center gap-3">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <Icon className="size-4" />
+                  </span>
+                  <h3 className="font-heading text-sm font-semibold">{item}</h3>
+                </div>
+              ))}
             </div>
-          ))}
+            <p className="mt-8 rounded-lg border border-border bg-muted p-4 text-sm leading-6 text-muted-foreground">
+              By default, Aurora SkinSense should store the report, not the original photo, unless
+              the user explicitly consents.
+            </p>
+          </div>
         </div>
-        <p className="mt-8 rounded-lg border border-border bg-muted p-4 text-sm leading-6 text-muted-foreground">
-          By default, Aurora SkinSense should store the report, not the original photo, unless
-          the user explicitly consents.
-        </p>
       </div>
     </section>
   )

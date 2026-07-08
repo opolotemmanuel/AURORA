@@ -12,6 +12,16 @@ import {
 } from "@tabler/icons-react"
 
 import type { getAdminAnalytics } from "@/lib/backend/admin-analytics"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 type IconComponent = ComponentType<{ className?: string }>
 type BackendAnalytics = Awaited<ReturnType<typeof getAdminAnalytics>>
@@ -86,37 +96,43 @@ export function AdminDashboard({ backendAnalytics }: { backendAnalytics: Backend
       </section>
 
       <Panel title="Scan And Report Tracking" description="Latest reports saved in PostgreSQL" icon={IconDatabase}>
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <div className="min-w-[760px]">
-            <div className="grid grid-cols-[1fr_1fr_0.8fr_1fr_1.2fr_0.7fr] gap-4 border-b border-border bg-muted px-4 py-3 text-xs font-medium text-muted-foreground">
-              <span>Report</span>
-              <span>User</span>
-              <span>Source</span>
-              <span>Status</span>
-              <span>Recommendation</span>
-              <span>Downloads</span>
-            </div>
-            {reportRows.map((report) => (
-              <div
-                key={report.id}
-                className="grid grid-cols-[1fr_1fr_0.8fr_1fr_1.2fr_0.7fr] gap-4 border-b border-border px-4 py-4 text-sm last:border-b-0"
-              >
-                <div>
-                  <p className="font-medium">{report.id}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{report.createdAt}</p>
-                </div>
-                <span className="text-muted-foreground">{report.user}</span>
-                <span>{report.source}</span>
-                <span>{report.status}</span>
-                <span className="text-muted-foreground">{report.recommendation}</span>
-                <span>{report.pdfDownloads}</span>
-              </div>
-            ))}
-            {reportRows.length === 0 ? (
-              <div className="px-4 py-6 text-sm text-muted-foreground">No reports have been saved yet.</div>
-            ) : null}
+        {reportRows.length ? (
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Report</TableHead>
+                  <TableHead>User</TableHead>
+                  <TableHead>Source</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Recommendation</TableHead>
+                  <TableHead>Downloads</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {reportRows.map((report) => (
+                  <TableRow key={report.id}>
+                    <TableCell>
+                      <p className="font-medium">{report.id}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">{report.createdAt}</p>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{report.user}</TableCell>
+                    <TableCell>{report.source}</TableCell>
+                    <TableCell>
+                      <Badge variant={report.status === "Fallback report" ? "destructive" : "default"}>
+                        {report.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="whitespace-normal text-muted-foreground">{report.recommendation}</TableCell>
+                    <TableCell>{report.pdfDownloads}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
-        </div>
+        ) : (
+          <EmptyState label="No reports have been saved yet." />
+        )}
       </Panel>
 
       <section className="grid gap-6 xl:grid-cols-2">
@@ -221,18 +237,20 @@ function getDisplayMetrics(backendAnalytics: BackendAnalytics): Metric[] {
 
 function MetricCard({ metric, icon: Icon }: { metric: Metric; icon: IconComponent }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-5 shadow-sm">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <p className="text-sm text-muted-foreground">{metric.label}</p>
-          <p className="mt-2 text-3xl font-semibold">{metric.value}</p>
+    <Card>
+      <CardContent>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm text-muted-foreground">{metric.label}</p>
+            <p className="mt-2 text-3xl font-semibold">{metric.value}</p>
+          </div>
+          <div className="grid size-11 place-items-center rounded-lg bg-primary text-primary-foreground">
+            <Icon className="size-5" />
+          </div>
         </div>
-        <div className="grid size-11 place-items-center rounded-lg bg-primary text-primary-foreground">
-          <Icon className="size-5" />
-        </div>
-      </div>
-      <p className="mt-4 text-sm text-muted-foreground">{metric.detail}</p>
-    </div>
+        <p className="mt-4 text-sm text-muted-foreground">{metric.detail}</p>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -248,18 +266,18 @@ function Panel({
   children: ReactNode
 }) {
   return (
-    <section className="rounded-lg border border-border bg-card p-5 shadow-sm">
-      <div className="mb-5 flex items-start gap-3">
+    <Card>
+      <CardHeader className="flex-row items-start gap-3 space-y-0">
         <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-primary">
           <Icon className="size-5" />
         </div>
         <div>
-          <h2 className="text-lg font-semibold">{title}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          <CardTitle>{title}</CardTitle>
+          <CardDescription className="mt-1">{description}</CardDescription>
         </div>
-      </div>
-      {children}
-    </section>
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
   )
 }
 

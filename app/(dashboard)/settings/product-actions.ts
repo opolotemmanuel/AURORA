@@ -13,7 +13,7 @@ import { saveAuditLog } from "@/lib/backend/report-store"
 import { requireAdminAccess } from "@/lib/auth/admin"
 
 export async function createProductAction(formData: FormData) {
-  const auth = requireAdminAccess("products:manage")
+  const auth = await requireAdminAccess("products:manage")
   const input = parseProductFormData(formData)
   const product = await createProduct(input)
 
@@ -29,7 +29,7 @@ export async function createProductAction(formData: FormData) {
 }
 
 export async function updateProductAction(formData: FormData) {
-  const auth = requireAdminAccess("products:manage")
+  const auth = await requireAdminAccess("products:manage")
   const input = parseProductFormData(formData)
 
   if (!input.id) {
@@ -50,7 +50,7 @@ export async function updateProductAction(formData: FormData) {
 }
 
 export async function activateProductAction(formData: FormData) {
-  const auth = requireAdminAccess("products:manage")
+  const auth = await requireAdminAccess("products:manage")
   const id = getProductId(formData)
   await setProductActive(id, true)
   await saveAuditLog({
@@ -65,7 +65,7 @@ export async function activateProductAction(formData: FormData) {
 }
 
 export async function deactivateProductAction(formData: FormData) {
-  const auth = requireAdminAccess("products:manage")
+  const auth = await requireAdminAccess("products:manage")
   const id = getProductId(formData)
   await setProductActive(id, false)
   await saveAuditLog({
@@ -80,7 +80,7 @@ export async function deactivateProductAction(formData: FormData) {
 }
 
 export async function deleteProductAction(formData: FormData) {
-  const auth = requireAdminAccess("products:manage")
+  const auth = await requireAdminAccess("products:manage")
   const id = getProductId(formData)
   const result = await deleteOrArchiveProduct(id)
 

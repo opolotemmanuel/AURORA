@@ -1,4 +1,5 @@
 import type { AdminRole } from "@/lib/backend/types"
+import { getSession } from "@/lib/auth/session"
 
 export type AdminPermission =
   | "admin:read"
@@ -11,7 +12,7 @@ export type AdminPermission =
 export type AdminPrincipal = {
   id: string
   role: AdminRole
-  authMode: "placeholder"
+  authMode: "session"
 }
 
 export type AdminAccess =
@@ -36,6 +37,13 @@ const rolePermissions: Record<AdminRole, AdminPermission[]> = {
   support: ["admin:read", "analytics:read", "products:read"],
 }
 
+const dbRoleToAdminRole: Record<string, AdminRole> = {
+  OWNER: "owner",
+  ADMIN: "admin",
+  SUPPORT: "support",
+  PRIVACY: "privacy",
+}
+
 export class AdminAccessError extends Error {
   constructor(readonly access: AdminAccess) {
     super(access.note)
@@ -43,26 +51,25 @@ export class AdminAccessError extends Error {
   }
 }
 
-export function getAdminPrincipal(): AdminPrincipal | null {
-  if (!isPlaceholderAdminAllowed()) return null
+export async function getAdminPrincipal(): Promise<AdminPrincipal | null> {
+  const session = await getSession()
+  if (!session) return null
 
-  return {
-    id: "placeholder-admin",
-    role: "owner",
-    authMode: "placeholder",
-  }
+  const role = dbRoleToAdminRole[session.user.role]
+  if (!role) return null
+
+  return { id: session.user.id, role, authMode: "session" }
 }
 
-export function assertAdminAccess(permission: AdminPermission = "admin:read"): AdminAccess {
-  const principal = getAdminPrincipal()
+export async function assertAdminAccess(permission: AdminPermission = "admin:read"): Promise<AdminAccess> {
+  const principal = await getAdminPrincipal()
 
   if (!principal) {
     return {
       allowed: false,
       principal: null,
       permission,
-      note:
-        "Admin access is blocked because real authentication is not installed and placeholder admin access is disabled.",
+      note: "Admin access requires a signed-in user with an admin-eligible role.",
     }
   }
 
@@ -79,22 +86,16 @@ export function assertAdminAccess(permission: AdminPermission = "admin:read"): A
     allowed: true,
     principal,
     permission,
-    note:
-      "Admin access is using a development-only placeholder. Install better-auth before treating this as production protection.",
+    note: "Admin access granted from the signed-in user's role.",
   }
 }
 
-export function requireAdminAccess(permission: AdminPermission = "admin:read") {
-  const access = assertAdminAccess(permission)
+export async function requireAdminAccess(permission: AdminPermission = "admin:read") {
+  const access = await assertAdminAccess(permission)
 
   if (!access.allowed) {
     throw new AdminAccessError(access)
   }
 
   return access
-}
-
-function isPlaceholderAdminAllowed() {
-  if (process.env.AURA_ALLOW_PLACEHOLDER_ADMIN === "true") return true
-  return process.env.NODE_ENV !== "production"
 }

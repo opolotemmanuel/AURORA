@@ -18,6 +18,18 @@ import {
   type ReportTableSort,
 } from "@/lib/backend/report-store"
 import { cn } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 export const dynamic = "force-dynamic"
 
@@ -63,113 +75,124 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
         </p>
       </section>
 
-      <form className="rounded-lg border border-border bg-card p-4 shadow-sm">
-        <div className="grid gap-3 xl:grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr_0.8fr_0.8fr_auto_auto]">
-          <label className="relative">
-            <IconSearch className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              name="search"
-              defaultValue={query.search}
-              placeholder="Search report ID, user, product, summary"
-              className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm"
+      <Card>
+        <CardContent>
+          <form className="grid gap-3 xl:grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr_0.8fr_0.8fr_auto_auto]">
+            <label className="relative">
+              <IconSearch className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                name="search"
+                defaultValue={query.search}
+                placeholder="Search report ID, user, product, summary"
+                className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm"
+              />
+            </label>
+            <Select name="aiSource" label="AI Source" value={query.aiSource} options={[
+              ["", "All AI"],
+              ["gemini", "Gemini"],
+              ["fallback", "Fallback"],
+            ]} />
+            <Select name="status" label="Status" value={query.status} options={[
+              ["", "All status"],
+              ["completed", "Completed"],
+              ["pending", "Pending"],
+              ["failed", "Failed"],
+              ["archived", "Archived"],
+            ]} />
+            <Select name="scanSource" label="Scan Source" value={query.scanSource} options={[
+              ["", "All sources"],
+              ["camera", "Camera"],
+              ["upload", "Upload"],
+            ]} />
+            <Select name="dateRange" label="Date Range" value={query.dateRange} options={[
+              ["", "All dates"],
+              ["today", "Today"],
+              ["week", "This Week"],
+              ["month", "This Month"],
+            ]} />
+            <Select
+              name="sort"
+              label="Sort"
+              value={query.sort}
+              options={sortOptions.map((option) => [option.value, option.label])}
             />
-          </label>
-          <Select name="aiSource" label="AI Source" value={query.aiSource} options={[
-            ["", "All AI"],
-            ["gemini", "Gemini"],
-            ["fallback", "Fallback"],
-          ]} />
-          <Select name="status" label="Status" value={query.status} options={[
-            ["", "All status"],
-            ["completed", "Completed"],
-            ["pending", "Pending"],
-            ["failed", "Failed"],
-            ["archived", "Archived"],
-          ]} />
-          <Select name="scanSource" label="Scan Source" value={query.scanSource} options={[
-            ["", "All sources"],
-            ["camera", "Camera"],
-            ["upload", "Upload"],
-          ]} />
-          <Select name="dateRange" label="Date Range" value={query.dateRange} options={[
-            ["", "All dates"],
-            ["today", "Today"],
-            ["week", "This Week"],
-            ["month", "This Month"],
-          ]} />
-          <Select
-            name="sort"
-            label="Sort"
-            value={query.sort}
-            options={sortOptions.map((option) => [option.value, option.label])}
-          />
-          <button className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground">
-            <IconFilter className="size-4" />
-            Filter
-          </button>
-          <Link
-            href="/reports"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-background px-3 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
-          >
-            <IconRefresh className="size-4" />
-            Refresh
-          </Link>
-        </div>
-      </form>
+            <Button type="submit">
+              <IconFilter className="size-4" />
+              Filter
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/reports">
+                <IconRefresh className="size-4" />
+                Refresh
+              </Link>
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-3 shadow-sm">
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">{pagination.total}</span>
-          <span>Total Reports</span>
-          <span>·</span>
-          <span>Page {pagination.page} of {pagination.pageCount}</span>
-          <span>·</span>
-          <span>{pagination.pageSize} per page</span>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <ToolbarButton label="Export" icon={IconDownload} />
-          <ToolbarButton label="Bulk Archive" />
-          <ToolbarButton label="Bulk Delete" />
-        </div>
-      </div>
+      <Card size="sm">
+        <CardContent className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{pagination.total}</span>
+            <span>Total Reports</span>
+            <span>·</span>
+            <span>Page {pagination.page} of {pagination.pageCount}</span>
+            <span>·</span>
+            <span>{pagination.pageSize} per page</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <ToolbarButton label="Export" icon={IconDownload} />
+            <ToolbarButton label="Bulk Archive" />
+            <ToolbarButton label="Bulk Delete" />
+          </div>
+        </CardContent>
+      </Card>
 
-      <section className="overflow-hidden rounded-lg border border-border bg-card shadow-sm">
+      <Card className="overflow-hidden py-0">
         {reports.length ? (
           <>
             <div className="hidden overflow-x-auto lg:block">
-              <table className="min-w-[1320px] w-full border-collapse text-left text-sm">
-                <thead className="sticky top-0 z-10 bg-muted text-xs text-muted-foreground">
-                  <tr className="border-b border-border">
-                    <Th><input type="checkbox" aria-label="Select all reports" /></Th>
-                    <Th>Report ID</Th>
-                    <Th>User</Th>
-                    <Th>Scan Source</Th>
-                    <Th>AI Source</Th>
-                    <Th>Status</Th>
-                    <Th>Skin Summary</Th>
-                    <Th>Recommendations</Th>
-                    <Th>Created</Th>
-                    <Th>Updated</Th>
-                    <Th>Actions</Th>
-                  </tr>
-                </thead>
-                <tbody>
+              <Table className="min-w-[1320px]">
+                <TableHeader className="sticky top-0 z-10 bg-muted">
+                  <TableRow>
+                    <TableHead><Checkbox aria-label="Select all reports" /></TableHead>
+                    <TableHead>Report ID</TableHead>
+                    <TableHead>User</TableHead>
+                    <TableHead>Scan Source</TableHead>
+                    <TableHead>AI Source</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Skin Summary</TableHead>
+                    <TableHead>Recommendations</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>Updated</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {reports.map((report) => (
-                    <tr key={report.id} className="border-b border-border last:border-b-0 hover:bg-muted/60">
-                      <Td><input type="checkbox" aria-label={`Select ${report.shortId}`} /></Td>
-                      <Td>
+                    <TableRow key={report.id}>
+                      <TableCell><Checkbox aria-label={`Select ${report.shortId}`} /></TableCell>
+                      <TableCell>
                         <Link href={`/api/reports/${report.id}/print`} className="font-medium text-primary hover:underline">
                           {report.shortId}
                         </Link>
-                      </Td>
-                      <Td><UserCell report={report} /></Td>
-                      <Td><Badge label={formatValue(report.scanSource)} tone="neutral" /></Td>
-                      <Td><Badge label={formatValue(report.aiSource)} tone={report.aiSource === "gemini" ? "primary" : "neutral"} /></Td>
-                      <Td><Badge label={formatValue(report.status)} tone={report.status === "failed" ? "danger" : "primary"} /></Td>
-                      <Td>
+                      </TableCell>
+                      <TableCell><UserCell report={report} /></TableCell>
+                      <TableCell><Badge variant="secondary">{formatValue(report.scanSource)}</Badge></TableCell>
+                      <TableCell>
+                        <Badge variant={report.aiSource === "gemini" ? "default" : "secondary"}>
+                          {formatValue(report.aiSource)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={report.status === "failed" ? "destructive" : "default"}>
+                          {formatValue(report.status)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="whitespace-normal">
                         <p className="max-w-72 truncate text-muted-foreground">{report.summary}</p>
-                      </Td>
-                      <Td>
+                      </TableCell>
+                      <TableCell className="whitespace-normal">
                         {report.recommendationCount ? (
                           <div>
                             <p className="font-medium">{report.recommendationCount} Products</p>
@@ -180,14 +203,14 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
                         ) : (
                           <span className="text-muted-foreground">No recommendations</span>
                         )}
-                      </Td>
-                      <Td><DateCell value={report.createdAt} /></Td>
-                      <Td><DateCell value={report.updatedAt} /></Td>
-                      <Td><ActionsMenu reportId={report.id} /></Td>
-                    </tr>
+                      </TableCell>
+                      <TableCell><DateCell value={report.createdAt} /></TableCell>
+                      <TableCell><DateCell value={report.updatedAt} /></TableCell>
+                      <TableCell><ActionsMenu reportId={report.id} /></TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
 
             <div className="grid gap-3 p-3 lg:hidden">
@@ -200,12 +223,16 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
                       </Link>
                       <p className="mt-1 text-xs text-muted-foreground">{formatDate(report.createdAt)}</p>
                     </div>
-                    <input type="checkbox" aria-label={`Select ${report.shortId}`} />
+                    <Checkbox aria-label={`Select ${report.shortId}`} />
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <Badge label={formatValue(report.scanSource)} tone="neutral" />
-                    <Badge label={formatValue(report.aiSource)} tone={report.aiSource === "gemini" ? "primary" : "neutral"} />
-                    <Badge label={formatValue(report.status)} tone={report.status === "failed" ? "danger" : "primary"} />
+                    <Badge variant="secondary">{formatValue(report.scanSource)}</Badge>
+                    <Badge variant={report.aiSource === "gemini" ? "default" : "secondary"}>
+                      {formatValue(report.aiSource)}
+                    </Badge>
+                    <Badge variant={report.status === "failed" ? "destructive" : "default"}>
+                      {formatValue(report.status)}
+                    </Badge>
                   </div>
                   <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">{report.summary}</p>
                   <div className="mt-3 flex items-center justify-between gap-3 text-sm">
@@ -223,27 +250,29 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
             <p className="mt-2 text-sm text-muted-foreground">Complete a scan to generate reports.</p>
           </div>
         )}
-      </section>
+      </Card>
 
-      <footer className="flex flex-col gap-3 rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground shadow-sm lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          Showing {start}-{end} of {pagination.total} reports · Last Updated {formatDate(result.lastUpdated)}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <PageSizeLinks query={query} />
-          <PaginationLink query={query} page={pagination.page - 1} disabled={pagination.page <= 1}>
-            <IconChevronLeft className="size-4" />
-            Previous
-          </PaginationLink>
-          <span className="rounded-md border border-border bg-muted px-3 py-2 text-xs">
-            {pagination.page}
-          </span>
-          <PaginationLink query={query} page={pagination.page + 1} disabled={pagination.page >= pagination.pageCount}>
-            Next
-            <IconChevronRight className="size-4" />
-          </PaginationLink>
-        </div>
-      </footer>
+      <Card size="sm">
+        <CardContent className="flex flex-col gap-3 text-sm text-muted-foreground lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            Showing {start}-{end} of {pagination.total} reports · Last Updated {formatDate(result.lastUpdated)}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <PageSizeLinks query={query} />
+            <PaginationLink query={query} page={pagination.page - 1} disabled={pagination.page <= 1}>
+              <IconChevronLeft className="size-4" />
+              Previous
+            </PaginationLink>
+            <span className="rounded-md border border-border bg-muted px-3 py-2 text-xs">
+              {pagination.page}
+            </span>
+            <PaginationLink query={query} page={pagination.page + 1} disabled={pagination.page >= pagination.pageCount}>
+              Next
+              <IconChevronRight className="size-4" />
+            </PaginationLink>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
@@ -271,14 +300,6 @@ function Select({
   )
 }
 
-function Th({ children }: { children: React.ReactNode }) {
-  return <th className="whitespace-nowrap px-3 py-3 font-medium">{children}</th>
-}
-
-function Td({ children }: { children: React.ReactNode }) {
-  return <td className="align-middle px-3 py-3">{children}</td>
-}
-
 type ReportRow = Awaited<ReturnType<typeof listReportsPage>>["reports"][number]
 
 function UserCell({ report }: { report: ReportRow }) {
@@ -295,21 +316,6 @@ function UserCell({ report }: { report: ReportRow }) {
         <p className="truncate text-xs text-muted-foreground">{email}</p>
       </div>
     </div>
-  )
-}
-
-function Badge({ label, tone }: { label: string; tone: "primary" | "neutral" | "danger" }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium",
-        tone === "primary" && "border-border bg-primary text-primary-foreground",
-        tone === "neutral" && "border-border bg-muted text-muted-foreground",
-        tone === "danger" && "border-destructive bg-background text-destructive",
-      )}
-    >
-      {label}
-    </span>
   )
 }
 
@@ -359,10 +365,10 @@ function MenuButton({ label, detail }: { label: string; detail: string }) {
 
 function ToolbarButton({ label, icon: Icon }: { label: string; icon?: React.ComponentType<{ className?: string }> }) {
   return (
-    <button disabled className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-background px-3 text-xs text-muted-foreground">
+    <Button type="button" variant="outline" size="sm" disabled>
       {Icon ? <Icon className="size-4" /> : null}
       {label}
-    </button>
+    </Button>
   )
 }
 

@@ -13,13 +13,19 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: IconLayoutDashboard },
   { href: "/reports", label: "Reports", icon: IconReportAnalytics },
   { href: "/settings", label: "Settings", icon: IconSettings },
-  { href: "/admin", label: "Admin", icon: IconShieldLock },
 ] as const
+
+const ADMIN_NAV_ITEM = { href: "/admin", label: "Admin", icon: IconShieldLock } as const
 
 // `pathname` is passed in (rather than read here via usePathname) so this
 // stays a plain component the parent shell controls, matching-prefix logic
 // below keeps e.g. /reports/123 highlighting the /reports nav item.
-export function DashboardSidebar({ pathname }: { pathname: string }) {
+// `isAdminTier` hides the Admin link for plain USER accounts — the real
+// route protection is still lib/auth/admin.ts's requireAdminAccess, this
+// just avoids showing a link they can't follow.
+export function DashboardSidebar({ pathname, isAdminTier }: { pathname: string; isAdminTier: boolean }) {
+  const items = isAdminTier ? [...navItems, ADMIN_NAV_ITEM] : navItems
+
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex w-56 shrink-0 flex-col border-r border-border bg-sidebar">
       <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-6">
@@ -29,7 +35,7 @@ export function DashboardSidebar({ pathname }: { pathname: string }) {
         </Link>
       </div>
       <nav className="flex flex-col gap-1 p-4">
-        {navItems.map((item) => {
+        {items.map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
           const Icon = item.icon
 

@@ -17,6 +17,8 @@ export type ScanImageMetadata = {
   fileName?: string
   mimeType?: string
   size?: number
+  width?: number
+  height?: number
   stored: boolean
 }
 
@@ -63,6 +65,8 @@ export type StoredScan = {
   source: ScanSource
   status: ScanStatus
   image: ScanImageMetadata
+  quality: ReportQuality
+  userAgent?: string
   createdAt: string
   updatedAt: string
 }
@@ -114,6 +118,7 @@ export type AiProviderEvent = {
   scanId?: string
   reportId?: string
   reason?: string
+  durationMs?: number
   createdAt: string
 }
 

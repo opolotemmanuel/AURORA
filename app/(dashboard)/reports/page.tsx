@@ -187,7 +187,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
                     <TableRow key={report.id}>
                       <TableCell><Checkbox aria-label={`Select ${report.shortId}`} /></TableCell>
                       <TableCell>
-                        <Link href={`/api/reports/${report.id}/print`} className="font-medium text-primary hover:underline">
+                        <Link href={`/reports/${report.id}`} className="font-medium text-primary hover:underline">
                           {report.shortId}
                         </Link>
                       </TableCell>
@@ -232,7 +232,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
                 <article key={report.id} className="rounded-lg border border-border bg-background p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <Link href={`/api/reports/${report.id}/print`} className="font-medium text-primary">
+                      <Link href={`/reports/${report.id}`} className="font-medium text-primary">
                         {report.shortId}
                       </Link>
                       <p className="mt-1 text-xs text-muted-foreground">{formatDate(report.createdAt)}</p>
@@ -351,7 +351,7 @@ function ActionsMenu({ reportId }: { reportId: string }) {
         <IconDotsVertical className="size-4" />
       </summary>
       <div className="absolute right-0 z-20 mt-2 w-52 rounded-lg border border-border bg-popover p-1 text-sm text-popover-foreground shadow-lg">
-        <MenuLink href={`/api/reports/${reportId}/print`} label="View Report" />
+        <MenuLink href={`/reports/${reportId}`} label="View Report" />
         <MenuLink href={`/api/reports/${reportId}/print`} label="Print" />
         <MenuLink href={`/api/reports/${reportId}/download`} label="Download PDF" />
         <MenuLink href={`/api/reports/${reportId}`} label="View Recommendations" />

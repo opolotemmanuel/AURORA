@@ -68,7 +68,7 @@ export function ResetPasswordForm() {
 
   if (tokenInvalid) {
     return (
-      <div className="space-y-4 rounded-lg border border-border bg-card p-6 text-center shadow-sm">
+      <div className="space-y-4 text-center">
         <IconAlertCircle className="mx-auto size-8 text-destructive" />
         <h1 className="text-xl font-medium">Link expired or invalid</h1>
         <p className="text-sm text-muted-foreground">
@@ -83,7 +83,7 @@ export function ResetPasswordForm() {
 
   if (status === "done") {
     return (
-      <div className="space-y-4 rounded-lg border border-border bg-card p-6 text-center shadow-sm">
+      <div className="space-y-4 text-center">
         <IconCircleCheck className="mx-auto size-8 text-primary" />
         <h1 className="text-xl font-medium">Password updated</h1>
         <p className="text-sm text-muted-foreground">
@@ -97,7 +97,7 @@ export function ResetPasswordForm() {
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+    <>
       <div className="space-y-2 text-center">
         <h1 className="text-xl font-medium">Set a new password</h1>
         <p className="text-sm text-muted-foreground">
@@ -172,6 +172,6 @@ export function ResetPasswordForm() {
           Update password
         </Button>
       </form>
-    </div>
+    </>
   )
 }

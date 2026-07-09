@@ -71,6 +71,8 @@ export type AuroraProduct = {
   cosmeticBenefits: string[]
   bestFor: SkinConcern[]
   avoidIf?: SkinConcern[]
+  keyIngredients?: string[]
+  officialUrl?: string
   priority: number
   active?: boolean
 }

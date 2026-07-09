@@ -63,6 +63,9 @@ export async function saveReportBundle(bundle: StoredReportBundle) {
       imageFileName: bundle.scan.image.fileName,
       imageMimeType: bundle.scan.image.mimeType,
       imageSizeBytes: bundle.scan.image.size,
+      imageWidth: bundle.scan.image.width,
+      imageHeight: bundle.scan.image.height,
+      userAgent: bundle.scan.userAgent,
       originalImageStored: bundle.scan.image.stored,
       qualityLighting: bundle.report.analysis.quality.lighting,
       qualityFraming: bundle.report.analysis.quality.framing,
@@ -198,6 +201,22 @@ export async function listReportsPage(query: ReportTableQuery) {
   }
 }
 
+export async function findReportOwner(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, name: true, email: true, image: true },
+  })
+
+  if (!user) return null
+
+  return {
+    id: user.id,
+    name: user.name ?? undefined,
+    email: user.email,
+    image: user.image ?? undefined,
+  }
+}
+
 export async function findReport(reportId: string) {
   const report = await getReportWithRelations(reportId)
   return report ? mapReport(report) : null
@@ -206,6 +225,22 @@ export async function findReport(reportId: string) {
 export async function findScan(scanId: string) {
   const scan = await getScanWithRelations(scanId)
   return scan ? mapScan(scan) : null
+}
+
+// Most recent reports for one user, newest first — used to build the report
+// detail page's Progress Tracking trend (see lib/reports/report-view-model.ts).
+export async function listReportsForUser(userId: string, limit = 6) {
+  const reports = await prisma.report.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    include: {
+      findings: { orderBy: { sortOrder: "asc" } },
+      recommendations: { orderBy: { rank: "asc" } },
+    },
+  })
+
+  return reports.map(mapReport)
 }
 
 export async function saveReportDownload(input: {
@@ -265,10 +300,20 @@ export async function saveAiProviderEvent(event: Omit<AiProviderEvent, "id" | "c
       scanId: event.scanId,
       reportId: event.reportId,
       reason: event.reason,
+      durationMs: event.durationMs,
     },
   })
 
   return mapAiProviderEvent(aiEvent)
+}
+
+export async function findAiProviderEventForReport(reportId: string) {
+  const event = await prisma.aiProviderEvent.findFirst({
+    where: { reportId },
+    orderBy: { createdAt: "desc" },
+  })
+
+  return event ? mapAiProviderEvent(event) : null
 }
 
 export async function listAiProviderEvents() {
@@ -408,7 +453,7 @@ function clampPageSize(pageSize: number) {
   return 25
 }
 
-function shortenReportId(reportId: string) {
+export function shortenReportId(reportId: string) {
   return `RPT-${reportId.slice(-5).toUpperCase()}`
 }
 
@@ -422,8 +467,16 @@ function mapScan(scan: NonNullable<ScanWithRelations>): StoredScan {
       fileName: scan.imageFileName ?? undefined,
       mimeType: scan.imageMimeType ?? undefined,
       size: scan.imageSizeBytes ?? undefined,
+      width: scan.imageWidth ?? undefined,
+      height: scan.imageHeight ?? undefined,
       stored: scan.originalImageStored,
     },
+    quality: {
+      lighting: scan.qualityLighting ?? "not_visible",
+      framing: scan.qualityFraming ?? "unclear",
+      confidence: scan.qualityConfidence ?? "low",
+    },
+    userAgent: scan.userAgent ?? undefined,
     createdAt: scan.createdAt.toISOString(),
     updatedAt: scan.updatedAt.toISOString(),
   }
@@ -558,6 +611,7 @@ function mapAiProviderEvent(event: {
   scanId: string | null
   reportId: string | null
   reason: string | null
+  durationMs: number | null
   createdAt: Date
 }): AiProviderEvent {
   return {
@@ -568,6 +622,7 @@ function mapAiProviderEvent(event: {
     scanId: event.scanId ?? undefined,
     reportId: event.reportId ?? undefined,
     reason: event.reason ?? undefined,
+    durationMs: event.durationMs ?? undefined,
     createdAt: event.createdAt.toISOString(),
   }
 }

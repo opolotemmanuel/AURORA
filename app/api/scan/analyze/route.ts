@@ -11,6 +11,7 @@ import {
   getGeminiDiagnosticMessage,
   getGeminiFallbackUserMessage,
 } from "@/lib/ai/gemini-adapter"
+import { readImageDimensions } from "@/lib/backend/image-dimensions"
 import { createScanReport } from "@/lib/backend/scan-service"
 import type { ScanAnalysisReport, ScanSource } from "@/lib/backend/types"
 
@@ -52,6 +53,10 @@ export async function POST(request: Request) {
     }
 
     const geminiResult = await analyzeImageWithFallback(image)
+    const dimensions = readImageDimensions(
+      Buffer.from(await image.arrayBuffer()),
+      normalizedType,
+    )
     // `stored: false` always — per AGENTS.md's privacy rule, the photo
     // itself is never persisted, only its metadata and the resulting report.
     const bundle = await createScanReport({
@@ -59,12 +64,16 @@ export async function POST(request: Request) {
         fileName: image.name,
         mimeType: normalizedType,
         size: image.size,
+        width: dimensions?.width,
+        height: dimensions?.height,
         stored: false,
       },
       analysis: geminiResult.analysis,
       source: normalizeScanSource(formData.get("source")),
       fallbackReason: geminiResult.fallbackReason,
       aiProviderReason: geminiResult.aiProviderReason,
+      userAgent: request.headers.get("user-agent") ?? undefined,
+      aiDurationMs: geminiResult.durationMs,
     })
 
     return NextResponse.json({
@@ -99,6 +108,7 @@ export async function POST(request: Request) {
         error instanceof Error
           ? "Scan analysis failed, so a cosmetic fallback report was returned."
           : "Scan analysis was unavailable, so a cosmetic fallback report was returned.",
+      userAgent: request.headers.get("user-agent") ?? undefined,
     })
 
     return NextResponse.json(
@@ -165,11 +175,14 @@ async function analyzeImageWithFallback(image: File): Promise<{
   fallback: boolean
   fallbackReason?: string
   aiProviderReason?: string
+  durationMs: number
 }> {
+  const startedAt = Date.now()
   try {
     return {
       analysis: await analyzeSkinWithGemini(image),
       fallback: false,
+      durationMs: Date.now() - startedAt,
     }
   } catch (error) {
     return {
@@ -177,6 +190,7 @@ async function analyzeImageWithFallback(image: File): Promise<{
       fallback: true,
       fallbackReason: getGeminiFallbackUserMessage(error),
       aiProviderReason: getGeminiDiagnosticMessage(error),
+      durationMs: Date.now() - startedAt,
     }
   }
 }

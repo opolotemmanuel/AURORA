@@ -77,7 +77,7 @@ export function RegisterForm() {
 
   if (status === "sent") {
     return (
-      <div className="space-y-4 rounded-lg border border-border bg-card p-6 text-center shadow-sm">
+      <div className="space-y-4 text-center">
         <IconMailCheck className="mx-auto size-8 text-primary" />
         <h1 className="text-xl font-medium">Check your email</h1>
         <p className="text-sm text-muted-foreground">
@@ -93,7 +93,7 @@ export function RegisterForm() {
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+    <>
       <div className="space-y-2 text-center">
         <h1 className="text-xl font-medium">Create your account</h1>
         <p className="text-sm text-muted-foreground">
@@ -208,6 +208,6 @@ export function RegisterForm() {
           Sign in
         </Link>
       </p>
-    </div>
+    </>
   )
 }

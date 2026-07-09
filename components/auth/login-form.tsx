@@ -82,13 +82,15 @@ export function LoginForm() {
     if (appleError) {
       setStatus("idle")
       setError(
-        appleError.message ?? "Sign in with Apple isn't available right now."
+        appleError.code === "PROVIDER_NOT_FOUND"
+          ? "Sign in with Apple isn't available right now."
+          : (appleError.message ?? "Sign in with Apple isn't available right now.")
       )
     }
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+    <>
       <div className="space-y-2 text-center">
         <h1 className="text-xl font-medium">Welcome back</h1>
         <p className="text-sm text-muted-foreground">
@@ -215,6 +217,6 @@ export function LoginForm() {
           Create one
         </Link>
       </p>
-    </div>
+    </>
   )
 }

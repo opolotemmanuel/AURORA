@@ -25,8 +25,10 @@ import type { CosmeticAnalysisInput, SkinConcern } from "@/lib/recommendations/t
 
 // The Gemini adapter returns free-text finding labels; the recommendation
 // engine only understands a fixed set of SkinConcern keys. This bridges the
-// two vocabularies (lowercased label -> concern key).
-const FINDING_CONCERN_MAP: Record<string, SkinConcern> = {
+// two vocabularies (lowercased label -> concern key). Exported so
+// lib/reports/report-view-model.ts can group findings by concern using the
+// exact same vocabulary, instead of a second mapping that could drift.
+export const FINDING_CONCERN_MAP: Record<string, SkinConcern> = {
   "visible texture": "texture",
   texture: "texture",
   "hydration signs": "hydration",
@@ -45,6 +47,8 @@ export async function createScanReport(input: {
   fallbackReason?: string
   aiProviderReason?: string
   userId?: string
+  userAgent?: string
+  aiDurationMs?: number
 }): Promise<StoredReportBundle> {
   const now = new Date().toISOString()
   const scanId = createId("scan")
@@ -62,6 +66,8 @@ export async function createScanReport(input: {
     source: input.source ?? "unknown",
     status,
     image: input.image,
+    quality: input.analysis.quality,
+    userAgent: input.userAgent,
     createdAt: now,
     updatedAt: now,
   }
@@ -98,6 +104,7 @@ export async function createScanReport(input: {
     scanId,
     reportId,
     reason: input.aiProviderReason ?? input.fallbackReason,
+    durationMs: input.aiDurationMs,
   })
 
   await saveAuditLog({

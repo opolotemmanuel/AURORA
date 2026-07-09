@@ -30,6 +30,8 @@ export type ProductFormInput = {
   cosmeticBenefits: string[]
   bestFor: SkinConcern[]
   avoidIf?: SkinConcern[]
+  keyIngredients?: string[]
+  officialUrl?: string
   priority: number
   active: boolean
 }
@@ -75,6 +77,8 @@ export async function createProduct(input: ProductFormInput) {
       cosmeticBenefits: input.cosmeticBenefits,
       bestFor: input.bestFor,
       avoidIf: input.avoidIf,
+      keyIngredients: input.keyIngredients,
+      officialUrl: input.officialUrl,
       priority: input.priority,
       active: input.active,
     },
@@ -94,6 +98,8 @@ export async function updateProduct(input: ProductFormInput & { id: string }) {
       cosmeticBenefits: input.cosmeticBenefits,
       bestFor: input.bestFor,
       avoidIf: input.avoidIf,
+      keyIngredients: input.keyIngredients,
+      officialUrl: input.officialUrl,
       priority: input.priority,
       active: input.active,
     },
@@ -142,6 +148,8 @@ export function parseProductFormData(formData: FormData): ProductFormInput {
     cosmeticBenefits: parseStringList(getRequiredString(formData, "cosmeticBenefits")),
     bestFor: parseConcernList(getRequiredString(formData, "bestFor")),
     avoidIf: parseConcernList(getOptionalString(formData, "avoidIf") ?? ""),
+    keyIngredients: parseStringList(getOptionalString(formData, "keyIngredients") ?? ""),
+    officialUrl: parseOfficialUrl(getOptionalString(formData, "officialUrl")),
     priority: parsePriority(getRequiredString(formData, "priority")),
     active: formData.get("active") === "on",
   }
@@ -158,6 +166,8 @@ function mapProduct(product: {
   cosmeticBenefits: Prisma.JsonValue
   bestFor: Prisma.JsonValue
   avoidIf: Prisma.JsonValue | null
+  keyIngredients: Prisma.JsonValue | null
+  officialUrl: string | null
   priority: number
   active: boolean
 }): AuroraProduct {
@@ -172,6 +182,8 @@ function mapProduct(product: {
     cosmeticBenefits: getStringArray(product.cosmeticBenefits),
     bestFor: getConcernArray(product.bestFor),
     avoidIf: product.avoidIf ? getConcernArray(product.avoidIf) : undefined,
+    keyIngredients: product.keyIngredients ? getStringArray(product.keyIngredients) : undefined,
+    officialUrl: product.officialUrl ?? undefined,
     priority: product.priority,
     active: product.active,
   }
@@ -226,6 +238,26 @@ function parseImagePath(value: string | undefined) {
 
   if (!value.startsWith("/") || value.startsWith("//")) {
     throw new Error("imagePath must be a local public path that starts with /.")
+  }
+
+  return value
+}
+
+// The report's "View Product on Aurora" button opens this in a new tab, so
+// it must be a real absolute URL — not a relative path (that's imagePath's
+// job) and not javascript:/data: or similar.
+function parseOfficialUrl(value: string | undefined) {
+  if (!value) return undefined
+
+  let url: URL
+  try {
+    url = new URL(value)
+  } catch {
+    throw new Error("officialUrl must be a valid absolute URL.")
+  }
+
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new Error("officialUrl must use http or https.")
   }
 
   return value

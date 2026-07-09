@@ -259,6 +259,18 @@ function ProductForm({
           defaultValue={product?.avoidIf?.join(", ")}
           placeholder="oilBalance"
         />
+        <Field
+          label="Key ingredients"
+          name="keyIngredients"
+          defaultValue={product?.keyIngredients?.join(", ")}
+          placeholder="Niacinamide, Hyaluronic acid"
+        />
+        <Field
+          label="Official Aurora product URL"
+          name="officialUrl"
+          defaultValue={product?.officialUrl}
+          placeholder="https://aurora.example.com/products/glow-serum"
+        />
         <Field label="Priority" name="priority" type="number" defaultValue={String(product?.priority ?? 50)} required />
         <label className="flex items-center gap-2 text-sm">
           <Checkbox name="active" defaultChecked={product?.active ?? true} />

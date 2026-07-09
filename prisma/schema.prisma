@@ -138,6 +138,9 @@ model Scan {
   imageFileName       String?
   imageMimeType       String?
   imageSizeBytes      Int?
+  imageWidth          Int?
+  imageHeight         Int?
+  userAgent           String?
   originalImageStored Boolean    @default(false)
   imageStorageKey     String?
   qualityLighting     String?
@@ -207,6 +210,8 @@ model Product {
   cosmeticBenefits Json
   bestFor          Json
   avoidIf          Json?
+  keyIngredients   Json?
+  officialUrl      String?
   priority         Int
   active           Boolean     @default(true)
   createdAt        DateTime    @default(now())
@@ -286,6 +291,7 @@ model AiProviderEvent {
   scanId    String?
   reportId  String?
   reason    String?
+  durationMs Int?
   createdAt DateTime         @default(now())
 
   report Report? @relation(fields: [reportId], references: [id], onDelete: SetNull)

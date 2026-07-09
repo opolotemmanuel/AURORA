@@ -38,15 +38,18 @@ export function ScanCaptureAdvicePanel() {
         />
       }
     >
-      <ScanAdviceComposer
-        mode="advice"
-        inline
-        hideAdviceHeader
-        startFresh
-        placeholder="Ask about routines, concerns & recommendations…"
-        suggestions={ADVICE_SUGGESTIONS}
-        onToolbarStateChange={setToolbar}
-      />
+      <div className="h-[min(65vh,520px)] min-h-[32rem]">
+        <ScanAdviceComposer
+          mode="advice"
+          inline
+          hideAdviceHeader
+          startFresh
+          scanPinnedInput
+          placeholder="Ask about routines, concerns & recommendations…"
+          suggestions={ADVICE_SUGGESTIONS}
+          onToolbarStateChange={setToolbar}
+        />
+      </div>
     </ScanStepShell>
   )
 }

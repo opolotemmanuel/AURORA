@@ -19,7 +19,7 @@ export function ScanFlowHeader({ trailing, className }: ScanFlowHeaderProps) {
       )}
     >
       <Link
-        href="/"
+        href="/dashboard"
         className="flex min-w-0 shrink items-center gap-2.5 text-foreground transition-colors hover:text-muted-foreground"
       >
         <Image

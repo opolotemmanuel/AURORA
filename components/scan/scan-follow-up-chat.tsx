@@ -18,6 +18,7 @@ export function ScanFollowUpChat({ scanId, className }: ScanFollowUpChatProps) {
     <ScanAdviceComposer
       mode="follow_up"
       scanId={scanId}
+      scanPinnedInput
       placeholder="Ask about your scan…"
       collapsedLabel="Ask about your scan"
       suggestions={FOLLOW_UP_SUGGESTIONS}

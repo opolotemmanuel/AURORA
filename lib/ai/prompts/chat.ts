@@ -1,4 +1,8 @@
-import type { CatalogProductContext, UserScanContext } from "@/lib/ai/types"
+import type {
+  CatalogProductContext,
+  ScanHistoryContextItem,
+  UserScanContext,
+} from "@/lib/ai/types"
 import type { ScanClimateContext, SkinAssessment } from "@/lib/scan/types"
 import { SKIN_DIMENSIONS } from "@/lib/scan/dimensions"
 
@@ -11,24 +15,46 @@ Rules:
 - Never invent numeric scores, percentages, or clinical certainty.
 - If asked about medical symptoms, diagnoses, prescriptions, or non-skin topics, politely refuse and redirect to cosmetic guidance or a dermatologist.
 - Recommend products ONLY from the provided Aurora catalog when suggesting products.
-- Keep responses concise (2-4 short paragraphs max), supportive, and honest.
+- When giving routines or advice, list natural, organic, and lifestyle solutions first. Mention Aurora catalog products only after, when relevant — never lead with products.
+- Format routines and recommendations with markdown bullet lists or numbered lists. Avoid long unbroken paragraphs.
+- For step-by-step routines, use one numbered list per section (e.g. Morning Routine). Put product or detail bullets on lines directly under each numbered step.
+- When recommending a catalog product, format it as a markdown link: [Product Name](purchaseUrl) using the exact purchaseUrl from the catalog JSON.
+- Keep responses concise and supportive.
 - Always remind users this is cosmetic guidance, not medical advice, when discussing specific skin patterns.`
 
-export function buildAdviceSystemPrompt(): string {
+export function buildAdviceSystemPrompt(hasScanHistory: boolean): string {
+  const scanGuidance = hasScanHistory
+    ? "Use the user's profile, location, and scan history below for personalized cosmetic guidance. Reference past scan bands and trends when relevant."
+    : "The user has no scan history yet. Offer general cosmetic skin wellness guidance based on their profile and concerns. Encourage them to run a scan for personalized band-based assessment when relevant."
+
   return `${COSMETIC_RULES}
 
-The user has not completed a scan yet. Offer general cosmetic skin wellness guidance based on their profile and concerns. Encourage them to run a scan for personalized band-based assessment when relevant.`
+${scanGuidance}`
 }
 
 export function buildFollowUpSystemPrompt(): string {
   return `${COSMETIC_RULES}
 
-The user completed a skin scan. Use the scan assessment context below to answer follow-up questions about their results, routines, and product recommendations.`
+The user completed a skin scan. Use the current scan assessment context below to answer follow-up questions. Reference previous scans when comparing trends or answering history questions.`
+}
+
+export function buildScanHistoryContextText(
+  history: ScanHistoryContextItem[],
+  options: { label?: string } = {},
+): string {
+  const label = options.label ?? "Recent scan history"
+  if (history.length === 0) {
+    return `${label}: No completed scans on file.`
+  }
+
+  return `${label} (JSON):
+${JSON.stringify(history, null, 2)}`
 }
 
 export function buildAdviceContextText(
   userContext: UserScanContext,
   catalog: CatalogProductContext[],
+  scanHistory: ScanHistoryContextItem[],
   activeClimateTags: string[] = [],
 ): string {
   const profileBlock = userContext.profile
@@ -42,6 +68,7 @@ export function buildAdviceContextText(
       ? activeClimateTags.join(", ")
       : "No active climate tags."
   const catalogBlock = JSON.stringify(catalog, null, 2)
+  const historyBlock = buildScanHistoryContextText(scanHistory)
 
   return `User profile (JSON):
 ${profileBlock}
@@ -52,6 +79,8 @@ ${locationBlock}
 Active climate tags:
 ${climateTagsBlock}
 
+${historyBlock}
+
 Aurora product catalog (JSON):
 ${catalogBlock}`
 }
@@ -61,6 +90,7 @@ export function buildFollowUpContextText(
   catalog: CatalogProductContext[],
   assessment: SkinAssessment,
   climateContext: ScanClimateContext | null,
+  scanHistory: ScanHistoryContextItem[],
   activeClimateTags: string[] = [],
 ): string {
   const dimensionList = SKIN_DIMENSIONS.map(
@@ -84,13 +114,19 @@ export function buildFollowUpContextText(
     ? JSON.stringify(climateContext, null, 2)
     : "No climate context."
 
-  return `${buildAdviceContextText(userContext, catalog, activeClimateTags)}
+  const historyBlock = buildScanHistoryContextText(scanHistory, {
+    label: "Previous scans",
+  })
 
-Scan assessment (JSON):
+  return `${buildAdviceContextText(userContext, catalog, [], activeClimateTags)}
+
+Current scan assessment (JSON):
 ${assessmentBlock}
 
 Scan climate context (JSON):
 ${climateBlock}
+
+${historyBlock}
 
 Dimension ids for reference: ${dimensionList}`
 }

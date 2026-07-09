@@ -2,6 +2,7 @@ import { cache } from "react"
 
 import { prisma } from "@/lib/db/client"
 import type { CatalogProductContext } from "@/lib/ai/types"
+import { resolveStoreUrl } from "@/lib/products/store-url"
 
 export const CATALOG_CONTEXT_TAG = "catalog-context"
 
@@ -19,9 +20,23 @@ export const getCatalogContext = cache(
         targetConcerns: true,
         suitableSkinTypes: true,
         climateTags: true,
+        storeUrl: true,
       },
     })
 
-    return products
+    return products.map((product) => ({
+      slug: product.slug,
+      name: product.name,
+      description: product.description,
+      category: product.category,
+      ingredients: product.ingredients,
+      targetConcerns: product.targetConcerns,
+      suitableSkinTypes: product.suitableSkinTypes,
+      climateTags: product.climateTags,
+      purchaseUrl: resolveStoreUrl({
+        storeUrl: product.storeUrl,
+        slug: product.slug,
+      }),
+    }))
   },
 )

@@ -1,9 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { IconStar, IconStarFilled } from "@tabler/icons-react"
+import { IconLoader2, IconStar, IconStarFilled } from "@tabler/icons-react"
 
 import { FeedbackWidget } from "@/components/motion/feedback-widget"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
 import { submitScanFeedbackAction } from "@/lib/scan/submit-feedback-action"
 import { cn } from "@/lib/utils"
 
@@ -18,6 +20,13 @@ type ScanFeedbackWidgetProps = {
   position?: "bottom-right" | "bottom-left"
   /** When true, skip viewport-corner positioning — parent controls placement. */
   anchored?: boolean
+  className?: string
+}
+
+type ScanFeedbackFormProps = {
+  scanId: string
+  existingFeedback?: ScanFeedbackRecord | null
+  onSubmitted?: () => void
   className?: string
 }
 
@@ -59,6 +68,91 @@ function StarRating({
           </button>
         )
       })}
+    </div>
+  )
+}
+
+export function ScanFeedbackForm({
+  scanId,
+  existingFeedback = null,
+  onSubmitted,
+  className,
+}: ScanFeedbackFormProps) {
+  const [rating, setRating] = useState(existingFeedback?.rating ?? 0)
+  const [message, setMessage] = useState(existingFeedback?.message ?? "")
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [submitted, setSubmitted] = useState(existingFeedback != null)
+
+  async function handleSubmit() {
+    if (rating === 0 || submitting || submitted) return
+
+    setSubmitting(true)
+    setError(null)
+    try {
+      const result = await submitScanFeedbackAction({
+        scanId,
+        rating,
+        message: message.trim() || undefined,
+      })
+      if (!result.ok) {
+        setError(result.error)
+        return
+      }
+      setSubmitted(true)
+      onSubmitted?.()
+    } catch {
+      setError("Could not send feedback. Please try again.")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (submitted) {
+    return (
+      <p className={cn("text-sm text-muted-foreground", className)}>
+        Thanks for your feedback.
+      </p>
+    )
+  }
+
+  return (
+    <div className={cn("space-y-4", className)}>
+      <div className="space-y-1">
+        <p className="text-sm text-muted-foreground">Rate your experience</p>
+        <StarRating value={rating} onChange={setRating} disabled={submitting} />
+      </div>
+
+      <div className="space-y-2">
+        <label
+          htmlFor="scan-feedback-message"
+          className="text-sm font-medium text-foreground"
+        >
+          Comments (optional)
+        </label>
+        <Textarea
+          id="scan-feedback-message"
+          value={message}
+          onChange={(event) => setMessage(event.target.value)}
+          placeholder="Optional comments about your results…"
+          rows={4}
+          disabled={submitting}
+        />
+      </div>
+
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+      <Button
+        type="button"
+        size="sm"
+        disabled={rating === 0 || submitting}
+        onClick={() => void handleSubmit()}
+      >
+        {submitting ? (
+          <IconLoader2 className="size-3.5 animate-spin" />
+        ) : null}
+        {submitting ? "Sending…" : "Submit feedback"}
+      </Button>
     </div>
   )
 }

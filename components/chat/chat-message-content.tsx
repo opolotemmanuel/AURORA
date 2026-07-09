@@ -78,6 +78,83 @@ function renderParagraph(text: string, key: string) {
   )
 }
 
+type NumberedListItem = {
+  content: string
+  subBullets: string[]
+}
+
+function parseNumberedListItems(
+  lines: string[],
+  startIndex: number,
+): { items: NumberedListItem[]; nextIndex: number } {
+  const items: NumberedListItem[] = []
+  let index = startIndex
+
+  while (index < lines.length) {
+    const trimmed = lines[index].trim()
+    if (!trimmed) {
+      index += 1
+      continue
+    }
+    if (!/^\d+\.\s+/.test(trimmed)) break
+
+    const item: NumberedListItem = {
+      content: trimmed.replace(/^\d+\.\s+/, ""),
+      subBullets: [],
+    }
+    index += 1
+
+    while (index < lines.length) {
+      const nextTrimmed = lines[index].trim()
+      if (!nextTrimmed) {
+        index += 1
+        continue
+      }
+      if (/^\d+\.\s+/.test(nextTrimmed)) break
+      if (/^(#{1,3})\s+/.test(nextTrimmed)) break
+      if (/^[-*]\s+/.test(nextTrimmed)) {
+        item.subBullets.push(nextTrimmed.replace(/^[-*]\s+/, ""))
+        index += 1
+        continue
+      }
+      break
+    }
+
+    items.push(item)
+  }
+
+  return { items, nextIndex: index }
+}
+
+function renderNumberedList(items: NumberedListItem[], blockIndex: number) {
+  return (
+    <ol key={`block-${blockIndex}`} className="list-decimal space-y-2 pl-4">
+      {items.map((item, itemIndex) => (
+        <li key={`block-${blockIndex}-item-${itemIndex}`}>
+          {renderInline(item.content, `block-${blockIndex}-item-${itemIndex}`)}
+          {item.subBullets.length > 0 ? (
+            <ul
+              className="mt-1 list-disc space-y-1 pl-4"
+              key={`block-${blockIndex}-item-${itemIndex}-sub`}
+            >
+              {item.subBullets.map((bullet, bulletIndex) => (
+                <li
+                  key={`block-${blockIndex}-item-${itemIndex}-sub-${bulletIndex}`}
+                >
+                  {renderInline(
+                    bullet,
+                    `block-${blockIndex}-item-${itemIndex}-sub-${bulletIndex}`,
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </li>
+      ))}
+    </ol>
+  )
+}
+
 function parseMarkdownBlocks(content: string): ReactNode[] {
   const lines = content.replace(/\r\n/g, "\n").split("\n")
   const blocks: ReactNode[] = []
@@ -133,21 +210,12 @@ function parseMarkdownBlocks(content: string): ReactNode[] {
     }
 
     if (/^\d+\.\s+/.test(trimmed)) {
-      const items: string[] = []
-      while (index < lines.length && /^\d+\.\s+/.test(lines[index].trim())) {
-        items.push(lines[index].trim().replace(/^\d+\.\s+/, ""))
-        index += 1
+      const { items, nextIndex } = parseNumberedListItems(lines, index)
+      if (items.length > 0) {
+        blocks.push(renderNumberedList(items, blockIndex))
+        blockIndex += 1
       }
-      blocks.push(
-        <ol key={`block-${blockIndex}`} className="list-decimal space-y-1 pl-4">
-          {items.map((item, itemIndex) => (
-            <li key={`block-${blockIndex}-item-${itemIndex}`}>
-              {renderInline(item, `block-${blockIndex}-item-${itemIndex}`)}
-            </li>
-          ))}
-        </ol>,
-      )
-      blockIndex += 1
+      index = nextIndex
       continue
     }
 

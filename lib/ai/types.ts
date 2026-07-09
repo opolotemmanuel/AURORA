@@ -10,6 +10,17 @@ export type CatalogProductContext = {
   targetConcerns: string[]
   suitableSkinTypes: string[]
   climateTags: string[]
+  purchaseUrl: string
+}
+
+export type ScanHistoryContextItem = {
+  scanId: string
+  createdAt: string
+  overallBand: string
+  summary: string
+  dimensions: { id: string; band: string }[]
+  naturalRecommendations: { title: string; description: string }[]
+  recommendations: { id: string; name: string; reason: string }[]
 }
 
 export type UserScanContext = {

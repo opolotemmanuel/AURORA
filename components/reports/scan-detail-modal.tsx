@@ -2,15 +2,10 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import {
-  IconDownload,
-  IconLoader2,
-  IconTrash,
-} from "@tabler/icons-react"
 
 import { ReportDocumentHeader } from "@/components/reports/report-document-header"
 import { SkinReportDocument } from "@/components/reports/skin-report-document"
-import { ScanReportChatDock } from "@/components/scan/scan-report-chat-dock"
+import { ScanReportFooter } from "@/components/scan/scan-report-footer"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,7 +16,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
 import { ResponsiveDialog } from "@/components/ui/responsive-dialog"
 import { parseLocationSnapshot } from "@/lib/climate/snapshot"
 import { downloadReportPdf } from "@/lib/reports/download-report-pdf"
@@ -108,8 +102,8 @@ export function ScanDetailModal({
         description={scanDate}
         className="sm:max-w-5xl"
       >
-        <div className="relative flex min-h-0 flex-1 flex-col">
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-44 sm:px-6">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
             <div className="mx-auto max-w-3xl space-y-6">
               <ReportDocumentHeader
                 scanDate={scanDate}
@@ -124,49 +118,14 @@ export function ScanDetailModal({
             </div>
           </div>
 
-          <div className="pointer-events-none absolute inset-x-0 bottom-14 z-30 flex justify-end px-4 sm:bottom-16 sm:px-6">
-            <div className="pointer-events-auto">
-              <ScanReportChatDock
-                scanId={scan.id}
-                existingFeedback={scan.feedback}
-              />
-            </div>
-          </div>
-
-          <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-border px-4 py-3 sm:px-6">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="text-destructive hover:text-destructive"
-              disabled={deleting}
-              onClick={() => setDeleteOpen(true)}
-            >
-              <IconTrash className="size-3.5" />
-              Delete scan
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              disabled={downloading}
-              onClick={handleDownloadPdf}
-            >
-              {downloading ? (
-                <IconLoader2 className="size-3.5 animate-spin" />
-              ) : (
-                <IconDownload className="size-3.5" />
-              )}
-              {downloading ? "Generating…" : "Download PDF"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-            >
-              Close
-            </Button>
-          </div>
+          <ScanReportFooter
+            scanId={scan.id}
+            existingFeedback={scan.feedback}
+            downloading={downloading}
+            deleting={deleting}
+            onDownloadPdf={() => void handleDownloadPdf()}
+            onDelete={() => setDeleteOpen(true)}
+          />
         </div>
       </ResponsiveDialog>
 

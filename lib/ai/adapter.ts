@@ -1,5 +1,7 @@
 import { getCatalogContext } from "@/lib/ai/context/catalog"
+import { getUserScanHistoryContext } from "@/lib/ai/context/scan-history"
 import { getUserScanContext } from "@/lib/ai/context/user"
+import { enrichProductLinks } from "@/lib/ai/enrich-product-links"
 import {
   runFullInputGuardrails,
   sanitizeAssistantOutput,
@@ -101,9 +103,13 @@ export async function chatAboutSkin(
     return { allowed: false, reason: "Insufficient chat token budget" }
   }
 
-  const [catalog, userContext] = await Promise.all([
+  const [catalog, userContext, scanHistory] = await Promise.all([
     getCatalogContext(),
     getUserScanContext(input.userId),
+    getUserScanHistoryContext(input.userId, {
+      excludeScanId:
+        input.kind === "follow_up" && input.scanId ? input.scanId : undefined,
+    }),
   ])
 
   const activeClimateTags = mapUserClimateToTags(userContext.location)
@@ -128,13 +134,15 @@ export async function chatAboutSkin(
       rankedCatalog,
       assessment,
       climateContext,
+      scanHistory,
       activeClimateTags,
     )
   } else {
-    systemInstruction = buildAdviceSystemPrompt()
+    systemInstruction = buildAdviceSystemPrompt(scanHistory.length > 0)
     contextPrefix = buildAdviceContextText(
       userContext,
       rankedCatalog,
+      scanHistory,
       activeClimateTags,
     )
   }
@@ -149,7 +157,10 @@ export async function chatAboutSkin(
     userImage: input.image,
   })
 
-  const reply = sanitizeAssistantOutput(text)
+  const reply = enrichProductLinks(
+    sanitizeAssistantOutput(text),
+    rankedCatalog,
+  )
 
   return {
     allowed: true,

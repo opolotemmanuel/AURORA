@@ -45,6 +45,8 @@ type ScanAdviceComposerProps = {
   hideAdviceHeader?: boolean
   /** Pin input to the bottom with messages scrolling above (dashboard chat detail). */
   dockInput?: boolean
+  /** Scan-page layout: taller messages area with input pinned at bottom. */
+  scanPinnedInput?: boolean
   /** Sync new-chat controls to an outer header toolbar. */
   onToolbarStateChange?: (
     state: Pick<AdviceChatToolbarProps, "onNewChat" | "startingNew" | "disabled">,
@@ -59,6 +61,7 @@ const MORPH_CLOSE_EASE = [0.22, 1, 0.36, 1] as const
 const MESSAGE_LIST_HEIGHT = {
   inline: "min-h-52 max-h-80",
   docked: "min-h-0 flex-1",
+  scanPinned: "min-h-0 flex-1",
   floating: "min-h-52 max-h-[min(55vh,400px)]",
 } as const
 
@@ -116,6 +119,7 @@ export function ScanAdviceComposer({
   initialConversationId,
   hideAdviceHeader = false,
   dockInput = false,
+  scanPinnedInput = false,
   onToolbarStateChange,
   startFresh = false,
 }: ScanAdviceComposerProps) {
@@ -452,6 +456,7 @@ export function ScanAdviceComposer({
   }
 
   const canSend = Boolean(draft.trim() || pendingImage)
+  const pinnedInput = dockInput || scanPinnedInput
 
   const panel = (
     <motion.div
@@ -467,10 +472,16 @@ export function ScanAdviceComposer({
         inline
           ? cn(
               "w-full",
-              dockInput ? "flex h-full min-h-0 flex-col rounded-none" : "rounded-2xl",
+              pinnedInput
+                ? "flex h-full min-h-0 flex-col rounded-none"
+                : "rounded-2xl",
             )
           : open
-            ? "w-[min(92vw,380px)] rounded-[2rem] p-3 shadow-lg"
+            ? cn(
+                "w-[min(92vw,380px)] rounded-[2rem] p-3 shadow-lg",
+                scanPinnedInput &&
+                  "flex max-h-[min(80vh,560px)] min-h-[28rem] flex-col",
+              )
             : "h-12 w-auto rounded-full p-0 shadow-lg",
       )}
     >
@@ -487,7 +498,7 @@ export function ScanAdviceComposer({
         <div
           className={cn(
             "flex flex-col",
-            dockInput ? "min-h-0 flex-1 gap-0" : "gap-3",
+            pinnedInput ? "min-h-0 flex-1 gap-0" : "gap-3",
           )}
         >
           {mode === "advice" && !hideAdviceHeader && !inline ? (
@@ -551,8 +562,8 @@ export function ScanAdviceComposer({
             ref={listRef}
             className={cn(
               "chat-message-scroll flex flex-col gap-3 overflow-y-auto bg-background px-1 py-1",
-              dockInput
-                ? MESSAGE_LIST_HEIGHT.docked
+              pinnedInput
+                ? MESSAGE_LIST_HEIGHT.scanPinned
                 : inline
                   ? MESSAGE_LIST_HEIGHT.inline
                   : MESSAGE_LIST_HEIGHT.floating,
@@ -586,8 +597,9 @@ export function ScanAdviceComposer({
           <div
             className={cn(
               "space-y-3",
-              dockInput &&
-                "shrink-0 border-t border-border bg-background px-1 pt-3 pb-6",
+              pinnedInput &&
+                "shrink-0 border-t border-border bg-background px-1 pt-3",
+              dockInput && "pb-6",
             )}
           >
           {estimatedRemaining != null ? (
@@ -680,7 +692,13 @@ export function ScanAdviceComposer({
 
   if (inline) {
     return (
-      <div className={cn("w-full", dockInput && "h-full min-h-0", className)}>
+      <div
+        className={cn(
+          "w-full",
+          pinnedInput && "h-full min-h-0",
+          className,
+        )}
+      >
         {panel}
       </div>
     )

@@ -16,6 +16,15 @@ const PROTECTED_PREFIXES = [
 ]
 const AUTH_ONLY_PATHS = ["/login", "/register"]
 
+// Read downstream by app/(dashboard)/layout.tsx and app/(scan)/layout.tsx's
+// own real getSession() check (defense-in-depth beneath this cheap cookie
+// check) — Server Components have no built-in way to read the current
+// request's path, so it's forwarded via this header, per Next's documented
+// proxy/middleware request-header pattern. Always the server's own computed
+// pathname (see below), never a value taken from the client, so nothing
+// downstream needs to treat it as untrusted input.
+export const CURRENT_PATH_HEADER = "x-aura-pathname"
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const hasSession = Boolean(getSessionCookie(request))
@@ -27,7 +36,7 @@ export function middleware(request: NextRequest) {
     )
   ) {
     const loginUrl = new URL("/login", request.url)
-    loginUrl.searchParams.set("redirect", pathname)
+    loginUrl.searchParams.set("callbackURL", pathname + request.nextUrl.search)
     return NextResponse.redirect(loginUrl)
   }
 
@@ -35,7 +44,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 
-  return NextResponse.next()
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set(CURRENT_PATH_HEADER, pathname + request.nextUrl.search)
+  return NextResponse.next({ request: { headers: requestHeaders } })
 }
 
 export const config = {

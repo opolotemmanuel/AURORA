@@ -21,12 +21,17 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { authClient } from "@/lib/auth/client"
+import { getSafeRedirectPath } from "@/lib/utils"
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  // Validated before use — this is a query param, so it's attacker-
+  // controllable (e.g. a crafted `?callbackURL=https://evil.com` link).
+  // Falls back to /dashboard exactly like a direct /login visit always did.
+  const callbackURL = getSafeRedirectPath(searchParams.get("callbackURL")) ?? "/dashboard"
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -67,7 +72,7 @@ export function LoginForm() {
       return
     }
 
-    router.push("/dashboard")
+    router.push(callbackURL)
   }
 
   async function onAppleSignIn() {
@@ -76,7 +81,7 @@ export function LoginForm() {
 
     const { error: appleError } = await authClient.signIn.social({
       provider: "apple",
-      callbackURL: "/dashboard",
+      callbackURL,
     })
 
     if (appleError) {

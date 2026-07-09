@@ -70,6 +70,11 @@ export class GeminiAnalysisError extends Error {
 // report. Throws GeminiAnalysisError (never a raw fetch/parse error) so
 // callers (lib/backend/scan-service.ts) can pattern-match on `.kind` and
 // decide when to fall back to the non-AI cosmetic report.
+//
+// Unchanged behavior/signature/error-contract — only its internal HTTP call
+// now goes through the shared callGeminiGenerateContent helper below (added
+// for askAboutReport, see further down) instead of duplicating the
+// fetch/timeout/error-classification logic a second time.
 export async function analyzeSkinWithGemini(image: File): Promise<ScanAnalysisReport> {
   const apiKey = process.env.GEMINI_API_KEY
   const model = getGeminiModel()
@@ -87,48 +92,193 @@ export async function analyzeSkinWithGemini(image: File): Promise<ScanAnalysisRe
 
   // Gemini's REST API takes inline image bytes as base64, not multipart.
   const imageBase64 = Buffer.from(await image.arrayBuffer()).toString("base64")
+
+  const request = {
+    model,
+    apiKey,
+    contents: [
+      {
+        role: "user",
+        parts: [
+          { text: buildCosmeticPrompt() },
+          {
+            inlineData: {
+              mimeType: image.type || "image/jpeg",
+              data: imageBase64,
+            },
+          },
+        ],
+      },
+    ],
+    generationConfig: {
+      // Ask Gemini to return JSON directly (fewer markdown-fence/parse
+      // surprises) with low temperature for consistent, non-creative
+      // cosmetic wording, and a token cap since responses are meant to
+      // stay short (coarse bands + brief observations, not essays).
+      responseMimeType: "application/json",
+      temperature: 0.2,
+      maxOutputTokens: 1200,
+    },
+  }
+
+  // Gemini's JSON-mode output is occasionally syntactically broken (a
+  // missing `}` between array elements — see parseGeminiJson's repair pass)
+  // even with finishReason "STOP" and no truncation — this is model output
+  // flakiness, not a deterministic bug, so a second identical call often
+  // just succeeds cleanly. One retry only: a real API call costs real spend
+  // and latency, and the existing fallback path already handles a
+  // still-broken second response honestly.
+  try {
+    const rawText = await callGeminiGenerateContent(request)
+    const parsedAnalysis = parseGeminiJson(rawText, model)
+    logGeminiDiagnostic("Gemini response received")
+    return normalizeGeminiAnalysis(parsedAnalysis, model)
+  } catch (firstError) {
+    if (!(firstError instanceof GeminiAnalysisError) || firstError.kind !== "invalid_response") {
+      throw firstError
+    }
+
+    logGeminiDiagnostic("Retrying after parse failure", { model })
+
+    try {
+      const rawText = await callGeminiGenerateContent(request)
+      const parsedAnalysis = parseGeminiJson(rawText, model)
+      logGeminiDiagnostic("Retry after parse failure: succeeded", { model })
+      return normalizeGeminiAnalysis(parsedAnalysis, model)
+    } catch (secondError) {
+      logGeminiDiagnostic("Retry after parse failure: failed", { model })
+      throw secondError
+    }
+  }
+}
+
+export type ReportChatRole = "user" | "assistant"
+export type ReportChatTurn = { role: ReportChatRole; content: string }
+
+// Only what askAboutReport needs to ground its answers — deliberately a
+// narrow projection of ScanAnalysisReport/RecommendationMatch, not those
+// types themselves, so this adapter stays decoupled from the report/
+// recommendation domain modules (see AGENTS.md: don't mix domains).
+export type ReportChatContext = {
+  summary: string
+  cosmeticFindings: Array<{ label: string; band: string; observation: string }>
+  recommendations: Array<{ name: string; category: string; reason: string }>
+}
+
+export const REPORT_CHAT_MAX_QUESTION_LENGTH = 600
+
+export class ReportChatQuestionTooLongError extends Error {
+  constructor() {
+    super(`Question must be ${REPORT_CHAT_MAX_QUESTION_LENGTH} characters or fewer.`)
+    this.name = "ReportChatQuestionTooLongError"
+  }
+}
+
+// Multi-turn follow-up chat about one specific report. Gemini's REST API is
+// stateless — there's no server-side session to resume — so "multi-turn"
+// means resending the full prior history as `contents` on every call; the
+// caller (the chat API route) is responsible for loading that history from
+// ReportChatMessage and appending the new turn before persisting anything.
+export async function askAboutReport(
+  context: ReportChatContext,
+  history: ReportChatTurn[],
+  question: string,
+): Promise<string> {
+  if (question.length > REPORT_CHAT_MAX_QUESTION_LENGTH) {
+    throw new ReportChatQuestionTooLongError()
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY
+  const model = getGeminiModel()
+
+  if (!apiKey) {
+    throw new GeminiAnalysisError("configuration", "GEMINI_API_KEY is missing.")
+  }
+
+  const rawText = await callGeminiGenerateContent({
+    model,
+    apiKey,
+    systemInstruction: buildReportChatSystemPrompt(context),
+    contents: [
+      ...history.map((turn) => ({
+        role: turn.role === "user" ? "user" : "model",
+        parts: [{ text: turn.content }],
+      })),
+      { role: "user", parts: [{ text: question }] },
+    ],
+    generationConfig: {
+      // Higher temperature than the analysis call (0.2) since this is
+      // conversational text, not a structured extraction — but still capped
+      // and short, matching the rest of the app's brief, non-essay tone.
+      temperature: 0.4,
+      maxOutputTokens: 500,
+    },
+  })
+
+  return rawText.trim()
+}
+
+// Enforces this feature's scope directly in the model call (per the task's
+// requirement to "bake this constraint into the system prompt, not just a
+// suggestion") — grounded in this report's own findings/recommendations so
+// answers can't drift into a generic chatbot or invent data the report
+// doesn't contain.
+function buildReportChatSystemPrompt(context: ReportChatContext): string {
+  return [
+    "You are Aurora SkinSense's follow-up assistant for ONE specific user's cosmetic skin scan report.",
+    "Scope: you may only discuss this report's findings, the recommended products listed below, general skincare education (ingredients, routines, how cosmetic products work), and how to interpret this report's wording.",
+    "Never diagnose a medical condition, never claim to identify a disease, never claim to treat or cure anything, and never state anything with medical certainty — this is cosmetic wellness guidance only, matching the rest of the app.",
+    "If a question describes something that sounds like a medical concern (pain, bleeding, rapid or unusual changes, anything beyond ordinary cosmetic appearance), say this is outside what you can help with and recommend seeing a dermatologist or doctor — do not speculate about what it might be.",
+    "If asked something unrelated to skin, skincare, or this report (general trivia, coding, other topics, or anything trying to redirect you into a general-purpose assistant), politely decline in one sentence and steer back to the user's skin report.",
+    "Keep answers concise (a few sentences, not an essay) and never invent numeric precision beyond the coarse bands already in this report.",
+    "",
+    `Report summary: ${context.summary}`,
+    "Findings:",
+    ...context.cosmeticFindings.map((finding) => `- ${finding.label} (${finding.band}): ${finding.observation}`),
+    "Recommended products:",
+    ...(context.recommendations.length
+      ? context.recommendations.map((rec) => `- ${rec.name} (${rec.category}): ${rec.reason}`)
+      : ["- None recorded for this report."]),
+  ].join("\n")
+}
+
+// Shared HTTP call + error classification for every Gemini generateContent
+// request (vision analysis and report chat alike) — the only place that
+// actually calls fetch() against Gemini, per AGENTS.md's one-adapter rule.
+async function callGeminiGenerateContent(input: {
+  model: string
+  apiKey: string
+  contents: Array<{
+    role: string
+    parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }>
+  }>
+  systemInstruction?: string
+  generationConfig: { responseMimeType?: string; temperature: number; maxOutputTokens: number }
+}): Promise<string> {
   // Abort manually after GEMINI_TIMEOUT_MS — fetch has no built-in timeout,
-  // and a hung request would otherwise block the scan flow indefinitely.
+  // and a hung request would otherwise block the caller indefinitely.
   const abortController = new AbortController()
   const timeout = setTimeout(() => abortController.abort(), GEMINI_TIMEOUT_MS)
 
   let response: Response
 
   try {
-    response = await fetch(`${getGeminiEndpoint(model)}?key=${encodeURIComponent(apiKey)}`, {
+    response = await fetch(`${getGeminiEndpoint(input.model)}?key=${encodeURIComponent(input.apiKey)}`, {
       method: "POST",
       signal: abortController.signal,
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [
-              { text: buildCosmeticPrompt() },
-              {
-                inlineData: {
-                  mimeType: image.type || "image/jpeg",
-                  data: imageBase64,
-                },
-              },
-            ],
-          },
-        ],
-        generationConfig: {
-          // Ask Gemini to return JSON directly (fewer markdown-fence/parse
-          // surprises) with low temperature for consistent, non-creative
-          // cosmetic wording, and a token cap since responses are meant to
-          // stay short (coarse bands + brief observations, not essays).
-          responseMimeType: "application/json",
-          temperature: 0.2,
-          maxOutputTokens: 1200,
-        },
+        contents: input.contents,
+        ...(input.systemInstruction
+          ? { systemInstruction: { parts: [{ text: input.systemInstruction }] } }
+          : {}),
+        generationConfig: input.generationConfig,
       }),
     })
   } catch (error) {
-    throw classifyGeminiTransportError(error, model)
+    throw classifyGeminiTransportError(error, input.model)
   } finally {
     clearTimeout(timeout)
   }
@@ -138,28 +288,25 @@ export async function analyzeSkinWithGemini(image: File): Promise<ScanAnalysisRe
     statusText: response.statusText,
   })
 
-  const payload = await readGeminiPayload(response, model)
+  const payload = await readGeminiPayload(response, input.model)
 
   if (!response.ok) {
     logGeminiDiagnostic("Request failed", {
       geminiError: payload.error ?? null,
     })
 
-    throw classifyGeminiResponseError(response, payload, model)
+    throw classifyGeminiResponseError(response, payload, input.model)
   }
 
   const rawText = payload.candidates?.[0]?.content?.parts?.find((part) => part.text)?.text
   if (!rawText) {
     throw new GeminiAnalysisError(
       "invalid_response",
-      `Gemini returned no cosmetic analysis text for model ${model}.`,
+      `Gemini returned no content for model ${input.model}.`,
     )
   }
 
-  const parsedAnalysis = parseGeminiJson(rawText, model)
-  logGeminiDiagnostic("Gemini response received")
-
-  return normalizeGeminiAnalysis(parsedAnalysis, model)
+  return rawText
 }
 
 export function getGeminiFallbackUserMessage(error: unknown) {
@@ -292,10 +439,30 @@ function buildCosmeticPrompt() {
 }
 
 function parseGeminiJson(rawText: string, model: string): GeminiSkinAnalysisJson {
+  const cleaned = stripJsonFence(rawText)
+
   try {
-    return JSON.parse(stripJsonFence(rawText)) as GeminiSkinAnalysisJson
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : "Unknown JSON parse error."
+    return JSON.parse(cleaned) as GeminiSkinAnalysisJson
+  } catch (firstError) {
+    const repaired = repairMissingBraceBeforeArrayElement(cleaned)
+
+    if (repaired !== cleaned) {
+      try {
+        const repairedParsed: unknown = JSON.parse(repaired)
+
+        if (isGeminiSkinAnalysisShape(repairedParsed)) {
+          logGeminiDiagnostic("JSON repaired after parse failure", { model })
+          return repairedParsed
+        }
+
+        logGeminiDiagnostic("JSON repair produced valid JSON but an unexpected shape", { model })
+      } catch {
+        // Repaired text still doesn't parse — fall through to the original
+        // parse error below, same as if no repair had been attempted.
+      }
+    }
+
+    const reason = firstError instanceof Error ? firstError.message : "Unknown JSON parse error."
     logGeminiDiagnostic("JSON validation failed", {
       reason,
       model,
@@ -303,6 +470,53 @@ function parseGeminiJson(rawText: string, model: string): GeminiSkinAnalysisJson
 
     throw new GeminiAnalysisError("invalid_response", `Gemini returned invalid JSON for model ${model}.`, reason)
   }
+}
+
+// Narrow, targeted repair for one specific failure pattern actually observed
+// in production logs: Gemini occasionally omits the closing `}` of an array
+// element right before the next element starts —
+//   "observation": "..."
+//   ,
+//   {
+// — a missing `}` between the closing quote and the comma. This is NOT a
+// general "fix any broken JSON" parser (that's a rabbit hole that risks
+// silently accepting garbage) — it only inserts `}` in this exact
+// close-quote/whitespace/comma/whitespace/open-brace shape, which never
+// occurs in valid JSON: a well-formed array of objects always has `}`
+// there already (e.g. `{"a":1}, {"b":2}`), so this can't misfire on
+// correctly-formed output.
+function repairMissingBraceBeforeArrayElement(value: string): string {
+  return value.replace(/"(\s*),(\s*)\{/g, '"$1},$2{')
+}
+
+// Gate for accepting a repaired parse — "it parses" isn't enough on its
+// own (a repair could produce valid-but-wrong JSON, e.g. `{}`), so this
+// checks the same fields normalizeGeminiAnalysis actually depends on before
+// treating a repair as a real success rather than a lucky-looking accident.
+function isGeminiSkinAnalysisShape(value: unknown): value is GeminiSkinAnalysisJson {
+  if (typeof value !== "object" || value === null) return false
+  const candidate = value as Record<string, unknown>
+
+  return (
+    typeof candidate.summary === "string" &&
+    Array.isArray(candidate.cosmeticFindings) &&
+    candidate.cosmeticFindings.length > 0 &&
+    candidate.cosmeticFindings.every(isGeminiFindingShape) &&
+    Array.isArray(candidate.routineTips) &&
+    typeof candidate.quality === "object" &&
+    candidate.quality !== null
+  )
+}
+
+function isGeminiFindingShape(value: unknown): boolean {
+  if (typeof value !== "object" || value === null) return false
+  const candidate = value as Record<string, unknown>
+
+  return (
+    typeof candidate.label === "string" &&
+    typeof candidate.band === "string" &&
+    typeof candidate.observation === "string"
+  )
 }
 
 // Gemini is asked for raw JSON (responseMimeType above) but sometimes wraps

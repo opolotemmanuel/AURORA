@@ -201,10 +201,13 @@ export async function listReportsPage(query: ReportTableQuery) {
   }
 }
 
+// Also reused by the Profile page (app/(dashboard)/profile/page.tsx) — same
+// "a signed-in user's own basic profile fields" shape either way, just
+// looked up by report ownership there vs. the session's own id here.
 export async function findReportOwner(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, name: true, email: true, image: true },
+    select: { id: true, name: true, email: true, image: true, role: true, createdAt: true },
   })
 
   if (!user) return null
@@ -214,6 +217,8 @@ export async function findReportOwner(userId: string) {
     name: user.name ?? undefined,
     email: user.email,
     image: user.image ?? undefined,
+    role: user.role,
+    createdAt: user.createdAt,
   }
 }
 

@@ -1,0 +1,118 @@
+// New route per this pass's spec — self-service only, no role check beyond
+// "is signed in" (already enforced by the parent (dashboard)/layout.tsx).
+// Fetches the signed-in user's own row via findReportOwner (report-store.ts),
+// scoped by session.user.id — never any other user's row.
+import Link from "next/link"
+import { IconCalendar, IconLock, IconMail, IconShieldCheck, IconUserCircle } from "@tabler/icons-react"
+
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { getSession } from "@/lib/auth/session"
+import { findReportOwner } from "@/lib/backend/report-store"
+
+export const dynamic = "force-dynamic"
+
+export default async function ProfilePage() {
+  // Non-null: (dashboard)/layout.tsx already redirects to /login otherwise.
+  const session = (await getSession())!
+  const profile = await findReportOwner(session.user.id)
+
+  return (
+    <div className="max-w-2xl space-y-8">
+      <section className="space-y-2">
+        <p className="flex items-center gap-2 text-xs font-semibold tracking-widest text-primary uppercase">
+          <IconUserCircle className="size-4" />
+          Profile
+        </p>
+        <h1 className="text-3xl font-semibold tracking-normal">Your account</h1>
+        <p className="max-w-xl text-sm leading-6 text-muted-foreground">
+          Personal account details — visible only to you.
+        </p>
+      </section>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Account details</CardTitle>
+          <CardDescription>Read-only for now</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ProfileRow icon={IconUserCircle} label="Name" value={profile?.name ?? "Not set"} />
+          <ProfileRow icon={IconMail} label="Email" value={profile?.email ?? session.user.email} />
+          <ProfileRow
+            icon={IconCalendar}
+            label="Member since"
+            value={formatDate(profile?.createdAt ?? session.user.createdAt)}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Account actions</CardTitle>
+          <CardDescription>Manage your password and security</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted p-4">
+            <div className="flex items-center gap-3">
+              <IconLock className="size-5 text-primary" />
+              <div>
+                <p className="text-sm font-medium">Change password</p>
+                <p className="text-xs text-muted-foreground">
+                  Sends a reset link to your email — there&apos;s no in-session password change yet.
+                </p>
+              </div>
+            </div>
+            <Button asChild variant="outline" size="sm">
+              <Link href="/forgot-password">Reset password</Link>
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted p-4">
+            <div className="flex items-center gap-3">
+              <IconShieldCheck className="size-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Delete account</p>
+                <p className="text-xs text-muted-foreground">Not available yet.</p>
+              </div>
+            </div>
+            <Button variant="outline" size="sm" disabled>
+              Coming soon
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function ProfileRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  value: string
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-primary">
+        <Icon className="size-4" />
+      </div>
+      <div>
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-sm font-medium text-foreground">{value}</p>
+      </div>
+    </div>
+  )
+}
+
+function formatDate(value: string | Date) {
+  return new Date(value).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" })
+}

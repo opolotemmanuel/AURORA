@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 import {
   IconArrowsMove,
@@ -740,6 +741,12 @@ export function ScanFlow() {
   const [analysisResult, setAnalysisResult] = useState<ScanAnalysis | null>(null)
   const [analysisError, setAnalysisError] = useState<string | null>(null)
   const [reportDownloadUrl, setReportDownloadUrl] = useState<string | null>(null)
+  // The persisted Report row's id — createScanReport (called from
+  // /api/scan/analyze) always creates this before the response comes back,
+  // so it's available as soon as analysis completes. Used to link to the
+  // real report page (/reports/[reportId]), which has chat/PDF download —
+  // distinct from reportDownloadUrl above, which points at the print route.
+  const [reportId, setReportId] = useState<string | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isCameraActive, setIsCameraActive] = useState(false)
   const videoRef = useRef<HTMLVideoElement | null>(null)
@@ -826,6 +833,7 @@ export function ScanFlow() {
     setAnalysisResult(null)
     setAnalysisError(null)
     setReportDownloadUrl(null)
+    setReportId(null)
     setInputMethod("camera")
     stopCamera()
     setCurrentStep("review")
@@ -849,6 +857,7 @@ export function ScanFlow() {
         setAnalysisResult(null)
         setAnalysisError(null)
         setReportDownloadUrl(null)
+        setReportId(null)
         setInputMethod("upload")
         stopCamera()
         setCurrentStep("review")
@@ -865,6 +874,7 @@ export function ScanFlow() {
     setAnalysisResult(null)
     setAnalysisError(null)
     setReportDownloadUrl(null)
+    setReportId(null)
     setCurrentStep("capture")
   }
 
@@ -875,6 +885,7 @@ export function ScanFlow() {
     setAnalysisResult(null)
     setAnalysisError(null)
     setReportDownloadUrl(null)
+    setReportId(null)
     setCurrentStep("capture")
   }
 
@@ -904,6 +915,7 @@ export function ScanFlow() {
     setAnalysisResult(null)
     setAnalysisError(null)
     setReportDownloadUrl(null)
+    setReportId(null)
     setCurrentStep("intro")
   }
 
@@ -915,6 +927,7 @@ export function ScanFlow() {
     setAnalysisResult(null)
     setAnalysisError(null)
     setReportDownloadUrl(null)
+    setReportId(null)
 
     try {
       // Bakes the user's crop/zoom/rotate/flip adjustments from the Review
@@ -939,6 +952,7 @@ export function ScanFlow() {
 
       setAnalysisResult(payload.analysis)
       setReportDownloadUrl(payload.reportDownloadUrl ?? null)
+      setReportId(payload.report?.id ?? null)
       setAnalysisError(payload.fallback ? payload.error ?? "Fallback cosmetic report returned." : null)
     } catch (error) {
       setAnalysisError(
@@ -1007,6 +1021,14 @@ export function ScanFlow() {
                 <Button type="button" onClick={restart}>
                   Start New Scan
                 </Button>
+                {reportId ? (
+                  <Button type="button" variant="outline" asChild>
+                    <Link href={`/reports/${reportId}`}>
+                      <IconReportAnalytics className="size-4" />
+                      View Full Report
+                    </Link>
+                  </Button>
+                ) : null}
                 <Button
                   type="button"
                   variant="outline"

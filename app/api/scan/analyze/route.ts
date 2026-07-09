@@ -11,6 +11,7 @@ import {
   getGeminiDiagnosticMessage,
   getGeminiFallbackUserMessage,
 } from "@/lib/ai/gemini-adapter"
+import { getSession } from "@/lib/auth/session"
 import { readImageDimensions } from "@/lib/backend/image-dimensions"
 import { createScanReport } from "@/lib/backend/scan-service"
 import type { ScanAnalysisReport, ScanSource } from "@/lib/backend/types"
@@ -29,6 +30,11 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 export async function POST(request: Request) {
+  // Attributes the scan to the signed-in user if there is one — anonymous
+  // (logged-out) scans are still allowed, they just never get a dashboard
+  // history entry or a report chat button (both require a real owner).
+  const session = await getSession()
+
   try {
     const formData = await request.formData()
     const images = formData.getAll("image")
@@ -74,6 +80,7 @@ export async function POST(request: Request) {
       aiProviderReason: geminiResult.aiProviderReason,
       userAgent: request.headers.get("user-agent") ?? undefined,
       aiDurationMs: geminiResult.durationMs,
+      userId: session?.user.id,
     })
 
     return NextResponse.json({
@@ -109,6 +116,7 @@ export async function POST(request: Request) {
           ? "Scan analysis failed, so a cosmetic fallback report was returned."
           : "Scan analysis was unavailable, so a cosmetic fallback report was returned.",
       userAgent: request.headers.get("user-agent") ?? undefined,
+      userId: session?.user.id,
     })
 
     return NextResponse.json(

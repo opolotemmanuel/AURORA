@@ -69,18 +69,26 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
-    requireEmailVerification: true,
-    // register-form.tsx shows a "check your email" screen and sends the
-    // user to /login itself — it doesn't expect sign-up to also start a
-    // session.
-    autoSignIn: false,
+    // TODO(revisit): re-enable once a verified sending domain exists in
+    // Resend. Currently false as a deliberate, temporary product decision —
+    // Resend's sandbox mode can only deliver to the account owner's own
+    // address, so requiring verification blocked every other sign-up from
+    // ever completing. See the emailVerification block below too.
+    requireEmailVerification: false,
+    // register-form.tsx now redirects straight to /dashboard on success —
+    // this makes signUp.email itself start that session.
+    autoSignIn: true,
     revokeSessionsOnPasswordReset: true,
     async sendResetPassword({ user, url }) {
       await sendPasswordResetEmail(user.email, url)
     },
   },
   emailVerification: {
-    sendOnSignUp: true,
+    // TODO(revisit): flip back to true alongside requireEmailVerification
+    // above once verification emails can actually be delivered. false for
+    // now — sending a link nobody needs (and that would fail to deliver
+    // anyway) is just noise.
+    sendOnSignUp: false,
     // login-form.tsx shows a "verified — sign in now" banner rather than
     // signing the user in for them.
     autoSignInAfterVerification: false,

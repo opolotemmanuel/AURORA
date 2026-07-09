@@ -5,26 +5,36 @@ import {
   IconReportAnalytics,
   IconSettings,
   IconShieldLock,
+  IconUserCircle,
 } from "@tabler/icons-react"
 
 import { cn } from "@/lib/utils"
 
+// Shown to every signed-in user regardless of role.
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: IconLayoutDashboard },
   { href: "/reports", label: "Reports", icon: IconReportAnalytics },
-  { href: "/settings", label: "Settings", icon: IconSettings },
+  { href: "/profile", label: "Profile", icon: IconUserCircle },
 ] as const
 
-const ADMIN_NAV_ITEM = { href: "/admin", label: "Admin", icon: IconShieldLock } as const
+// `/settings` is the admin product-catalog/enterprise-settings page (see
+// app/(dashboard)/settings/page.tsx's requireAdminAccess("settings:manage")
+// gate) — not a user account-settings page — so it's admin-only nav, same
+// tier as Admin. Previously shown to every user, which meant every regular
+// USER saw a "Settings" link that only ever dead-ended in Access Denied.
+const ADMIN_ONLY_ITEMS = [
+  { href: "/settings", label: "Settings", icon: IconSettings },
+  { href: "/admin", label: "Admin", icon: IconShieldLock },
+] as const
 
 // `pathname` is passed in (rather than read here via usePathname) so this
 // stays a plain component the parent shell controls, matching-prefix logic
 // below keeps e.g. /reports/123 highlighting the /reports nav item.
-// `isAdminTier` hides the Admin link for plain USER accounts — the real
+// `isAdminTier` hides admin-only links for plain USER accounts — the real
 // route protection is still lib/auth/admin.ts's requireAdminAccess, this
 // just avoids showing a link they can't follow.
 export function DashboardSidebar({ pathname, isAdminTier }: { pathname: string; isAdminTier: boolean }) {
-  const items = isAdminTier ? [...navItems, ADMIN_NAV_ITEM] : navItems
+  const items = isAdminTier ? [...navItems, ...ADMIN_ONLY_ITEMS] : navItems
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex w-56 shrink-0 flex-col border-r border-border bg-sidebar">

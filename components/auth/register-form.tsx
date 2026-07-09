@@ -1,11 +1,16 @@
 "use client"
 
-// Real sign-up flow (replaces the old OTP-implicit-signup). Verification is
-// a server-redirect flow — better-auth emails a link that resolves straight
-// to a callbackURL, so this form doesn't handle a code/token itself, it
-// just tells the user to check their inbox and sends them back to /login.
+// Real sign-up flow (replaces the old OTP-implicit-signup). Email
+// verification is currently OFF (see lib/auth/auth.ts's
+// requireEmailVerification TODO — temporary, until a verified sending
+// domain exists in Resend), so a successful sign-up already comes back
+// signed in (autoSignIn: true) and this redirects straight to /dashboard.
+// The "check your email" state below is kept but currently unreachable —
+// intentionally not deleted, so re-enabling verification later is just
+// flipping the config back, not rebuilding this screen.
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   IconAlertCircle,
   IconEye,
@@ -23,6 +28,7 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MIN_PASSWORD_LENGTH = 8
 
 export function RegisterForm() {
+  const router = useRouter()
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -61,7 +67,6 @@ export function RegisterForm() {
       name: name.trim(),
       email,
       password,
-      callbackURL: "/login?verified=1",
     })
 
     if (signUpError) {
@@ -72,7 +77,7 @@ export function RegisterForm() {
       return
     }
 
-    setStatus("sent")
+    router.push("/dashboard")
   }
 
   if (status === "sent") {

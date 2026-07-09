@@ -37,6 +37,11 @@ export type ReportViewModel = {
   createdAt: Date
   owner: { name: string; email?: string; userId?: string }
   coverImageAvailable: boolean
+  // Follow-up chat requires a real report owner to attach messages to — an
+  // anonymous scan (no userId) never gets a chat button, regardless of
+  // viewer. Whoever already passed the ownership-or-admin gate to load this
+  // view-model at all may chat, same as they may view the report itself.
+  chatEnabled: boolean
   executiveSummary: {
     overallLabel: string
     overallBadgeVariant: BadgeVariant
@@ -107,6 +112,7 @@ export function buildReportViewModel(input: {
       userId: owner?.id,
     },
     coverImageAvailable: false, // the original photo is never stored (see AGENTS.md's privacy rule) — nothing to show here beyond the schematic overlay in Analysis Visualization.
+    chatEnabled: Boolean(report.userId),
     executiveSummary: {
       overallLabel: overall.wellnessLabel,
       overallBadgeVariant: overall.badgeVariant,

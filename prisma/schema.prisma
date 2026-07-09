@@ -58,6 +58,11 @@ enum AiProviderStatus {
   FAILED
 }
 
+enum ChatMessageRole {
+  USER
+  ASSISTANT
+}
+
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
@@ -75,6 +80,7 @@ model User {
   actedAuditLogs  AuditLog[]       @relation("AuditActor")
   authAccounts    AuthAccount[]
   authSessions    AuthSession[]
+  chatMessages    ReportChatMessage[]
 
   @@index([role])
   @@index([emailVerified])
@@ -177,9 +183,30 @@ model Report {
   recommendations Recommendation[]
   downloads       ReportDownload[]
   aiEvents        AiProviderEvent[]
+  chatMessages    ReportChatMessage[]
 
   @@index([userId])
   @@index([source])
+  @@index([createdAt])
+}
+
+// Follow-up chat about one report (see lib/ai/gemini-adapter.ts's
+// askAboutReport). `userId` is required (unlike Report.userId) — chat is
+// only ever started by a signed-in user who owns the report, never
+// anonymously, so there's no optional/SetNull case to support here.
+model ReportChatMessage {
+  id        String          @id @default(cuid())
+  reportId  String
+  userId    String
+  role      ChatMessageRole
+  content   String
+  createdAt DateTime        @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([reportId])
+  @@index([userId])
   @@index([createdAt])
 }
 

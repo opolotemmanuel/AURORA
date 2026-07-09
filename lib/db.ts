@@ -19,6 +19,17 @@ function createPrismaClient() {
     throw new Error("DATABASE_URL is missing. Configure PostgreSQL before using Prisma persistence.")
   }
 
+  // This app's working setup is a remote Prisma Postgres — a localhost
+  // DATABASE_URL has repeatedly shown up here half-configured (wrong
+  // credentials, database not created) and silently broken sign-up/login.
+  // Not thrown: a real local Postgres setup is a legitimate choice, just
+  // not this project's current one — this is a nudge, not a hard block.
+  if (process.env.NODE_ENV !== "production" && databaseUrl.includes("localhost")) {
+    console.warn(
+      "[lib/db] DATABASE_URL points at localhost — if this isn't a deliberately configured local Postgres, check .env.local for a stray second DATABASE_URL line.",
+    )
+  }
+
   return new PrismaClient({
     adapter: new PrismaPg({ connectionString: databaseUrl }),
   })

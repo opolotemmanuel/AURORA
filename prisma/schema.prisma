@@ -67,6 +67,7 @@ model User {
   role          UserRole @default(USER)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+  lastLoginAt   DateTime?
 
   scans           Scan[]
   reports         Report[]

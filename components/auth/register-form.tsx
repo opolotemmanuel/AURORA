@@ -1,111 +1,122 @@
 "use client"
 
-// Email+password sign-in. Apple is rendered as a second option
-// (authClient.signIn.social) but stays inert until real credentials are
-// configured server-side (see lib/auth/auth.ts's conditional
-// socialProviders.apple block) — clicking it before then just surfaces
-// better-auth's "provider not configured" error.
+// Real sign-up flow (replaces the old OTP-implicit-signup). Verification is
+// a server-redirect flow — better-auth emails a link that resolves straight
+// to a callbackURL, so this form doesn't handle a code/token itself, it
+// just tells the user to check their inbox and sends them back to /login.
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter, useSearchParams } from "next/navigation"
 import {
   IconAlertCircle,
-  IconBrandApple,
   IconEye,
   IconEyeOff,
   IconLoader2,
+  IconMailCheck,
 } from "@tabler/icons-react"
 
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { authClient } from "@/lib/auth/client"
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const MIN_PASSWORD_LENGTH = 8
 
-export function LoginForm() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
+export function RegisterForm() {
+  const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [status, setStatus] = useState<"idle" | "loading" | "apple">("idle")
-
-  const justVerified = searchParams.get("verified") === "1"
+  const [status, setStatus] = useState<"idle" | "loading" | "sent">("idle")
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
+
+    if (!name.trim()) {
+      setError("Enter your name.")
+      return
+    }
 
     if (!emailPattern.test(email)) {
       setError("Enter a valid email address.")
       return
     }
 
-    if (!password) {
-      setError("Enter your password.")
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`)
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords don't match.")
       return
     }
 
     setStatus("loading")
 
-    const { error: signInError } = await authClient.signIn.email({
+    const { error: signUpError } = await authClient.signUp.email({
+      name: name.trim(),
       email,
       password,
-      rememberMe,
+      callbackURL: "/login?verified=1",
     })
 
-    setStatus("idle")
-
-    if (signInError) {
+    if (signUpError) {
+      setStatus("idle")
       setError(
-        signInError.message ?? "Couldn't sign in with those details. Try again."
+        signUpError.message ?? "Couldn't create your account. Try again."
       )
       return
     }
 
-    router.push("/dashboard")
+    setStatus("sent")
   }
 
-  async function onAppleSignIn() {
-    setError(null)
-    setStatus("apple")
-
-    const { error: appleError } = await authClient.signIn.social({
-      provider: "apple",
-      callbackURL: "/dashboard",
-    })
-
-    if (appleError) {
-      setStatus("idle")
-      setError(
-        appleError.message ?? "Sign in with Apple isn't available right now."
-      )
-    }
+  if (status === "sent") {
+    return (
+      <div className="space-y-4 rounded-lg border border-border bg-card p-6 text-center shadow-sm">
+        <IconMailCheck className="mx-auto size-8 text-primary" />
+        <h1 className="text-xl font-medium">Check your email</h1>
+        <p className="text-sm text-muted-foreground">
+          We sent a verification link to{" "}
+          <span className="font-medium text-foreground">{email}</span>. Click it
+          to finish setting up your account.
+        </p>
+        <Button asChild variant="outline" className="w-full">
+          <Link href="/login">Back to sign in</Link>
+        </Button>
+      </div>
+    )
   }
 
   return (
     <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
       <div className="space-y-2 text-center">
-        <h1 className="text-xl font-medium">Welcome back</h1>
+        <h1 className="text-xl font-medium">Create your account</h1>
         <p className="text-sm text-muted-foreground">
-          Sign in to your Aura account.
+          Start your AI skin intelligence journey.
         </p>
       </div>
 
-      {justVerified ? (
-        <p
-          className="mt-6 rounded-lg border border-primary/30 bg-primary/10 p-3 text-center text-sm text-primary"
-          role="status"
-        >
-          Email verified — you can sign in now.
-        </p>
-      ) : null}
-
       <form className="mt-6 space-y-4" onSubmit={onSubmit} noValidate>
+        <div className="space-y-2">
+          <Label htmlFor="name">Full name</Label>
+          <Input
+            id="name"
+            type="text"
+            autoComplete="name"
+            value={name}
+            aria-invalid={Boolean(error)}
+            onChange={(event) => {
+              setName(event.target.value)
+              setError(null)
+            }}
+          />
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="email">Email address</Label>
           <Input
@@ -122,20 +133,12 @@ export function LoginForm() {
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password">Password</Label>
-            <Link
-              href="/forgot-password"
-              className="text-xs font-medium text-primary hover:underline"
-            >
-              Forgot password?
-            </Link>
-          </div>
+          <Label htmlFor="password">Password</Label>
           <div className="relative">
             <Input
               id="password"
               type={showPassword ? "text" : "password"}
-              autoComplete="current-password"
+              autoComplete="new-password"
               value={password}
               aria-invalid={Boolean(error)}
               className="pr-9"
@@ -159,13 +162,20 @@ export function LoginForm() {
           </div>
         </div>
 
-        <label className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Checkbox
-            checked={rememberMe}
-            onCheckedChange={(checked) => setRememberMe(checked === true)}
+        <div className="space-y-2">
+          <Label htmlFor="confirmPassword">Confirm password</Label>
+          <Input
+            id="confirmPassword"
+            type={showPassword ? "text" : "password"}
+            autoComplete="new-password"
+            value={confirmPassword}
+            aria-invalid={Boolean(error)}
+            onChange={(event) => {
+              setConfirmPassword(event.target.value)
+              setError(null)
+            }}
           />
-          Remember me
-        </label>
+        </div>
 
         {error ? (
           <p
@@ -177,42 +187,25 @@ export function LoginForm() {
           </p>
         ) : null}
 
-        <Button type="submit" className="w-full" disabled={status !== "idle"}>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={status === "loading"}
+        >
           {status === "loading" ? (
             <IconLoader2 className="size-4 animate-spin" />
           ) : null}
-          Sign in
+          Create account
         </Button>
       </form>
 
-      <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground">
-        <span className="h-px flex-1 bg-border" />
-        or
-        <span className="h-px flex-1 bg-border" />
-      </div>
-
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full"
-        disabled={status !== "idle"}
-        onClick={onAppleSignIn}
-      >
-        {status === "apple" ? (
-          <IconLoader2 className="size-4 animate-spin" />
-        ) : (
-          <IconBrandApple className="size-4" />
-        )}
-        Continue with Apple
-      </Button>
-
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        Don&apos;t have an account?{" "}
+        Already have an account?{" "}
         <Link
-          href="/register"
+          href="/login"
           className="font-medium text-primary hover:underline"
         >
-          Create one
+          Sign in
         </Link>
       </p>
     </div>

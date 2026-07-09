@@ -21,6 +21,8 @@ import {
   type ReportTableQuery,
   type ReportTableSort,
 } from "@/lib/backend/report-store"
+import { getAdminPrincipal } from "@/lib/auth/admin"
+import { getSession } from "@/lib/auth/session"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -55,7 +57,12 @@ const sortOptions: Array<{ value: ReportTableSort; label: string }> = [
 export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   const params = await searchParams
   const query = parseReportQuery(params)
-  const result = await listReportsPage(query)
+  // (dashboard)/layout.tsx already guarantees a session here — this just
+  // reads it to scope non-admin users to their own reports.
+  const session = (await getSession())!
+  const isAdminTier = Boolean(await getAdminPrincipal())
+  const scopedQuery = isAdminTier ? query : { ...query, userId: session.user.id }
+  const result = await listReportsPage(scopedQuery)
   const { reports, pagination } = result
   const start = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.pageSize + 1
   const end = Math.min(pagination.page * pagination.pageSize, pagination.total)

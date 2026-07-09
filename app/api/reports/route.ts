@@ -1,14 +1,6 @@
 // JSON API mirror of the server-rendered reports table
 // (app/(dashboard)/reports/page.tsx) — same query params, same
-// listReportsPage call.
-//
-// SECURITY NOTE: unlike /api/admin/analytics (which calls
-// assertAdminAccess), this route has no access check at all, and there's no
-// middleware.ts gating /api/reports/* either — it returns every user's
-// reports, unauthenticated, to anyone who requests it. The equivalent page
-// route is only reachable through the (dashboard) layout's session
-// redirect, but this API route bypasses that entirely. Worth confirming
-// whether that's intentional before this ships anywhere real.
+// listReportsPage call, same ownership scoping.
 import { NextResponse } from "next/server"
 
 import {
@@ -17,6 +9,8 @@ import {
   type ReportTableSort,
   type ReportTableStatus,
 } from "@/lib/backend/report-store"
+import { getAdminPrincipal } from "@/lib/auth/admin"
+import { getSession } from "@/lib/auth/session"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -28,9 +22,17 @@ const dateRanges = ["today", "week", "month"] as const
 const sorts = ["newest", "oldest", "reportId", "status", "aiSource", "created", "updated"] as const
 
 export async function GET(request: Request) {
+  const session = await getSession()
+
+  if (!session) {
+    return NextResponse.json({ success: false, error: "Sign in required." }, { status: 401 })
+  }
+
   const url = new URL(request.url)
   const query = parseReportQuery(url.searchParams)
-  const result = await listReportsPage(query)
+  const isAdminTier = Boolean(await getAdminPrincipal())
+  const scopedQuery = isAdminTier ? query : { ...query, userId: session.user.id }
+  const result = await listReportsPage(scopedQuery)
 
   return NextResponse.json({
     success: true,

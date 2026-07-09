@@ -44,6 +44,10 @@ export type ReportTableQuery = {
   scanSource?: "camera" | "upload"
   dateRange?: "today" | "week" | "month"
   sort?: ReportTableSort
+  // Set by callers to restrict results to one user's own reports (see
+  // app/api/reports/route.ts and app/(dashboard)/reports/page.tsx) — admin-
+  // tier callers omit this to see every report.
+  userId?: string
 }
 
 // Writes the scan, its report, findings, and recommendations in a single
@@ -307,6 +311,10 @@ function getScanWithRelations(scanId: string) {
 // within the free-text search across multiple fields).
 function buildReportWhere(query: ReportTableQuery): Prisma.ReportWhereInput {
   const filters: Prisma.ReportWhereInput[] = []
+
+  if (query.userId) {
+    filters.push({ userId: query.userId })
+  }
 
   if (query.search?.trim()) {
     const search = query.search.trim()

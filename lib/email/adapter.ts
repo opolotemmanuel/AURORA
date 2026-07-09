@@ -1,14 +1,16 @@
-// Email delivery for the sign-in OTP flow, backed by Resend. Called from
-// lib/auth/auth.ts's emailOTP plugin — kept in its own module so the auth
-// config doesn't need to know about a specific email provider.
+// Email delivery for the auth flows (email verification, password reset),
+// backed by Resend. Called from lib/auth/auth.ts's emailAndPassword/
+// emailVerification config — kept in its own module so the auth config
+// doesn't need to know about a specific email provider.
 import { Resend } from "resend"
 
-const FROM_ADDRESS = process.env.RESEND_FROM_EMAIL || "Aura <onboarding@resend.dev>"
+const FROM_ADDRESS =
+  process.env.RESEND_FROM_EMAIL || "Aura <onboarding@resend.dev>"
 
 export class EmailSendError extends Error {
   constructor(
     message: string,
-    readonly providerMessage?: string,
+    readonly providerMessage?: string
   ) {
     super(message)
     this.name = "EmailSendError"
@@ -24,27 +26,66 @@ function getClient() {
   return new Resend(apiKey)
 }
 
-export async function sendOTPEmail(to: string, code: string): Promise<void> {
+export async function sendVerificationEmail(
+  to: string,
+  url: string
+): Promise<void> {
+  await send({
+    to,
+    subject: "Verify your Aura email address",
+    text: `Confirm your email to finish setting up your Aura account: ${url}\n\nIf you didn't create an account, you can ignore this email.`,
+    html: `<p>Confirm your email to finish setting up your Aura account:</p><p><a href="${url}">${url}</a></p><p>If you didn't create an account, you can ignore this email.</p>`,
+    devFallbackLabel: "verification link",
+    devFallbackValue: url,
+  })
+}
+
+export async function sendPasswordResetEmail(
+  to: string,
+  url: string
+): Promise<void> {
+  await send({
+    to,
+    subject: "Reset your Aura password",
+    text: `Reset your Aura password: ${url}\n\nThis link expires in 1 hour. If you didn't request this, you can ignore this email.`,
+    html: `<p>Reset your Aura password:</p><p><a href="${url}">${url}</a></p><p>This link expires in 1 hour. If you didn't request this, you can ignore this email.</p>`,
+    devFallbackLabel: "reset link",
+    devFallbackValue: url,
+  })
+}
+
+async function send(input: {
+  to: string
+  subject: string
+  text: string
+  html: string
+  devFallbackLabel: string
+  devFallbackValue: string
+}): Promise<void> {
   const client = getClient()
 
   if (!client) {
     // No API key configured. In production that's a real misconfiguration
     // and must fail loudly; in development it's expected (no key set up
-    // yet), so fall back to logging the code so sign-in can still be tested.
+    // yet), so fall back to logging the link so the flow can still be tested.
     if (process.env.NODE_ENV === "production") {
-      throw new EmailSendError("RESEND_API_KEY is not configured — cannot send email in production.")
+      throw new EmailSendError(
+        "RESEND_API_KEY is not configured — cannot send email in production."
+      )
     }
 
-    console.log(`[email] RESEND_API_KEY not set — dev fallback, OTP for ${to}: ${code}`)
+    console.log(
+      `[email] RESEND_API_KEY not set — dev fallback, ${input.devFallbackLabel} for ${input.to}: ${input.devFallbackValue}`
+    )
     return
   }
 
   const { error } = await client.emails.send({
     from: FROM_ADDRESS,
-    to,
-    subject: `${code} is your Aura sign-in code`,
-    text: `Your Aura sign-in code is ${code}. It expires in 5 minutes. If you didn't request this, you can ignore this email.`,
-    html: `<p>Your Aura sign-in code is:</p><p style="font-size:28px;font-weight:600;letter-spacing:4px;">${code}</p><p>It expires in 5 minutes. If you didn't request this, you can ignore this email.</p>`,
+    to: input.to,
+    subject: input.subject,
+    text: input.text,
+    html: input.html,
   })
 
   if (error) {
@@ -52,6 +93,9 @@ export async function sendOTPEmail(to: string, code: string): Promise<void> {
     // own verified address — sending to any other recipient lands here
     // with a "You can only send testing emails to..." message, not a
     // network/config failure.
-    throw new EmailSendError(error.message ?? "Resend failed to send the OTP email", error.name)
+    throw new EmailSendError(
+      error.message ?? "Resend failed to send the email",
+      error.name
+    )
   }
 }

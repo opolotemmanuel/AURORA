@@ -17,7 +17,7 @@ export async function GET() {
   const auth = await assertAdminAccess("analytics:read")
 
   if (!auth.allowed) {
-    return NextResponse.json({ success: false, error: "Admin access required." }, { status: 401 })
+    return NextResponse.json({ success: false, error: "Admin access required." }, { status: 403 })
   }
 
   await saveAuditLog({

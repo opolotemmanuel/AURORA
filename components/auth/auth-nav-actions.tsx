@@ -1,5 +1,8 @@
 "use client"
 
+// Sign-in/dashboard/logout buttons shown in the marketing nav — swaps based
+// on client-side session state so the marketing page itself can stay a
+// static/server component.
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { IconArrowRight } from "@tabler/icons-react"
@@ -14,6 +17,8 @@ export function AuthNavActions() {
   async function logout() {
     await authClient.signOut()
     router.push("/")
+    // Server components (e.g. anything reading getSession()) won't know
+    // the session is gone until the router cache is invalidated.
     router.refresh()
   }
 

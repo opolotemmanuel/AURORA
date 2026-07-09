@@ -1,3 +1,8 @@
+// Standalone recommendations endpoint (independent of the scan flow) —
+// accepts either the "standard" request shape (findings[]/signals) or the
+// older flat "legacy" shape, validates whichever one was sent, then
+// normalizes both down to the flat CosmeticAnalysisInput the rule-based
+// engine expects. See ParsedRecommendationRequest below.
 import { NextResponse } from "next/server"
 
 import { listActiveRecommendationProducts } from "@/lib/backend/product-service"
@@ -69,6 +74,9 @@ export async function POST(request: Request) {
   }
 }
 
+// Tries the standard shape first, then falls back to the legacy shape —
+// whichever validates successfully wins. If both fail, the standard
+// request's error is returned since it's the shape new callers should use.
 function parseRecommendationRequest(body: unknown):
   | { ok: true; parsed: ParsedRecommendationRequest }
   | { ok: false; error: string } {
@@ -350,6 +358,10 @@ function parseLimit(value: unknown): { ok: true; limit: number | undefined } | {
   return { ok: true, limit: value }
 }
 
+// Where the standard request shape actually gets flattened into what
+// recommendation-engine.ts consumes — findings[] and signals both collapse
+// into the same per-concern band map (findings win if both are present,
+// since they're spread after signals).
 function toCosmeticAnalysisInput(request: RecommendationRequest): CosmeticAnalysisInput {
   return {
     ...request.analysis.signals,

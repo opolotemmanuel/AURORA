@@ -1,3 +1,11 @@
+// Same as ../print/route.ts but forces a file download (Content-Disposition:
+// attachment) instead of an inline view — both currently serve the same
+// print-html format; despite the filename saying ".html" not ".pdf", this
+// is the "Download PDF" action in the UI (DownloadFormat.PDF vs
+// print-html distinction exists in the type system but real PDF generation
+// isn't implemented yet — see AGENTS.md's Planned Stack: React-PDF).
+//
+// SECURITY NOTE: no access check — same gap as ../route.ts and ../../route.ts.
 import { findReport, saveAuditLog, saveReportDownload } from "@/lib/backend/report-store"
 import { renderPrintableReport } from "@/lib/backend/printable-report"
 

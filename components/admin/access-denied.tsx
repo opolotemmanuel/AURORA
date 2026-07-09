@@ -1,3 +1,6 @@
+// Shown when lib/auth/admin.ts's requireAdminAccess rejects a signed-in
+// user (wrong role) — distinct from the /login redirect, which handles "not
+// signed in at all" (see app/(dashboard)/layout.tsx).
 import Link from "next/link"
 import { IconShieldOff } from "@tabler/icons-react"
 

@@ -1,5 +1,6 @@
 "use client"
 
+// shadcn/ui primitive — see the note in components/ui/button.tsx.
 import * as React from "react"
 import { Label as LabelPrimitive } from "radix-ui"
 

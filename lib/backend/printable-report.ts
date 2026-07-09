@@ -1,3 +1,11 @@
+// Builds the "print-html" download format (see DownloadFormat in
+// lib/backend/types.ts): a standalone, self-styled HTML document users
+// print or "Save as PDF" from their browser — the interim stand-in for the
+// React-PDF/headless-Chrome pipeline in AGENTS.md's Planned Stack. It's a
+// separate document from the app shell, not a rendered app route, so it
+// can't use Tailwind/theme tokens or `cn()` — hence the inline styles and
+// literal hex colors below, which are appropriate here even though they'd
+// violate the app's own "no hardcoded colors" UI rule anywhere else.
 import type { StoredReport } from "@/lib/backend/types"
 
 export function renderPrintableReport(report: StoredReport) {
@@ -75,6 +83,11 @@ export function renderPrintableReport(report: StoredReport) {
 </html>`
 }
 
+// Every piece of report data interpolated into the HTML string above goes
+// through this first — since the whole document is hand-built string
+// concatenation (no JSX/DOM escaping to rely on), skipping this on any
+// field would be a stored-XSS hole the moment that field contains user- or
+// model-influenced text.
 function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")

@@ -1,3 +1,9 @@
+// The scan upload endpoint: validates the image, calls Gemini (falling back
+// to a rule-based report if that fails), then persists everything via
+// scan-service. Two layers of fallback exist so the user always gets a
+// report: analyzeImageWithFallback covers a Gemini-specific failure, and the
+// outer try/catch in POST covers anything else going wrong (bad form data,
+// createScanReport itself throwing, etc).
 import { NextResponse } from "next/server"
 
 import {
@@ -46,6 +52,8 @@ export async function POST(request: Request) {
     }
 
     const geminiResult = await analyzeImageWithFallback(image)
+    // `stored: false` always — per AGENTS.md's privacy rule, the photo
+    // itself is never persisted, only its metadata and the resulting report.
     const bundle = await createScanReport({
       image: {
         fileName: image.name,
@@ -149,6 +157,9 @@ function normalizeScanSource(value: FormDataEntryValue | null): ScanSource {
   return "unknown"
 }
 
+// Wraps the Gemini call so a provider failure (quota, timeout, invalid
+// response, etc.) degrades to a rule-based report instead of failing the
+// whole request — the user still gets a usable (if generic) cosmetic report.
 async function analyzeImageWithFallback(image: File): Promise<{
   analysis: ScanAnalysisReport
   fallback: boolean
@@ -170,6 +181,9 @@ async function analyzeImageWithFallback(image: File): Promise<{
   }
 }
 
+// Generic, non-AI cosmetic report used whenever Gemini can't be reached —
+// deliberately bland ("not_visible" bands, generic tips) rather than
+// guessing, so it never implies a real analysis happened.
 function buildFallbackSkinAnalysis(): ScanAnalysisReport {
   return {
     summary:

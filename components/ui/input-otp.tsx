@@ -1,5 +1,7 @@
 "use client"
 
+// shadcn/ui primitive — see the note in components/ui/button.tsx. Used by
+// the verify-code step of the email OTP sign-in flow (components/auth/verify-form.tsx).
 import * as React from "react"
 import { OTPInput, OTPInputContext } from "input-otp"
 

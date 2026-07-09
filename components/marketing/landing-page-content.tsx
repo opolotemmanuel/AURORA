@@ -1,3 +1,8 @@
+// The actual landing page — a single file composing one section component
+// per part of the page (Hero, TrustStrip, HowItWorks, ...), rendered in
+// order at the bottom in LandingPageContent. This supersedes the older
+// one-component-per-file placeholders that used to live in this directory
+// (landing-hero-media.tsx etc., since removed as dead code).
 import Image from "next/image"
 import Link from "next/link"
 import {
@@ -233,6 +238,8 @@ function HeroSection() {
   )
 }
 
+// Purely decorative — a static mockup of what a scan-in-progress looks
+// like, not wired to any real scan state or API. Same for HeroResults below.
 function HeroMockup() {
   const progress = ["Lighting", "Face", "Analysis", "Report"]
 
@@ -241,6 +248,9 @@ function HeroMockup() {
       <div className="absolute inset-y-20 -left-20 right-0 rounded-full border border-dashed border-primary/30" />
       <div className="relative rounded-4xl border border-border bg-background p-3 shadow-xl">
         <div className="relative min-h-[34rem] overflow-hidden rounded-3xl border border-border bg-muted">
+          {/* NOTE: filename looks like an un-renamed clipboard-paste
+              artifact rather than an intentional asset name — harmless
+              functionally, but worth renaming to something descriptive. */}
           <Image
             src="/Pasted image (3).png"
             alt="AI skin scan preview"
@@ -588,6 +598,10 @@ function FinalCTA() {
   )
 }
 
+// NOTE: every footer link below points to "/" regardless of its label
+// (Contact, Privacy, Terms, etc. aren't real pages yet) — intentional
+// placeholder for now, but worth wiring up before these look like broken
+// links to a real visitor.
 function LandingFooter() {
   const columns = [
     ["Product", "AI Skin Analysis", "PDF Reports", "Privacy-first Scan Flow"],

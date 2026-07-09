@@ -1,3 +1,7 @@
+// shadcn/ui primitive (radix-sera preset) — generated via the shadcn CLI,
+// not hand-rolled. Prefer keeping edits here minimal/upstream-compatible;
+// extend via `variant`/`size` props or `cn()` at the call site instead of
+// forking this file (see AGENTS.md's component-usage rule).
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { Slot } from "radix-ui"

@@ -8,6 +8,9 @@ import {
   IconSparkles,
 } from "@tabler/icons-react"
 
+// Server-rendered overview of live backend data — `force-dynamic` because
+// every view also writes an audit log row (below), so this page can never
+// be safely cached/prerendered.
 import {
   listAiProviderEvents,
   listDownloads,

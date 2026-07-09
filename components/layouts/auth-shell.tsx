@@ -1,3 +1,5 @@
+// Chrome for the (auth) route group (login/verify) — centered card, logo
+// only, no nav/sidebar (see AGENTS.md's route-group table).
 import Link from "next/link"
 
 export function AuthShell({ children }: { children: React.ReactNode }) {

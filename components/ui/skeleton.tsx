@@ -1,3 +1,4 @@
+// shadcn/ui primitive — see the note in components/ui/button.tsx.
 import { cn } from "@/lib/utils"
 
 function Skeleton({ className, ...props }: React.ComponentProps<"div">) {

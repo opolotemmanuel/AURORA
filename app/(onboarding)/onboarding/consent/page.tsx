@@ -1,3 +1,4 @@
+// Stub step 2 of 3 — see the note in ../page.tsx.
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 

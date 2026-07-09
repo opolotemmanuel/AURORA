@@ -25,6 +25,10 @@ import {
   IconZoomOut,
 } from "@tabler/icons-react"
 
+// The entire scan flow as one client component: a linear five-step wizard
+// (intro -> capture -> review -> processing -> results) with its own local
+// state machine (`currentStep`) rather than separate routes per step, so
+// captured image / camera stream state doesn't have to survive a navigation.
 import { Button } from "@/components/ui/button"
 
 type ScanStep = "intro" | "capture" | "review" | "processing" | "results"
@@ -242,7 +246,25 @@ function CameraPanel({
             </div>
           </div>
         ) : null}
-        <div className="pointer-events-none absolute inset-8 rounded-full border border-primary/50" />
+        {/* `overflow-hidden` + `rounded-full` on this wrapper clips the
+            sweep div below to the oval face-guide shape, so the light band
+            only appears to travel within the face outline rather than
+            across the whole rectangular video. Purely a CSS visual effect —
+            not a real lighting/face-quality check (none exists yet; see
+            AGENTS.md's Planned Stack for the future MediaPipe/TF.js gate).
+            "Hold still" is deliberately neutral wording for the same reason:
+            it must not imply a real quality confirmation happened. */}
+        <div className="pointer-events-none absolute inset-8 overflow-hidden rounded-full border border-primary/50">
+          {isCameraActive ? (
+            <div className="animate-scan-sweep motion-reduce:hidden absolute inset-x-0 h-10 bg-gradient-to-b from-transparent via-primary/50 to-transparent blur-[1px]" />
+          ) : null}
+        </div>
+        {isCameraActive ? (
+          <div className="pointer-events-none absolute left-3 top-3 rounded-full border border-border bg-background/90 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
+            <span className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-primary" />
+            Hold still — positioning...
+          </div>
+        ) : null}
       </div>
       <canvas ref={canvasRef} className="hidden" />
       {cameraError ? (
@@ -775,6 +797,9 @@ export function ScanFlow() {
     }
   }
 
+  // Snapshots the current video frame onto the hidden <canvas> (declared in
+  // CameraPanel), then reads it back out as a data URL — this is how a
+  // <video> stream becomes a still image without any server round-trip.
   function captureImage() {
     const video = videoRef.current
     const canvas = canvasRef.current
@@ -892,6 +917,9 @@ export function ScanFlow() {
     setReportDownloadUrl(null)
 
     try {
+      // Bakes the user's crop/zoom/rotate/flip adjustments from the Review
+      // step into actual pixels before upload — the server only ever sees
+      // the final edited image, never the original plus a set of transforms.
       const editedImage = await createEditedImageDataUrl(selectedImage, imageEdit)
       setSelectedImage(editedImage)
       const imageFile = await dataUrlToFile(editedImage, selectedFileName)
@@ -1044,9 +1072,18 @@ async function dataUrlToFile(dataUrl: string, fileName: string) {
   return new File([blob], ensureImageExtension(fileName, type), { type })
 }
 
+// Renders the ReviewStep's live-preview CSS transform
+// (translate -> flip/scale -> rotate, applied via `style.transform`) as
+// actual canvas pixels. The order of canvas calls below matters: `context`
+// transforms compose like a stack, so translate must happen first (moves
+// the origin to the image's target center), then rotate, then scale —
+// applying them in a different order would rotate/scale around the wrong
+// point and produce a different result than what the user saw in preview.
 async function createEditedImageDataUrl(dataUrl: string, edit: ImageEditState) {
   const image = await loadEditableImage(dataUrl)
   const canvas = document.createElement("canvas")
+  // Fixed 4:5 portrait output regardless of the source image's own aspect
+  // ratio, so every report image is consistently framed.
   const width = 900
   const height = 1125
   canvas.width = width
@@ -1055,6 +1092,9 @@ async function createEditedImageDataUrl(dataUrl: string, edit: ImageEditState) {
   const context = canvas.getContext("2d")
   if (!context) return dataUrl
 
+  // Scales the source image down to fit inside the canvas before any user
+  // zoom is applied, so `edit.zoom` is relative to "fit the frame", not to
+  // the image's raw pixel size.
   const baseScale = Math.min(width / image.naturalWidth, height / image.naturalHeight)
   const drawWidth = image.naturalWidth * baseScale
   const drawHeight = image.naturalHeight * baseScale
@@ -1080,6 +1120,11 @@ function loadEditableImage(dataUrl: string) {
   })
 }
 
+// Asks for a front-facing camera at a preferred resolution first; if the
+// device/browser can't satisfy those specific constraints (common on older
+// or unusual hardware), retries with the loosest possible request
+// (`video: true`) rather than failing outright — better to get some camera
+// stream than none.
 async function requestCameraStream() {
   const preferredConstraints: MediaStreamConstraints = {
     audio: false,
@@ -1104,6 +1149,10 @@ async function requestCameraStream() {
   }
 }
 
+// Only retry for errors that mean "constraints too specific" or "no
+// matching device" — permission/security errors (NotAllowedError etc.)
+// would just fail the same way again, so those are re-thrown immediately
+// instead of masking the real problem with a second failed request.
 function shouldRetryWithBasicCamera(error: unknown) {
   if (!(error instanceof DOMException)) return true
 

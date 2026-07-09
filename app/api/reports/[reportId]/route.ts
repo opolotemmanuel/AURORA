@@ -1,3 +1,6 @@
+// SECURITY NOTE: no access check here either — see the same note in
+// ../route.ts. Any caller who knows or guesses a reportId can fetch that
+// report's full analysis and matched scan, no session required.
 import { NextResponse } from "next/server"
 
 import { findReport, findScan, saveAuditLog } from "@/lib/backend/report-store"

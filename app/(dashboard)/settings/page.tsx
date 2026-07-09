@@ -44,6 +44,10 @@ import {
 
 export const dynamic = "force-dynamic"
 
+// Keyed by the exact `title` strings getEnterpriseSettingsModules() uses in
+// lib/backend/settings-service.ts — if a title changes there, it silently
+// falls back to IconSettings below rather than erroring, so keep these in
+// sync by hand.
 const moduleIcons: Record<string, ComponentType<{ className?: string }>> = {
   "Core Backend": IconDatabase,
   "AI Assessment": IconBrain,
@@ -54,6 +58,9 @@ const moduleIcons: Record<string, ComponentType<{ className?: string }>> = {
   "Enterprise Platform Roadmap": IconSettings,
 }
 
+// Requires the stronger "settings:manage" permission (not just
+// "admin:read") since this page both shows config status and lets an admin
+// mutate the product catalog via the server actions in product-actions.ts.
 export default async function SettingsPage() {
   let auth
   try {
@@ -176,6 +183,11 @@ export default async function SettingsPage() {
 
 type ProductRow = Awaited<ReturnType<typeof listProducts>>[number]
 
+// Reused for both "Add Product" and "Edit Product" (see ProductActions
+// below) — presence of `product` just prefills defaultValues and adds the
+// hidden `id` field; `action` is a server action passed straight to the
+// form's `action` prop (React 19 / Next.js App Router), so no client-side
+// submit handler or fetch call is needed here at all.
 function ProductForm({
   title,
   action,

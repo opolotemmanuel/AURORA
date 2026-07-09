@@ -1,3 +1,14 @@
+// JSON API mirror of the server-rendered reports table
+// (app/(dashboard)/reports/page.tsx) — same query params, same
+// listReportsPage call.
+//
+// SECURITY NOTE: unlike /api/admin/analytics (which calls
+// assertAdminAccess), this route has no access check at all, and there's no
+// middleware.ts gating /api/reports/* either — it returns every user's
+// reports, unauthenticated, to anyone who requests it. The equivalent page
+// route is only reachable through the (dashboard) layout's session
+// redirect, but this API route bypasses that entirely. Worth confirming
+// whether that's intentional before this ships anywhere real.
 import { NextResponse } from "next/server"
 
 import {

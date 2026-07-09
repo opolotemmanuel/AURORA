@@ -1,3 +1,5 @@
+// Top nav for the (marketing) route group — the only group with a
+// traditional navbar (see AGENTS.md's route-group table).
 import Link from "next/link"
 import { IconLeaf } from "@tabler/icons-react"
 

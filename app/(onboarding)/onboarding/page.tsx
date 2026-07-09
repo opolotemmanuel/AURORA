@@ -1,3 +1,7 @@
+// Stub step 1 of 3 (see also consent/page.tsx and profile/page.tsx) — no
+// real onboarding logic yet, and nothing in the app currently links here
+// (login/verify go straight to /dashboard), so this flow is only reachable
+// by navigating to the URL directly.
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 

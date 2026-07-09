@@ -11,6 +11,9 @@ import {
   IconSparkles,
 } from "@tabler/icons-react"
 
+// Renders the data getAdminAnalytics() assembles — this component is pure
+// presentation, no data fetching of its own (see app/(dashboard)/admin/page.tsx
+// for where getAdminAnalytics is actually called).
 import type { getAdminAnalytics } from "@/lib/backend/admin-analytics"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -42,6 +45,9 @@ const metricIcons: Record<Metric["label"], IconComponent> = {
 
 export function AdminDashboard({ backendAnalytics }: { backendAnalytics: BackendAnalytics }) {
   const metrics = getDisplayMetrics(backendAnalytics)
+  // Scans and reports are fetched separately (see getAdminAnalytics) and
+  // joined here client-side by scanId, since a report's own row doesn't
+  // carry its scan's source/status.
   const scanById = new Map(backendAnalytics.recentScans.map((scan) => [scan.id, scan]))
   const reportRows = backendAnalytics.recentReports.map((report) => {
     const scan = scanById.get(report.scanId)
@@ -199,6 +205,11 @@ export function AdminDashboard({ backendAnalytics }: { backendAnalytics: Backend
         </Panel>
       </section>
 
+      {/* NOTE: value is hardcoded to "Placeholder only" regardless of
+          backendAnalytics.auth.mode — and that mode/note text itself is
+          stale (see the NOTE in lib/backend/admin-analytics.ts). Real
+          admin protection is enforced by lib/auth/admin.ts before this
+          page even renders (see app/(dashboard)/admin/page.tsx). */}
       <Panel title="Admin Protection" description="Current access-control configuration" icon={IconShieldCheck}>
         <StatusRow label={backendAnalytics.auth.mode} value="Placeholder only" detail={backendAnalytics.auth.note} />
       </Panel>
@@ -281,6 +292,8 @@ function Panel({
   )
 }
 
+// Renders a Record<string, number> (e.g. scan-source or product-name
+// tallies from countBy in admin-analytics.ts) as a sorted bar-less list.
 function CountList({ counts, emptyLabel }: { counts: Record<string, number>; emptyLabel: string }) {
   const rows = Object.entries(counts).sort(([, a], [, b]) => b - a)
 
@@ -322,6 +335,8 @@ function formatDate(value: string) {
   return new Date(value).toLocaleString()
 }
 
+// Turns enum-ish values like "not_visible" or "print-html" into "Not
+// Visible" / "Print Html" for display.
 function formatValue(value: string) {
   return value
     .replace(/[-_]/g, " ")

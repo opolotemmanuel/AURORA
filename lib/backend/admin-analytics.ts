@@ -1,3 +1,6 @@
+// Aggregates data for the admin analytics dashboard: pulls the raw lists
+// from report-store, then reduces them into dashboard-ready counts and a
+// small "system status" checklist.
 import {
   listAiProviderEvents,
   listAuditLogs,
@@ -53,6 +56,9 @@ export async function getAdminAnalytics() {
       },
       {
         label: "Gemini model",
+        // Mirrors DEFAULT_GEMINI_MODEL in lib/ai/gemini-adapter.ts but isn't
+        // imported from there — if that default ever changes, this literal
+        // needs updating too.
         status: process.env.GEMINI_MODEL?.trim() || "gemini-2.0-flash",
         detail: "Model name used by the server-side Gemini adapter.",
       },
@@ -64,6 +70,11 @@ export async function getAdminAnalytics() {
             ? "Current scan records indicate original images are not stored by default."
             : "Some scan records indicate original images were stored.",
       },
+      // NOTE: this status/detail text (and the `auth` block below) appears
+      // to be stale — better-auth is fully wired up (lib/auth/auth.ts,
+      // session.ts, admin.ts) and actually enforces real sessions/roles
+      // today, so "not installed" / "placeholder" no longer reflects
+      // reality. Worth updating to describe the real auth state.
       {
         label: "Admin protection",
         status: "Placeholder",
@@ -81,6 +92,8 @@ export async function getAdminAnalytics() {
   }
 }
 
+// Generic tally helper — used above for both scan-source counts and
+// recommended-product counts, keyed however the caller likes.
 function countBy<T>(items: T[], getKey: (item: T) => string) {
   return items.reduce<Record<string, number>>((counts, item) => {
     const key = getKey(item)

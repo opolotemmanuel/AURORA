@@ -1,5 +1,8 @@
 "use client"
 
+// Wraps next-themes with this app's defaults (class-based dark mode,
+// system preference) and adds a global "d" keyboard shortcut to toggle
+// theme — wired in once here at the root layout rather than per-page.
 import * as React from "react"
 import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes"
 
@@ -21,6 +24,8 @@ function ThemeProvider({
   )
 }
 
+// Guards the "d" hotkey below from firing while the user is actually typing
+// "d" into a form field.
 function isTypingTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) {
     return false

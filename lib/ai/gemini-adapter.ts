@@ -1,9 +1,18 @@
+// The one AI adapter module (per AGENTS.md: "All vision/text model calls go
+// through one adapter file"). Calls Gemini's REST API directly over fetch
+// (no SDK dependency) and normalizes whatever comes back into the app's own
+// ScanAnalysisReport shape, so callers never see Gemini-specific types.
 import type { ScanAnalysisReport } from "@/lib/backend/types"
 
+// Overridable via GEMINI_MODEL env var (see .env.local) without a code
+// change — lets the model be bumped without redeploying the adapter itself.
 const DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"
 const GEMINI_TIMEOUT_MS = 20000
 const DISCLAIMER =
   "Aurora SkinSense provides cosmetic wellness guidance only. This is not a medical diagnosis, treatment plan, or substitute for professional medical advice."
+// The only bands the app will ever surface — enforces the "coarse, honest
+// output only" rule from AGENTS.md even if the model tries to return
+// something more specific/numeric.
 const ALLOWED_BANDS = ["low", "balanced", "mild", "moderate", "elevated", "not_visible"] as const
 
 type GeminiBand = (typeof ALLOWED_BANDS)[number]
@@ -57,6 +66,10 @@ export class GeminiAnalysisError extends Error {
   }
 }
 
+// Sends the captured image to Gemini and returns a normalized cosmetic
+// report. Throws GeminiAnalysisError (never a raw fetch/parse error) so
+// callers (lib/backend/scan-service.ts) can pattern-match on `.kind` and
+// decide when to fall back to the non-AI cosmetic report.
 export async function analyzeSkinWithGemini(image: File): Promise<ScanAnalysisReport> {
   const apiKey = process.env.GEMINI_API_KEY
   const model = getGeminiModel()
@@ -72,7 +85,10 @@ export async function analyzeSkinWithGemini(image: File): Promise<ScanAnalysisRe
     throw new GeminiAnalysisError("configuration", "GEMINI_API_KEY is missing.")
   }
 
+  // Gemini's REST API takes inline image bytes as base64, not multipart.
   const imageBase64 = Buffer.from(await image.arrayBuffer()).toString("base64")
+  // Abort manually after GEMINI_TIMEOUT_MS — fetch has no built-in timeout,
+  // and a hung request would otherwise block the scan flow indefinitely.
   const abortController = new AbortController()
   const timeout = setTimeout(() => abortController.abort(), GEMINI_TIMEOUT_MS)
 
@@ -101,6 +117,10 @@ export async function analyzeSkinWithGemini(image: File): Promise<ScanAnalysisRe
           },
         ],
         generationConfig: {
+          // Ask Gemini to return JSON directly (fewer markdown-fence/parse
+          // surprises) with low temperature for consistent, non-creative
+          // cosmetic wording, and a token cap since responses are meant to
+          // stay short (coarse bands + brief observations, not essays).
           responseMimeType: "application/json",
           temperature: 0.2,
           maxOutputTokens: 1200,
@@ -190,6 +210,9 @@ async function readGeminiPayload(response: Response, model: string): Promise<Gem
   }
 }
 
+// Errors thrown by `fetch` itself (network down, DNS failure, or our own
+// AbortController firing) — distinct from classifyGeminiResponseError below,
+// which handles a completed HTTP response that Gemini returned as an error.
 function classifyGeminiTransportError(error: unknown, model: string) {
   if (error instanceof DOMException && error.name === "AbortError") {
     return new GeminiAnalysisError("timeout", `Gemini request timed out for model ${model}.`)
@@ -202,6 +225,11 @@ function classifyGeminiTransportError(error: unknown, model: string) {
   )
 }
 
+// Gemini uses HTTP 429 for both "you're out of quota" and "you're sending
+// requests too fast" — the status code alone can't tell them apart, so this
+// inspects the provider's error message text to pick the right
+// GeminiFailureKind (callers treat quota exhaustion differently from a
+// transient rate limit).
 function classifyGeminiResponseError(
   response: Response,
   payload: GeminiGenerateContentResponse,
@@ -245,6 +273,10 @@ function isQuotaMessage(value: string) {
   return value.includes("quota") || value.includes("free_tier") || value.includes("resource_exhausted")
 }
 
+// The prompt is where the "not a medical diagnostic tool" / coarse-bands
+// rule (AGENTS.md Non-Negotiables) actually gets enforced on the model side
+// — normalizeGeminiAnalysis below is the second, code-level enforcement of
+// the same rule in case the model doesn't comply.
 function buildCosmeticPrompt() {
   return [
     "You are Aurora SkinSense, a cosmetic skin wellness analysis assistant.",
@@ -273,6 +305,8 @@ function parseGeminiJson(rawText: string, model: string): GeminiSkinAnalysisJson
   }
 }
 
+// Gemini is asked for raw JSON (responseMimeType above) but sometimes wraps
+// it in a ```json ... ``` code fence anyway — strip that before parsing.
 function stripJsonFence(value: string) {
   return value
     .trim()
@@ -282,6 +316,11 @@ function stripJsonFence(value: string) {
     .trim()
 }
 
+// Even with JSON mode and a strict prompt, Gemini's output isn't
+// schema-guaranteed — every field is validated/coerced here (rather than
+// trusted as-is) before it becomes the report shown to the user or stored.
+// `recommendations` is always empty because that's populated separately by
+// lib/recommendations/*, not by the model.
 function normalizeGeminiAnalysis(input: GeminiSkinAnalysisJson, model: string): ScanAnalysisReport {
   const findings = Array.isArray(input.cosmeticFindings) ? input.cosmeticFindings : []
   const routineTips = Array.isArray(input.routineTips) ? input.routineTips : []

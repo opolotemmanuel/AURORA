@@ -1,7 +1,13 @@
+// Admin CRUD for the Aurora product catalog, plus the form-data parsing
+// used by the admin product form (parseProductFormData) and the read path
+// the recommendation engine uses (listActiveRecommendationProducts).
 import { RoutineStep, type Prisma } from "@/lib/generated/prisma/client"
 import { prisma } from "@/lib/db"
 import type { AuroraProduct, SkinConcern } from "@/lib/recommendations/types"
 
+// Runtime list mirroring the SkinConcern union — needed because form input
+// arrives as plain strings and must be validated against real concern
+// values (see parseConcernList/getConcernArray) rather than trusted as-is.
 const skinConcerns = [
   "hydration",
   "texture",
@@ -101,6 +107,10 @@ export async function setProductActive(productId: string, active: boolean) {
   })
 }
 
+// Soft-delete when a product is referenced by past recommendations (so
+// historic reports keep resolving it — though report-store's productSnapshot
+// means they'd still render fine either way); hard-delete only when it's
+// safe to remove outright.
 export async function deleteOrArchiveProduct(productId: string) {
   const recommendationCount = await prisma.recommendation.count({
     where: { productId },
@@ -207,6 +217,10 @@ function parsePriority(value: string) {
   return priority
 }
 
+// Enforces AGENTS.md's "no hotlinking external images" rule at the data
+// layer: must be a root-relative path (starts with a single `/`), which
+// rules out both full external URLs and protocol-relative `//host/...` URLs
+// that a browser would still resolve to an external origin.
 function parseImagePath(value: string | undefined) {
   if (!value) return undefined
 

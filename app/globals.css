@@ -116,6 +116,31 @@
     --radius-2xl: calc(var(--radius) * 1.8);
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
+    --animate-scan-sweep: scan-sweep 2.8s ease-in-out infinite;
+}
+
+@keyframes scan-sweep {
+    0% {
+        top: -18%;
+        opacity: 0;
+    }
+    12% {
+        opacity: 1;
+    }
+    88% {
+        opacity: 1;
+    }
+    100% {
+        top: 106%;
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .animate-scan-sweep {
+        animation: none;
+        display: none;
+    }
 }
 
 @layer base {

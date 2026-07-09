@@ -1,3 +1,6 @@
+// Chrome for the (scan) route group — a minimal header (exit link + step
+// label), not the marketing nav (see AGENTS.md's route-group table). The
+// actual scan flow UI lives in components/scan/ScanFlow.tsx.
 import Link from "next/link"
 
 export function ScanShell({ children }: { children: React.ReactNode }) {

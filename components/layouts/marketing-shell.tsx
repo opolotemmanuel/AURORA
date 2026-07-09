@@ -1,3 +1,5 @@
+// Chrome for the (marketing) route group — just the top nav; the actual
+// landing page content lives in components/marketing/landing-page-content.tsx.
 import { MarketingNav } from "@/components/layouts/marketing-nav"
 
 export function MarketingShell({ children }: { children: React.ReactNode }) {

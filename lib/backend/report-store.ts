@@ -1,3 +1,12 @@
+// The Prisma data-access layer for scans, reports, downloads, audit logs,
+// and AI provider events. This is the only file that talks to Prisma for
+// these models — callers (scan-service, admin-analytics, API routes) only
+// see the domain types from lib/backend/types.ts, never raw Prisma rows.
+// Below the CRUD-style exports, most of the file is `toPrisma*`/`fromPrisma*`
+// pairs that translate between the domain's string-literal unions (e.g.
+// StoredScan["source"]) and Prisma's generated enums (e.g. ScanSource) —
+// that boilerplate exists so the rest of the app never has to import
+// anything from lib/generated/prisma directly.
 import {
   AiProviderStatus,
   DownloadFormat,
@@ -37,6 +46,9 @@ export type ReportTableQuery = {
   sort?: ReportTableSort
 }
 
+// Writes the scan, its report, findings, and recommendations in a single
+// nested Prisma `create` (one insert graph) rather than separate calls, so
+// a scan never ends up persisted without its report or vice versa.
 export async function saveReportBundle(bundle: StoredReportBundle) {
   await prisma.scan.create({
     data: {
@@ -87,6 +99,12 @@ export async function saveReportBundle(bundle: StoredReportBundle) {
               score: Math.round(recommendation.score),
               matchStrength: toPrismaMatchStrength(recommendation.matchStrength),
               reasons: recommendation.reasons,
+              // Full product snapshot at recommendation time (as opposed to
+              // just a foreign key) so a historic report keeps showing what
+              // was actually recommended even after the product catalog
+              // changes or a product is later removed — see
+              // getProductSnapshot below, which prefers this over a live
+              // lookup.
               productSnapshot: recommendation.product,
             })),
           },
@@ -119,6 +137,9 @@ export async function listReports() {
   return reports.map(mapReport)
 }
 
+// Backs the admin reports table: search + filter + sort + paginate in one
+// query, running the count and the page fetch in parallel since neither
+// depends on the other.
 export async function listReportsPage(query: ReportTableQuery) {
   const page = Math.max(1, query.page)
   const pageSize = clampPageSize(query.pageSize)
@@ -254,6 +275,10 @@ export async function listAiProviderEvents() {
   return events.map(mapAiProviderEvent)
 }
 
+// Not a Prisma default (`cuid()`/`uuid()`) because scan-service needs the
+// scan and report IDs before either row is created, to cross-link them in
+// the same nested write above. Timestamp + random suffix keeps it roughly
+// sortable and collision-safe without a DB round-trip.
 export function createId(prefix: string) {
   const random = Math.random().toString(36).slice(2, 8)
   return `${prefix}_${Date.now().toString(36)}_${random}`
@@ -276,6 +301,10 @@ function getScanWithRelations(scanId: string) {
   })
 }
 
+// Each active filter (search, aiSource, scanSource, status, dateRange)
+// becomes its own clause, ANDed together — so "search X AND status Y" works
+// as an intersection, not an OR across filter types (the OR below is only
+// within the free-text search across multiple fields).
 function buildReportWhere(query: ReportTableQuery): Prisma.ReportWhereInput {
   const filters: Prisma.ReportWhereInput[] = []
 
@@ -350,6 +379,9 @@ function getDateRangeStart(dateRange: ReportTableQuery["dateRange"]) {
   return null
 }
 
+// "archived" is a status the admin UI can filter by, but there's no
+// archiving feature yet — matching an ID that can never exist makes that
+// filter safely return zero rows instead of silently showing everything.
 function getReportStatusWhere(status: ReportTableStatus): Prisma.ReportWhereInput {
   if (status === "pending") return { scan: { status: ScanStatus.RECEIVED } }
   if (status === "failed") return { scan: { status: ScanStatus.FAILED } }
@@ -411,6 +443,13 @@ function mapReport(report: NonNullable<ReportWithRelations>): StoredReport {
         imagePath: recommendation.product.imagePath,
       })),
       routineTips: getStringArray(report.routineTips),
+      // NOTE: saveReportBundle above writes qualityLighting/qualityFraming/
+      // qualityConfidence onto the Scan row, but this read path doesn't
+      // pull them back from `report.scan` — it always reports the lowest-
+      // confidence placeholder values here regardless of what was actually
+      // stored. Worth checking whether that's intentional (e.g. quality is
+      // meant to be a write-once/display-once value from the original
+      // analyze response) or a gap in this mapping.
       quality: {
         lighting: "not_visible",
         framing: "unclear",
@@ -440,6 +479,10 @@ function mapRecommendation(
   }
 }
 
+// Prefers the stored JSON snapshot (full product as it was at
+// recommendation time); falls back to reconstructing a minimal product from
+// the individual columns only if the snapshot is missing or malformed —
+// covers rows written before productSnapshot existed, or any hand-edited data.
 function getProductSnapshot(
   value: Prisma.JsonValue,
   recommendation: NonNullable<ReportWithRelations>["recommendations"][number],
@@ -593,6 +636,12 @@ function fromPrismaDownloadFormat(format: DownloadFormat): DomainDownloadFormat 
   return "print-html"
 }
 
+// Lossy on purpose in one direction: the domain has an "operations"
+// AdminRole (lib/backend/types.ts), but the Prisma UserRole enum has no
+// OPERATIONS value (see the matching note in lib/auth/admin.ts), so it
+// collapses into ADMIN here. The reverse mapping below has no way back to
+// "operations" — round-tripping an audit log entry logged as "operations"
+// will read back as "admin".
 function toPrismaUserRole(role: NonNullable<AuditLogEntry["actorRole"]>) {
   if (role === "owner") return UserRole.OWNER
   if (role === "operations") return UserRole.ADMIN

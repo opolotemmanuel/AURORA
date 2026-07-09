@@ -1,3 +1,7 @@
+// Builds the admin "Settings" dashboard's status modules — a mix of real
+// live data (counts pulled from Postgres) and hand-written roadmap copy for
+// features that aren't built yet. See the note on "Admin Roles And Access"
+// below: some of that roadmap copy has fallen behind actual progress.
 import {
   listAiProviderEvents,
   listDownloads,
@@ -147,6 +151,13 @@ export async function getEnterpriseSettingsModules() {
         },
       ],
     },
+    // NOTE: this whole module reads as stale roadmap copy written before
+    // auth was built. better-auth is installed and wired up (lib/auth/
+    // auth.ts), email OTP sign-in is live (lib/auth/client.ts, the
+    // (auth) route group), and role-based access is actually enforced by
+    // lib/auth/admin.ts's rolePermissions/assertAdminAccess — none of that
+    // matches "Backend pending" / "Typed placeholder" / "Coming in Phase 2"
+    // below anymore. Worth updating to reflect the real state.
     {
       title: "Admin Roles And Access",
       description: "Authentication and admin role enforcement roadmap.",

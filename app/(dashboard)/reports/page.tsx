@@ -11,6 +11,10 @@ import {
   IconSearch,
 } from "@tabler/icons-react"
 
+// Search/filter/sort/paginate all live in the URL's query string (see
+// parseReportQuery/getQueryString below) rather than client-side React
+// state — the whole table works via server-rendered links and a plain GET
+// form, no client JS required for any of it.
 import {
   listReportsPage,
   saveAuditLog,
@@ -140,6 +144,9 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
             <span>·</span>
             <span>{pagination.pageSize} per page</span>
           </div>
+          {/* Intentionally non-functional (ToolbarButton always renders
+              disabled) — placeholders for bulk actions that aren't built
+              yet, not broken buttons. */}
           <div className="flex flex-wrap gap-2">
             <ToolbarButton label="Export" icon={IconDownload} />
             <ToolbarButton label="Bulk Archive" />
@@ -341,6 +348,8 @@ function ActionsMenu({ reportId }: { reportId: string }) {
         <MenuLink href={`/api/reports/${reportId}/print`} label="Print" />
         <MenuLink href={`/api/reports/${reportId}/download`} label="Download PDF" />
         <MenuLink href={`/api/reports/${reportId}`} label="View Recommendations" />
+        {/* MenuButton always renders `disabled` — these are roadmap
+            placeholders (see the "detail" text), not broken actions. */}
         <MenuButton label="Archive" detail="Backend pending" />
         <MenuButton label="Delete" detail="Backend pending" />
         <MenuButton label="Share" detail="Future" />

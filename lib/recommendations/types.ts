@@ -1,3 +1,7 @@
+// Types for the rule-based Aurora product recommendation engine — separate
+// from lib/backend/types.ts since recommendations are their own domain
+// (matching cosmetic findings to products), reused by both the scan flow
+// and the /api/recommendations route.
 export type CosmeticBand = "low" | "balanced" | "mild" | "moderate" | "elevated" | "not_visible"
 
 export type SkinConcern =
@@ -52,6 +56,10 @@ export type RecommendationPreferences = {
   limit?: number
 }
 
+// `id` is the stable slug (used in URLs/matching logic); `databaseId` is the
+// Prisma row id, only present once the product actually exists in Postgres
+// (see lib/backend/product-service.ts's mapProduct). Keep this distinction
+// in mind when reading report-store.ts, which stores both separately.
 export type AuroraProduct = {
   id: string
   databaseId?: string
@@ -82,6 +90,12 @@ export type RecommendationRequest = {
   preferences?: RecommendationPreferences
 }
 
+// Older, flatter request shape (analysis as a flat CosmeticAnalysisInput)
+// kept alongside RecommendationRequest above for backward compatibility.
+// app/api/recommendations/route.ts accepts either shape and normalizes both
+// down to a plain CosmeticAnalysisInput before calling the engine, which
+// only ever knows about that flat shape — recommendation-engine.ts itself
+// has no awareness of findings[]/signals or the legacy/standard split.
 export type LegacyRecommendationRequest = {
   analysis: CosmeticAnalysisInput
   limit?: number

@@ -1,5 +1,11 @@
 "use server"
 
+// Server actions backing the product form/table in
+// app/(dashboard)/settings/page.tsx. Every action follows the same shape:
+// re-check admin access (actions are callable directly, not just via the
+// page that renders their triggering form, so the access check can't live
+// only in the page) -> do the mutation -> write an audit log row ->
+// revalidate /settings so the new data shows up without a full reload.
 import { revalidatePath } from "next/cache"
 
 import {

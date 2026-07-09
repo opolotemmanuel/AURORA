@@ -1,5 +1,7 @@
 "use client"
 
+// Step 2 of the email-OTP sign-in flow: enter the code sent by
+// login-form.tsx and exchange it for a real session via better-auth.
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { IconAlertCircle, IconLoader2 } from "@tabler/icons-react"
@@ -77,6 +79,10 @@ export function VerifyForm({ email }: { email: string }) {
             setOtp(value)
             setError(null)
           }}
+          // Auto-submits as soon as all digits are entered — the "Verify
+          // and continue" button below is a fallback for anyone who edits
+          // a digit after typing the last one (which doesn't re-fire
+          // onComplete).
           onComplete={verify}
           disabled={status === "verifying"}
         >

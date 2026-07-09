@@ -1,3 +1,6 @@
+// Shared domain types for the scan/report/admin backend. Kept separate from
+// any one service file since scan-service, report-store, admin-analytics,
+// etc. all need the same shapes.
 import type { RecommendationMatch } from "@/lib/recommendations/types"
 
 export type ScanSource = "camera" | "upload" | "unknown"
@@ -6,6 +9,10 @@ export type ReportSource = "gemini" | "fallback" | "rule-based"
 export type DownloadFormat = "print-html" | "pdf"
 export type AdminRole = "owner" | "admin" | "operations" | "support" | "privacy"
 
+// Deliberately does NOT include the image bytes themselves — only metadata.
+// `stored` records whether the original photo was actually kept, since the
+// default (per AGENTS.md's privacy rule) is to persist the report, not the
+// photo.
 export type ScanImageMetadata = {
   fileName?: string
   mimeType?: string
@@ -33,6 +40,9 @@ export type CosmeticRecommendationSummary = {
   imagePath?: string
 }
 
+// The report content itself, as produced by either the Gemini adapter or
+// the rule-based fallback (see lib/backend/scan-service.ts) — this is what
+// gets rendered to the user and persisted inside StoredReport below.
 export type ScanAnalysisReport = {
   summary: string
   cosmeticFindings: ReportFinding[]
@@ -44,6 +54,9 @@ export type ScanAnalysisReport = {
   model: string
 }
 
+// A scan "attempt" — created as soon as an image is received, independent
+// of whether analysis succeeds. `status` tracks it through the pipeline
+// (received → analyzed/fallback/failed).
 export type StoredScan = {
   id: string
   userId?: string
@@ -54,6 +67,10 @@ export type StoredScan = {
   updatedAt: string
 }
 
+// The persisted result of a scan. `analysis` is the report shown to the
+// user; `recommendations` here is the richer, matched-product form (see
+// lib/recommendations/types.ts) as opposed to the summarized
+// CosmeticRecommendationSummary embedded inside `analysis.recommendations`.
 export type StoredReport = {
   id: string
   scanId: string
@@ -74,6 +91,8 @@ export type ReportDownload = {
   createdAt: string
 }
 
+// Admin-facing audit trail entry — one row per privacy/admin-relevant
+// action (e.g. a download, an admin viewing a report).
 export type AuditLogEntry = {
   id: string
   actorId?: string
@@ -84,6 +103,9 @@ export type AuditLogEntry = {
   createdAt: string
 }
 
+// One row per AI call attempt, independent of AuditLogEntry — used to
+// observe Gemini reliability (success/fallback/failed rate) on the admin
+// analytics dashboard, not to audit user actions.
 export type AiProviderEvent = {
   id: string
   provider: string
@@ -95,6 +117,8 @@ export type AiProviderEvent = {
   createdAt: string
 }
 
+// Convenience pairing returned by lookups that need both the scan and its
+// report together (e.g. building a download or a print view).
 export type StoredReportBundle = {
   scan: StoredScan
   report: StoredReport

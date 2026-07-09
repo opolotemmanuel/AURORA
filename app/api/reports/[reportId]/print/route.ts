@@ -1,3 +1,8 @@
+// Renders the full printable HTML report inline (viewed in-browser, e.g.
+// from the dashboard's "View Report"/"Print" links). See download/route.ts
+// for the near-identical attachment-download variant.
+//
+// SECURITY NOTE: no access check — same gap as ../route.ts and ../../route.ts.
 import { findReport, saveAuditLog, saveReportDownload } from "@/lib/backend/report-store"
 import { renderPrintableReport } from "@/lib/backend/printable-report"
 

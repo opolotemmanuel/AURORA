@@ -16,6 +16,9 @@ const navItems = [
   { href: "/admin", label: "Admin", icon: IconShieldLock },
 ] as const
 
+// `pathname` is passed in (rather than read here via usePathname) so this
+// stays a plain component the parent shell controls, matching-prefix logic
+// below keeps e.g. /reports/123 highlighting the /reports nav item.
 export function DashboardSidebar({ pathname }: { pathname: string }) {
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex w-56 shrink-0 flex-col border-r border-border bg-sidebar">

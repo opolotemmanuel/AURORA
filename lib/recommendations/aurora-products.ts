@@ -1,3 +1,9 @@
+// NOTE: this static catalog is not imported anywhere in the app, any prisma
+// seed script, or elsewhere — the live recommendation path
+// (lib/backend/product-service.ts's listActiveRecommendationProducts) reads
+// products from Postgres instead. This looks like placeholder/seed data
+// from before the DB-backed catalog existed; worth confirming whether it's
+// still needed before removing it.
 import type { AuroraProduct } from "./types"
 
 export const auroraProducts: AuroraProduct[] = [

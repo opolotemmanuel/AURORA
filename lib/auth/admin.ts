@@ -1,3 +1,6 @@
+// Role-based access control for the admin dashboard. This sits on top of
+// better-auth sessions (see session.ts) — it doesn't do its own auth, it
+// only decides what a signed-in user's DB role is allowed to do.
 import type { AdminRole } from "@/lib/backend/types"
 import { getSession } from "@/lib/auth/session"
 
@@ -29,6 +32,9 @@ export type AdminAccess =
       note: string
     }
 
+// What each admin-eligible role can do. `owner` and `admin` are
+// intentionally identical today — kept as separate roles because they're
+// expected to diverge later (e.g. owner-only billing controls).
 const rolePermissions: Record<AdminRole, AdminPermission[]> = {
   owner: ["admin:read", "analytics:read", "settings:read", "settings:manage", "products:read", "products:manage"],
   admin: ["admin:read", "analytics:read", "settings:read", "settings:manage", "products:read", "products:manage"],
@@ -37,6 +43,15 @@ const rolePermissions: Record<AdminRole, AdminPermission[]> = {
   support: ["admin:read", "analytics:read", "products:read"],
 }
 
+// Maps the Prisma `User.role` enum (uppercase) to the lowercase AdminRole
+// used for permission lookups. Deliberately has no entry for "USER" — a
+// regular user has no admin role at all, so the lookup below misses and
+// getAdminPrincipal returns null.
+//
+// Note: AdminRole also includes "operations" (see rolePermissions above),
+// but the Prisma role enum (lib/auth/auth.ts) has no matching "OPERATIONS"
+// value yet, so that role is currently unreachable through a real session —
+// it's reserved for when that DB role is added.
 const dbRoleToAdminRole: Record<string, AdminRole> = {
   OWNER: "owner",
   ADMIN: "admin",
@@ -51,6 +66,11 @@ export class AdminAccessError extends Error {
   }
 }
 
+// Three layers, each for a different call site:
+//  - getAdminPrincipal: "who is this, if anyone admin-eligible?" (nullable)
+//  - assertAdminAccess: "can they do X?" (returns a reason either way)
+//  - requireAdminAccess: same check, but throws so route handlers can just
+//    await it and not worry about the negative case
 export async function getAdminPrincipal(): Promise<AdminPrincipal | null> {
   const session = await getSession()
   if (!session) return null

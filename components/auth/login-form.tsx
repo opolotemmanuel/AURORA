@@ -1,5 +1,8 @@
 "use client"
 
+// Step 1 of the email-OTP sign-in flow: collect an email, ask better-auth
+// to send a one-time code, then hand off to /verify (components/auth/verify-form.tsx)
+// with the email carried in the query string.
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { IconAlertCircle, IconLoader2 } from "@tabler/icons-react"
@@ -9,6 +12,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { authClient } from "@/lib/auth/client"
 
+// Client-side shape check only, to avoid a round-trip for an obviously bad
+// address — better-auth still validates/normalizes the email server-side.
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export function LoginForm() {

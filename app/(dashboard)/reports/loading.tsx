@@ -1,3 +1,6 @@
+// Next.js route convention: automatically shown while ReportsPage's async
+// data fetch (listReportsPage etc.) is in flight — shape mirrors the real
+// table/filter-bar layout so there's no layout shift once data arrives.
 import { Skeleton } from "@/components/ui/skeleton"
 
 export default function ReportsLoading() {

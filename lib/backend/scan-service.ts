@@ -1,3 +1,8 @@
+// Turns a completed cosmetic analysis (already produced by the Gemini
+// adapter or its fallback — see app/api/scan/analyze/route.ts, which is
+// where that call actually happens) into a persisted report: attaches
+// matched Aurora product recommendations, saves the scan+report bundle, and
+// records audit/AI-provider events. This module never calls Gemini itself.
 import {
   createId,
   saveAiProviderEvent,
@@ -18,6 +23,9 @@ import {
 } from "@/lib/recommendations/recommendation-engine"
 import type { CosmeticAnalysisInput, SkinConcern } from "@/lib/recommendations/types"
 
+// The Gemini adapter returns free-text finding labels; the recommendation
+// engine only understands a fixed set of SkinConcern keys. This bridges the
+// two vocabularies (lowercased label -> concern key).
 const FINDING_CONCERN_MAP: Record<string, SkinConcern> = {
   "visible texture": "texture",
   texture: "texture",
@@ -41,6 +49,8 @@ export async function createScanReport(input: {
   const now = new Date().toISOString()
   const scanId = createId("scan")
   const reportId = createId("report")
+  // Recommendations are computed here (not by the AI adapter) so the
+  // product catalog can change independently of what the model returns.
   const recommendationInput = buildRecommendationInput(input.analysis)
   const products = await listActiveRecommendationProducts()
   const recommendations = recommendAuroraProducts(recommendationInput, 3, products)
@@ -78,6 +88,9 @@ export async function createScanReport(input: {
 
   const bundle = await saveReportBundle({ scan, report })
 
+  // Separate from the audit log below: this tracks AI provider reliability
+  // (success/fallback rate per model) for the admin analytics dashboard,
+  // not "who did what" for privacy auditing.
   await saveAiProviderEvent({
     provider: input.analysis.source === "gemini" || input.aiProviderReason ? "gemini" : "fallback",
     model: input.analysis.model,
@@ -96,6 +109,10 @@ export async function createScanReport(input: {
   return bundle
 }
 
+// Starts from neutral/default bands, then overlays whatever the analysis
+// actually found — so a finding the model didn't report (or reported with
+// an unrecognized label/band) just falls back to a safe neutral value
+// instead of skewing recommendations.
 function buildRecommendationInput(analysis: ScanAnalysisReport): CosmeticAnalysisInput {
   const input: CosmeticAnalysisInput = {
     hydration: "balanced",
@@ -116,6 +133,9 @@ function buildRecommendationInput(analysis: ScanAnalysisReport): CosmeticAnalysi
   return input
 }
 
+// Narrows a finding's free-form `band: string` down to the specific literal
+// union the recommendation engine expects, guarding against a model
+// returning a band string that isn't one of the app's allowed values.
 function isRecommendationBand(value: string): value is NonNullable<CosmeticAnalysisInput[SkinConcern]> {
   return ["low", "balanced", "mild", "moderate", "elevated", "not_visible"].includes(value)
 }

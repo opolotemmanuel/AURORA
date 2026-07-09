@@ -1,3 +1,4 @@
+// Thin per AGENTS.md convention — chrome logic lives in OnboardingShell.
 import { OnboardingShell } from "@/components/layouts/onboarding-shell"
 
 export default function OnboardingLayout({

@@ -1,3 +1,9 @@
+// JSON API counterpart to the server-rendered admin dashboard
+// (app/(dashboard)/admin/page.tsx) — same data, same access check, but as a
+// fetchable endpoint (e.g. for polling or an external integration) rather
+// than a page render. Uses assertAdminAccess (returns a result) instead of
+// requireAdminAccess (throws) since a route handler needs to shape its own
+// JSON error response rather than let an exception propagate.
 import { NextResponse } from "next/server"
 
 import { getAdminAnalytics } from "@/lib/backend/admin-analytics"

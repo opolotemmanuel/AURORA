@@ -23,16 +23,19 @@ export function ExecutiveSummaryCards({ vm }: { vm: ReportViewModel }) {
   ]
 
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 print:break-inside-avoid">
-      {cards.map((card) => (
-        <Card key={card.subtitle} className="h-full gap-3 py-5">
-          <CardContent className="flex h-full flex-col gap-2">
-            <card.icon className="size-5 text-primary" />
-            <p className={`font-heading text-xl font-semibold ${VALUE_COLOR[card.variant]}`}>{card.value}</p>
-            <p className="mt-auto text-xs tracking-wide text-muted-foreground uppercase">{card.subtitle}</p>
-          </CardContent>
-        </Card>
-      ))}
+    <div className="space-y-3 print:break-inside-avoid">
+      <h2 className="font-heading text-lg font-semibold text-foreground">Executive Summary</h2>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {cards.map((card) => (
+          <Card key={card.subtitle} className="h-full gap-3 py-5">
+            <CardContent className="flex h-full flex-col gap-2">
+              <card.icon className="size-5 text-primary" />
+              <p className={`font-heading text-xl font-semibold ${VALUE_COLOR[card.variant]}`}>{card.value}</p>
+              <p className="mt-auto text-xs tracking-wide text-muted-foreground uppercase">{card.subtitle}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   )
 }

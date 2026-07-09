@@ -48,7 +48,7 @@ export function AnalysisVisualization({ vm }: { vm: ReportViewModel }) {
       <CardContent className="grid gap-6 md:grid-cols-3">
         <VisualPanel label="Original">
           <p className="max-w-[12rem] text-center text-xs text-muted-foreground">
-            Original photo not retained per Aura's privacy policy.
+            Original photo not retained per Aura&apos;s privacy policy.
           </p>
         </VisualPanel>
 

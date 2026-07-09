@@ -1,13 +1,16 @@
-// Same as ../print/route.ts but forces a file download (Content-Disposition:
-// attachment) instead of an inline view — both currently serve the same
-// print-html format; despite the filename saying ".html" not ".pdf", this
-// is the "Download PDF" action in the UI (DownloadFormat.PDF vs
-// print-html distinction exists in the type system but real PDF generation
-// isn't implemented yet — see AGENTS.md's Planned Stack: React-PDF).
-//
-// SECURITY NOTE: no access check — same gap as ../route.ts and ../../route.ts.
+// The "Download PDF" action — renders the report to a real PDF via headless
+// Chrome (see lib/reports/pdf/render-report-pdf.ts) instead of the old
+// print-html document. Auth/ownership check added here (previously missing
+// entirely) mirroring app/api/reports/[reportId]/route.ts's existing
+// pattern: same 404 for "doesn't exist" and "exists but isn't yours," so a
+// signed-in stranger can't use the response to confirm a guessed reportId.
+import { cookies } from "next/headers"
+import { NextResponse } from "next/server"
+
+import { getAdminPrincipal } from "@/lib/auth/admin"
+import { getSession } from "@/lib/auth/session"
 import { findReport, saveAuditLog, saveReportDownload } from "@/lib/backend/report-store"
-import { renderPrintableReport } from "@/lib/backend/printable-report"
+import { renderReportPdf } from "@/lib/reports/pdf/render-report-pdf"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -17,28 +20,42 @@ type ReportDownloadRouteContext = {
 }
 
 export async function GET(request: Request, context: ReportDownloadRouteContext) {
+  const session = await getSession()
   const { reportId } = await context.params
   const report = await findReport(reportId)
 
-  if (!report) {
-    return new Response("Report not found.", { status: 404 })
+  if (!report || (report.userId !== session?.user.id && !(await getAdminPrincipal()))) {
+    return NextResponse.json({ error: "Report not found." }, { status: 404 })
+  }
+
+  const requestCookies = (await cookies()).getAll().map((cookie) => ({ name: cookie.name, value: cookie.value }))
+
+  let pdf: Buffer
+  try {
+    pdf = await renderReportPdf({ reportId: report.id, cookies: requestCookies })
+  } catch (error) {
+    console.error(`[reports] PDF generation failed for report ${reportId}:`, error)
+    return NextResponse.json(
+      { error: "Couldn't generate the PDF right now. Please try again." },
+      { status: 503 },
+    )
   }
 
   await saveReportDownload({
     reportId,
-    format: "print-html",
+    format: "pdf",
     userAgent: request.headers.get("user-agent") ?? undefined,
   })
   await saveAuditLog({
-    action: "Downloaded printable report",
+    action: "Downloaded PDF report",
     targetType: "download",
     targetId: reportId,
   })
 
-  return new Response(renderPrintableReport(report), {
+  return new Response(new Uint8Array(pdf), {
     headers: {
-      "Content-Disposition": `attachment; filename="aurora-skinsense-${report.id}.html"`,
-      "Content-Type": "text/html; charset=utf-8",
+      "Content-Disposition": `attachment; filename="aurora-skinsense-${report.id}.pdf"`,
+      "Content-Type": "application/pdf",
     },
   })
 }

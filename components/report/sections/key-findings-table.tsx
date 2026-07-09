@@ -9,7 +9,7 @@ export function KeyFindingsTable({ vm }: { vm: ReportViewModel }) {
     <Card className="print:break-inside-avoid">
       <CardHeader>
         <CardTitle>Key Findings</CardTitle>
-        <CardDescription>What Aura's AI noticed, why it matters, and what to do about it.</CardDescription>
+        <CardDescription>What Aura&apos;s AI noticed, why it matters, and what to do about it.</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>

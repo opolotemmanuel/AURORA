@@ -10,7 +10,7 @@ export function SkinMetrics({ vm }: { vm: ReportViewModel }) {
     <Card className="print:break-inside-avoid">
       <CardHeader>
         <CardTitle>Skin Metrics</CardTitle>
-        <CardDescription>Aura's read on each metric it was able to assess in this scan.</CardDescription>
+        <CardDescription>Aura&apos;s read on each metric it was able to assess in this scan.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
         {vm.metrics.map((metric) => (

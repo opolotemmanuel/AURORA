@@ -32,10 +32,14 @@ export async function loadReportViewModel(reportId: string): Promise<ReportViewM
 
   if (!scan) return null
 
-  await saveAuditLog({
+  // Not awaited: a view-audit entry is a pure side effect that shouldn't add
+  // its own DB round trip to every report render.
+  void saveAuditLog({
     action: "Viewed report detail",
     targetType: "report",
     targetId: report.id,
+  }).catch((error) => {
+    console.error(`[reports] failed to save audit log for report ${report.id}:`, error)
   })
 
   return buildReportViewModel({

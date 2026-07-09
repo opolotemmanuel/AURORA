@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import {
   IconArrowUp,
   IconLoader2,
+  IconMicrophone,
   IconPaperclip,
   IconPlus,
   IconSparkles,
@@ -14,6 +15,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ChatMessageContent } from "@/components/chat/chat-message-content"
+import { useVoiceDictation } from "@/hooks/use-voice-dictation"
 import { MAX_CHAT_MESSAGE_LENGTH } from "@/lib/scans/constants"
 import { toUserFacingChatError } from "@/lib/chat/errors"
 import { cn } from "@/lib/utils"
@@ -144,6 +146,18 @@ export function ScanAdviceComposer({
     null,
   )
 
+  const {
+    supported: voiceSupported,
+    listening,
+    toggleListening,
+    stopListening,
+  } = useVoiceDictation({
+    onTranscript: (text) => {
+      setDraft(text.slice(0, MAX_CHAT_MESSAGE_LENGTH))
+    },
+    onError: (message) => setError(message),
+  })
+
   const label =
     collapsedLabel ??
     (mode === "follow_up" ? "Ask about your scan" : "Ask about your skin")
@@ -269,6 +283,7 @@ export function ScanAdviceComposer({
   const handleNewChat = useCallback(async () => {
     if (mode !== "advice" || sending || startingNew) return
 
+    stopListening()
     setStartingNew(true)
     setError(null)
     detachPendingImage()
@@ -301,7 +316,7 @@ export function ScanAdviceComposer({
     } finally {
       setStartingNew(false)
     }
-  }, [mode, sending, startingNew])
+  }, [mode, sending, startingNew, stopListening])
 
   useEffect(() => {
     if (mode !== "advice" || !onToolbarStateChange) return
@@ -354,6 +369,7 @@ export function ScanAdviceComposer({
     const imageToSend = pendingImage
     if ((!content && !imageToSend) || sending) return
 
+    stopListening()
     setSending(true)
     setError(null)
     setDraft("")
@@ -530,7 +546,10 @@ export function ScanAdviceComposer({
                   variant="ghost"
                   size="icon-sm"
                   className="rounded-full"
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    stopListening()
+                    setOpen(false)
+                  }}
                   aria-label="Close chat"
                 >
                   <IconX className="size-4" />
@@ -550,7 +569,10 @@ export function ScanAdviceComposer({
                 variant="ghost"
                 size="icon-sm"
                 className="rounded-full"
-                onClick={() => setOpen(false)}
+                onClick={() => {
+                  stopListening()
+                  setOpen(false)
+                }}
                 aria-label="Close chat"
               >
                 <IconX className="size-4" />
@@ -598,7 +620,7 @@ export function ScanAdviceComposer({
             className={cn(
               "space-y-3",
               pinnedInput &&
-                "shrink-0 border-t border-border bg-background px-1 pt-3",
+                "shrink-0 bg-background px-1 pt-3",
               dockInput && "pb-6",
             )}
           >
@@ -633,35 +655,21 @@ export function ScanAdviceComposer({
             </div>
           ) : null}
 
-          <div className="flex items-center gap-1.5 rounded-2xl bg-muted/20 px-2 py-1.5">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept={ACCEPTED_IMAGE_TYPES}
-              className="sr-only"
-              onChange={handleImageSelect}
-              aria-label="Attach image"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              className="shrink-0 rounded-full text-muted-foreground"
-              disabled={sending}
-              onClick={() => fileInputRef.current?.click()}
-              aria-label="Attach image"
-            >
-              <IconPaperclip className="size-4" />
-            </Button>
+          <div
+            className={cn(
+              "overflow-hidden rounded-2xl border border-border bg-muted/20",
+              listening && "ring-2 ring-primary/30",
+            )}
+          >
             <Textarea
               ref={textareaRef}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder={placeholder}
-              rows={1}
+              rows={2}
               maxLength={MAX_CHAT_MESSAGE_LENGTH}
               disabled={sending}
-              className="max-h-24 min-h-9 flex-1 resize-none border-0 bg-transparent px-1 py-2 text-sm leading-5 shadow-none focus-visible:border-transparent focus-visible:ring-0"
+              className="max-h-32 min-h-14 resize-none border-0 bg-transparent px-3 pt-3 pb-2 text-sm leading-5 shadow-none focus-visible:border-transparent focus-visible:ring-0"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault()
@@ -669,21 +677,74 @@ export function ScanAdviceComposer({
                 }
               }}
             />
-            <Button
-              type="button"
-              size="icon-sm"
-              className="shrink-0 rounded-full"
-              disabled={sending || !canSend}
-              onClick={() => void handleSend()}
-              aria-label="Send message"
-            >
-              {sending ? (
-                <IconLoader2 className="size-4 animate-spin" />
-              ) : (
-                <IconArrowUp className="size-4" />
-              )}
-            </Button>
+            <div className="flex items-center justify-between gap-2 px-2 pb-2">
+              <div className="flex items-center gap-1">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept={ACCEPTED_IMAGE_TYPES}
+                  className="sr-only"
+                  onChange={handleImageSelect}
+                  aria-label="Attach image"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="shrink-0 rounded-full text-muted-foreground"
+                  disabled={sending}
+                  onClick={() => fileInputRef.current?.click()}
+                  aria-label="Attach image"
+                >
+                  <IconPaperclip className="size-4" />
+                </Button>
+              </div>
+              <div className="flex items-center gap-1">
+                {voiceSupported ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className={cn(
+                      "shrink-0 rounded-full",
+                      listening
+                        ? "text-primary"
+                        : "text-muted-foreground",
+                    )}
+                    disabled={sending}
+                    onClick={() => toggleListening(draft)}
+                    aria-label={
+                      listening ? "Stop voice input" : "Start voice input"
+                    }
+                    aria-pressed={listening}
+                  >
+                    <IconMicrophone
+                      className={cn("size-4", listening && "animate-pulse")}
+                    />
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  size="icon-sm"
+                  className="shrink-0 rounded-full"
+                  disabled={sending || !canSend}
+                  onClick={() => void handleSend()}
+                  aria-label="Send message"
+                >
+                  {sending ? (
+                    <IconLoader2 className="size-4 animate-spin" />
+                  ) : (
+                    <IconArrowUp className="size-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
           </div>
+          {listening ? (
+            <p className="px-1 text-xs text-muted-foreground">
+              Listening… tap the microphone to stop.
+            </p>
+          ) : null}
           </div>
         </div>
       )}

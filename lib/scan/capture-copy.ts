@@ -9,7 +9,7 @@ export const CAPTURE_COPY: Record<
 > = {
   upload: {
     title: "Scan your skin",
-    description: "Clear photo → personalized guidance & product picks",
+    description: "Clear photo, personalized guidance & product picks",
   },
   camera: {
     title: "Scan your skin",

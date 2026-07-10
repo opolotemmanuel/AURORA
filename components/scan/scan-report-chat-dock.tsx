@@ -127,19 +127,14 @@ export function ScanReportChatDock({
   }
 
   return (
-    <div
-      className={cn(
-        "relative inline-flex w-full max-w-[min(92vw,380px)] flex-col items-end",
-        className,
-      )}
-    >
+    <div className={cn("flex items-end justify-end gap-3", className)}>
+      <ScanFollowUpChat scanId={scanId} className="relative shrink-0" />
       <ScanFeedbackWidget
         scanId={scanId}
         existingFeedback={existingFeedback}
         anchored
-        className="pointer-events-auto absolute right-0 bottom-full z-40 mb-1.5"
+        className="pointer-events-auto relative h-12 w-12 shrink-0"
       />
-      <ScanFollowUpChat scanId={scanId} className="relative w-full" />
     </div>
   )
 }

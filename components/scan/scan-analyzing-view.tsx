@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { IconRefresh } from "@tabler/icons-react"
 
 import { AnimatedBadge } from "@/components/motion/animated-badge"
+import { ScanAnalysisProgressRow } from "@/components/scan/scan-analysis-progress-row"
 import { ScanAnalyzingOverlay } from "@/components/scan/scan-analyzing-overlay"
 import { ScanHeaderActionButton } from "@/components/scan/scan-header-action"
 import { ScanStepFrame } from "@/components/scan/scan-step-frame"
@@ -11,31 +12,20 @@ import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { toUserFacingScanError } from "@/lib/scan/errors"
 import type {
-  AnalysisToolCall,
   AnalyzeScanResult,
   ScanClimateContext,
   SkinAssessment,
 } from "@/lib/scan/types"
-import { cn } from "@/lib/utils"
 
-const ANALYSIS_STEPS: Array<Pick<AnalysisToolCall, "id" | "name" | "label">> = [
-  {
-    id: "sync_climate",
-    name: "sync_climate",
-    label: "Checking local climate",
-  },
-  { id: "locate_face", name: "locate_face", label: "Locating facial regions" },
-  {
-    id: "assess_texture",
-    name: "assess_texture_bands",
-    label: "Assessing texture bands",
-  },
-  {
-    id: "match_products",
-    name: "match_products",
-    label: "Matching Aurora recommendations",
-  },
-]
+const ANALYSIS_PHASE_LABELS = [
+  "Checking local climate",
+  "Locating facial regions",
+  "Assessing texture bands",
+  "Matching recommendations",
+] as const
+
+const PHASE_ADVANCE_MS = 900
+const FINAL_PHASE_INDEX = ANALYSIS_PHASE_LABELS.length - 1
 
 const WAIT_DESCRIPTIONS = [
   "Please wait while we review your photo...",
@@ -66,13 +56,16 @@ export function ScanAnalyzingView({
   onComplete,
   onRetry,
 }: ScanAnalyzingViewProps) {
-  const [toolCalls, setToolCalls] = useState<AnalysisToolCall[]>(() =>
-    ANALYSIS_STEPS.map((step) => ({ ...step, status: "pending" as const })),
-  )
-  const [activeLabel, setActiveLabel] = useState("Preparing analysis")
+  const [phaseIndex, setPhaseIndex] = useState(0)
   const [waitDescriptionIndex, setWaitDescriptionIndex] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [isComplete, setIsComplete] = useState(false)
+
+  const activeLabel = error
+    ? "Analysis failed"
+    : isComplete
+      ? "Analysis complete"
+      : ANALYSIS_PHASE_LABELS[Math.min(phaseIndex, FINAL_PHASE_INDEX)]
 
   useEffect(() => {
     if (error || isComplete) return
@@ -96,39 +89,22 @@ export function ScanAnalyzingView({
     let cancelled = false
     let stepIndex = 0
 
-    const syncStepVisuals = () => {
-      const step = ANALYSIS_STEPS[stepIndex]
-      if (!step) return
-
-      setActiveLabel(step.label)
-      setToolCalls((current) =>
-        current.map((entry, index) => ({
-          ...entry,
-          status:
-            index < stepIndex
-              ? "done"
-              : index === stepIndex
-                ? "running"
-                : "pending",
-          detail: index < stepIndex ? "Complete" : undefined,
-        })),
-      )
-    }
-
-    const advanceStep = () => {
+    const advancePhase = () => {
       if (cancelled) return
-      syncStepVisuals()
-      if (stepIndex < ANALYSIS_STEPS.length - 1) {
+
+      setPhaseIndex(stepIndex)
+
+      if (stepIndex < FINAL_PHASE_INDEX) {
         window.setTimeout(() => {
           if (cancelled) return
           stepIndex += 1
-          advanceStep()
-        }, 900)
+          advancePhase()
+        }, PHASE_ADVANCE_MS)
       }
     }
 
     async function run() {
-      advanceStep()
+      advancePhase()
 
       try {
         const mimeType = imageBlob.type.startsWith("image/")
@@ -164,22 +140,11 @@ export function ScanAnalyzingView({
             ? toUserFacingScanError(new Error("Skin analysis failed"))
             : result.error
           setError(message)
-          setActiveLabel("Analysis failed")
-          setToolCalls((current) =>
-            current.map((entry) =>
-              entry.status === "running"
-                ? { ...entry, status: "error", detail: "Failed" }
-                : entry,
-            ),
-          )
           return
         }
 
+        setPhaseIndex(FINAL_PHASE_INDEX)
         setIsComplete(true)
-        setActiveLabel("Analysis complete")
-        setToolCalls((current) =>
-          current.map((entry) => ({ ...entry, status: "done", detail: "Complete" })),
-        )
         onComplete({
           assessment: result.assessment,
           scanId: result.scanId,
@@ -188,14 +153,6 @@ export function ScanAnalyzingView({
       } catch {
         if (!cancelled) {
           setError(toUserFacingScanError(new Error("Skin analysis failed")))
-          setActiveLabel("Analysis failed")
-          setToolCalls((current) =>
-            current.map((entry) =>
-              entry.status === "running"
-                ? { ...entry, status: "error", detail: "Failed" }
-                : entry,
-            ),
-          )
         }
       }
     }
@@ -205,8 +162,6 @@ export function ScanAnalyzingView({
       cancelled = true
     }
   }, [imageBlob, livePayload, onComplete])
-
-  const activePhase = toolCalls.findIndex((call) => call.status === "running")
 
   return (
     <ScanStepFrame
@@ -243,7 +198,7 @@ export function ScanAnalyzingView({
         />
         {!error && !isComplete ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/45 backdrop-blur-[1px]">
-            <ScanAnalyzingOverlay activePhase={Math.max(activePhase, 0)} />
+            <ScanAnalyzingOverlay activePhase={phaseIndex} />
             <AnimatedBadge
               status="loading"
               size="md"
@@ -264,41 +219,9 @@ export function ScanAnalyzingView({
         </Alert>
       ) : null}
 
-      <ul className="space-y-2">
-        {toolCalls.map((call) => (
-          <li
-            key={call.id}
-            className={cn(
-              "flex items-center justify-between rounded-xl border border-border px-3 py-2 text-sm",
-              call.status === "running" && "bg-muted/50",
-              call.status === "error" && "border-destructive/40 bg-destructive/5",
-            )}
-          >
-            <span className="text-foreground">{call.label}</span>
-            <AnimatedBadge
-              status={
-                call.status === "done"
-                  ? "success"
-                  :                 call.status === "error"
-                    ? "danger"
-                    : call.status === "running"
-                      ? "loading"
-                      : "neutral"
-              }
-              size="sm"
-              showIcon
-            >
-              {call.status === "done"
-                ? "Done"
-                : call.status === "error"
-                  ? "Failed"
-                  : call.status === "running"
-                    ? "Running"
-                    : "Queued"}
-            </AnimatedBadge>
-          </li>
-        ))}
-      </ul>
+      {!error && !isComplete ? (
+        <ScanAnalysisProgressRow label={activeLabel} />
+      ) : null}
     </ScanStepShell>
     </ScanStepFrame>
   )

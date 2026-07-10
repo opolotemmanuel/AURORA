@@ -15,6 +15,9 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ChatMessageContent } from "@/components/chat/chat-message-content"
+import { BloomGlow } from "@/components/chat/bloom-glow"
+import { ChatThinkingIndicator } from "@/components/chat/chat-thinking-indicator"
+import { VoiceRecordingBar } from "@/components/chat/voice-recording-bar"
 import { useVoiceDictation } from "@/hooks/use-voice-dictation"
 import { MAX_CHAT_MESSAGE_LENGTH } from "@/lib/scans/constants"
 import { toUserFacingChatError } from "@/lib/chat/errors"
@@ -130,6 +133,8 @@ export function ScanAdviceComposer({
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const tempIdCounter = useRef(0)
+  const sendingRef = useRef(false)
+  const handleSendRef = useRef<(text?: string) => Promise<void>>(async () => {})
 
   const [open, setOpen] = useState(inline)
   const [messages, setMessages] = useState<ChatMessageItem[]>([])
@@ -149,11 +154,18 @@ export function ScanAdviceComposer({
   const {
     supported: voiceSupported,
     listening,
-    toggleListening,
-    stopListening,
+    processing: voiceProcessing,
+    levels: voiceLevels,
+    elapsedMs: voiceElapsedMs,
+    startListening,
+    cancelListening,
+    confirmListening,
   } = useVoiceDictation({
-    onTranscript: (text) => {
-      setDraft(text.slice(0, MAX_CHAT_MESSAGE_LENGTH))
+    onTranscript: async (text) => {
+      const message = text.trim().slice(0, MAX_CHAT_MESSAGE_LENGTH)
+      if (message) {
+        await handleSendRef.current(message)
+      }
     },
     onError: (message) => setError(message),
   })
@@ -212,11 +224,7 @@ export function ScanAdviceComposer({
           if (!cancelled) {
             await loadConversation(res, data)
           }
-        } else if (
-          startFresh &&
-          !conversationId &&
-          !initialConversationId
-        ) {
+        } else if (startFresh && !initialConversationId) {
           const res = await fetch("/api/chat/advice")
           const data = (await res.json()) as {
             ok: boolean
@@ -231,7 +239,7 @@ export function ScanAdviceComposer({
             await loadConversation(res, data)
           }
         } else {
-          const activeConversationId = conversationId ?? initialConversationId
+          const activeConversationId = initialConversationId
           const query = activeConversationId
             ? `?conversationId=${encodeURIComponent(activeConversationId)}`
             : ""
@@ -264,7 +272,7 @@ export function ScanAdviceComposer({
     return () => {
       cancelled = true
     }
-  }, [conversationId, initialConversationId, mode, scanId, startFresh])
+  }, [initialConversationId, mode, scanId, startFresh])
 
   function detachPendingImage() {
     setPendingImage(null)
@@ -283,7 +291,7 @@ export function ScanAdviceComposer({
   const handleNewChat = useCallback(async () => {
     if (mode !== "advice" || sending || startingNew) return
 
-    stopListening()
+    cancelListening()
     setStartingNew(true)
     setError(null)
     detachPendingImage()
@@ -316,7 +324,7 @@ export function ScanAdviceComposer({
     } finally {
       setStartingNew(false)
     }
-  }, [mode, sending, startingNew, stopListening])
+  }, [mode, sending, startingNew, cancelListening])
 
   useEffect(() => {
     if (mode !== "advice" || !onToolbarStateChange) return
@@ -367,9 +375,10 @@ export function ScanAdviceComposer({
   async function handleSend(text?: string) {
     const content = (text ?? draft).trim()
     const imageToSend = pendingImage
-    if ((!content && !imageToSend) || sending) return
+    if ((!content && !imageToSend) || sendingRef.current) return
 
-    stopListening()
+    cancelListening()
+    sendingRef.current = true
     setSending(true)
     setError(null)
     setDraft("")
@@ -463,9 +472,12 @@ export function ScanAdviceComposer({
       }
       setError(toUserFacingChatError("Could not send message."))
     } finally {
+      sendingRef.current = false
       setSending(false)
     }
   }
+
+  handleSendRef.current = handleSend
 
   function handleSuggestion(suggestion: string) {
     void handleSend(suggestion)
@@ -547,7 +559,7 @@ export function ScanAdviceComposer({
                   size="icon-sm"
                   className="rounded-full"
                   onClick={() => {
-                    stopListening()
+                    cancelListening()
                     setOpen(false)
                   }}
                   aria-label="Close chat"
@@ -570,7 +582,7 @@ export function ScanAdviceComposer({
                 size="icon-sm"
                 className="rounded-full"
                 onClick={() => {
-                  stopListening()
+                  cancelListening()
                   setOpen(false)
                 }}
                 aria-label="Close chat"
@@ -610,9 +622,12 @@ export function ScanAdviceComposer({
                 </div>
               ) : null
             ) : (
-              messages.map((message) => (
-                <MessageBubble key={message.id} message={message} />
-              ))
+              <>
+                {messages.map((message) => (
+                  <MessageBubble key={message.id} message={message} />
+                ))}
+                {sending ? <ChatThinkingIndicator /> : null}
+              </>
             )}
           </div>
 
@@ -655,96 +670,99 @@ export function ScanAdviceComposer({
             </div>
           ) : null}
 
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPTED_IMAGE_TYPES}
+            className="sr-only"
+            onChange={handleImageSelect}
+            aria-label="Attach image"
+          />
+
           <div
             className={cn(
               "overflow-hidden rounded-2xl border border-border bg-muted/20",
-              listening && "ring-2 ring-primary/30",
+              (listening || voiceProcessing) && "ring-2 ring-primary/30",
             )}
           >
-            <Textarea
-              ref={textareaRef}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder={placeholder}
-              rows={2}
-              maxLength={MAX_CHAT_MESSAGE_LENGTH}
-              disabled={sending}
-              className="max-h-32 min-h-14 resize-none border-0 bg-transparent px-3 pt-3 pb-2 text-sm leading-5 shadow-none focus-visible:border-transparent focus-visible:ring-0"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault()
-                  void handleSend()
-                }
-              }}
-            />
-            <div className="flex items-center justify-between gap-2 px-2 pb-2">
-              <div className="flex items-center gap-1">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept={ACCEPTED_IMAGE_TYPES}
-                  className="sr-only"
-                  onChange={handleImageSelect}
-                  aria-label="Attach image"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="shrink-0 rounded-full text-muted-foreground"
+            {listening || voiceProcessing ? (
+              <VoiceRecordingBar
+                levels={voiceLevels}
+                elapsedMs={voiceElapsedMs}
+                processing={voiceProcessing}
+                disabled={sending}
+                onAttach={() => fileInputRef.current?.click()}
+                onCancel={cancelListening}
+                onConfirm={confirmListening}
+                className="border-0 bg-transparent"
+              />
+            ) : (
+              <>
+                <Textarea
+                  ref={textareaRef}
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  placeholder={placeholder}
+                  rows={2}
+                  maxLength={MAX_CHAT_MESSAGE_LENGTH}
                   disabled={sending}
-                  onClick={() => fileInputRef.current?.click()}
-                  aria-label="Attach image"
-                >
-                  <IconPaperclip className="size-4" />
-                </Button>
-              </div>
-              <div className="flex items-center gap-1">
-                {voiceSupported ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    className={cn(
-                      "shrink-0 rounded-full",
-                      listening
-                        ? "text-primary"
-                        : "text-muted-foreground",
-                    )}
-                    disabled={sending}
-                    onClick={() => toggleListening(draft)}
-                    aria-label={
-                      listening ? "Stop voice input" : "Start voice input"
+                  className="max-h-32 min-h-14 resize-none border-0 bg-transparent px-3 pt-3 pb-2 text-sm leading-5 shadow-none focus-visible:border-transparent focus-visible:ring-0"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault()
+                      void handleSend()
                     }
-                    aria-pressed={listening}
-                  >
-                    <IconMicrophone
-                      className={cn("size-4", listening && "animate-pulse")}
-                    />
-                  </Button>
-                ) : null}
-                <Button
-                  type="button"
-                  size="icon-sm"
-                  className="shrink-0 rounded-full"
-                  disabled={sending || !canSend}
-                  onClick={() => void handleSend()}
-                  aria-label="Send message"
-                >
-                  {sending ? (
-                    <IconLoader2 className="size-4 animate-spin" />
-                  ) : (
-                    <IconArrowUp className="size-4" />
-                  )}
-                </Button>
-              </div>
-            </div>
+                  }}
+                />
+                <div className="flex items-center justify-between gap-2 px-2 pb-2">
+                  <div className="flex items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="shrink-0 rounded-full text-muted-foreground"
+                      disabled={sending}
+                      onClick={() => fileInputRef.current?.click()}
+                      aria-label="Attach image"
+                    >
+                      <IconPaperclip className="size-4" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {voiceSupported ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="shrink-0 rounded-full text-muted-foreground"
+                        disabled={sending || voiceProcessing}
+                        onClick={() => startListening(draft)}
+                        aria-label="Start voice input"
+                      >
+                        <IconMicrophone className="size-4" />
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      size="icon-sm"
+                      className="shrink-0 rounded-full"
+                      disabled={sending || !canSend}
+                      onClick={() => void handleSend()}
+                      aria-label="Send message"
+                    >
+                      {sending ? (
+                        <span className="inline-flex size-4 items-center justify-center overflow-hidden">
+                          <BloomGlow size={16} dotSize={2} />
+                        </span>
+                      ) : (
+                        <IconArrowUp className="size-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
-          {listening ? (
-            <p className="px-1 text-xs text-muted-foreground">
-              Listening… tap the microphone to stop.
-            </p>
-          ) : null}
           </div>
         </div>
       )}

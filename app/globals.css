@@ -157,4 +157,38 @@
     border: 2px solid var(--background);
     border-radius: 9999px;
   }
+
+  .chat-thinking-text {
+    background-image: linear-gradient(
+      90deg,
+      var(--muted-foreground) 0%,
+      var(--muted-foreground) 38%,
+      var(--foreground) 50%,
+      var(--muted-foreground) 62%,
+      var(--muted-foreground) 100%
+    );
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: chat-thinking-wave 2.4s ease-in-out infinite;
+  }
+
+  @keyframes chat-thinking-wave {
+    0% {
+      background-position: 120% 50%;
+    }
+
+    100% {
+      background-position: -120% 50%;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .chat-thinking-text {
+      animation: none;
+      background-image: none;
+      color: var(--muted-foreground);
+    }
+  }
 }

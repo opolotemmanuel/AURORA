@@ -47,6 +47,7 @@ export async function POST(request: Request) {
       estimatedMessagesRemaining: result.estimatedMessagesRemaining,
     })
   } catch (err) {
+    console.error("[chat/advice] POST failed:", err)
     return NextResponse.json(
       { ok: false, error: toUserFacingChatError(err, 500) },
       { status: 500 },

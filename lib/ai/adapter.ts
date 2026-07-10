@@ -14,6 +14,11 @@ import {
 } from "@/lib/ai/prompts/chat"
 import { analyzeWithGemini } from "@/lib/ai/providers/gemini"
 import { generateChatReply } from "@/lib/ai/providers/gemini-chat"
+import {
+  transcribeWithGemini,
+  type TranscribeAudioInput,
+  type TranscribeAudioResult,
+} from "@/lib/ai/providers/gemini-transcribe"
 import type { AnalyzeSkinInput, AnalyzeSkinResult } from "@/lib/ai/types"
 import {
   mapUserClimateToTags,
@@ -52,6 +57,12 @@ export async function analyzeSkin(
     userContext,
     activeClimateTags,
   })
+}
+
+export async function transcribeSpeech(
+  input: TranscribeAudioInput,
+): Promise<TranscribeAudioResult> {
+  return transcribeWithGemini(input)
 }
 
 export type ChatAboutSkinInput = {

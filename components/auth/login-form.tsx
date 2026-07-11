@@ -73,6 +73,9 @@ export function LoginForm() {
     }
 
     router.push(callbackURL)
+    // Server components (e.g. anything reading getSession()) won't know
+    // the session exists until the router cache is invalidated.
+    router.refresh()
   }
 
   async function onAppleSignIn() {

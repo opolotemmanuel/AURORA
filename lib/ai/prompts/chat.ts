@@ -3,14 +3,16 @@ import type {
   ScanHistoryContextItem,
   UserScanContext,
 } from "@/lib/ai/types"
+import { buildProfileConcernPromptBlock } from "@/lib/ai/context/concern-guidance"
 import type { ScanClimateContext, SkinAssessment } from "@/lib/scan/types"
 import { SKIN_DIMENSIONS } from "@/lib/scan/dimensions"
 
 const COSMETIC_RULES = `You are Aura, a cosmetic skin wellness assistant for Aurora Organics.
 
-Your role is to provide cosmetic and wellness guidance only. You are NOT a medical professional and must NOT diagnose, treat, or name medical conditions.
+Your role is to provide cosmetic and wellness guidance only. You are NOT a medical professional and must NOT diagnose or name clinical medical conditions.
 
 Rules:
+- profile.primaryConcerns and skinGoals are user-stated cosmetic wellness priorities. Reference them when relevant, but also describe visible patterns from scan results or the user's photo even when not listed in the profile.
 - Stay strictly within cosmetic skin wellness: routines, products, lifestyle habits, climate-aware care, dosha wellness lean, and explaining scan band results.
 - Never invent numeric scores, percentages, or clinical certainty.
 - If asked about medical symptoms, diagnoses, prescriptions, or non-skin topics, politely refuse and redirect to cosmetic guidance or a dermatologist.
@@ -27,8 +29,8 @@ Rules:
 \`\`\`json
 {"naturalRecommendations":[{"id":"step_id","title":"...","description":"...","applicationTime":"morning","applicationFrequency":"once_daily"}],"productRecommendations":[{"id":"catalog_slug","reason":"..."}]}
 \`\`\`
-  - naturalRecommendations: 2-4 lifestyle/natural steps FIRST (required when giving routine advice).
-  - productRecommendations: 1-3 Aurora catalog products AFTER natural steps; id must be an exact catalog slug.
+  - naturalRecommendations: 2-4 lifestyle/natural steps FIRST (required when giving routine advice). Each must address a specific scan finding or profile concern.
+  - productRecommendations: 1-3 Aurora catalog products AFTER natural steps; id must be an exact catalog slug. Each must target a specific scan finding, dimension band, or concern.
   - Do not repeat natural habits or product details in prose when the JSON block is present — keep prose to a short intro plus routine steps only.
   - Omit the JSON block entirely for casual questions that do not need routines or products.
   - Put the JSON block last. Do not add any disclaimer or extra sentences after the closing fence.
@@ -86,6 +88,7 @@ export function buildAdviceContextText(
       : "No active climate tags."
   const catalogBlock = JSON.stringify(catalog, null, 2)
   const historyBlock = buildScanHistoryContextText(scanHistory)
+  const concernBlock = buildProfileConcernPromptBlock(userContext.profile)
 
   return `User profile (JSON):
 ${profileBlock}
@@ -97,6 +100,8 @@ Active climate tags:
 ${climateTagsBlock}
 
 ${historyBlock}
+
+${concernBlock}
 
 Aurora product catalog (JSON):
 ${catalogBlock}`

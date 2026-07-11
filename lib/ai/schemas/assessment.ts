@@ -18,12 +18,12 @@ export const skinAssessmentJsonSchema = {
       type: Type.STRING,
       enum: ["minimal", "mild", "moderate", "elevated", "not_assessed"],
       description:
-        "Coarse overall cosmetic assessment band. Never use percentages or medical diagnoses.",
+        "Coarse overall cosmetic assessment band from visible photo evidence. Never use percentages or medical diagnoses.",
     },
     dimensions: {
       type: Type.ARRAY,
       description:
-        "Exactly six cosmetic dimension assessments using the required ids.",
+        "Exactly six cosmetic dimension assessments from visible photo evidence using the required ids.",
       minItems: SKIN_DIMENSION_IDS.length,
       maxItems: SKIN_DIMENSION_IDS.length,
       items: {
@@ -42,7 +42,8 @@ export const skinAssessmentJsonSchema = {
           },
           note: {
             type: Type.STRING,
-            description: "Short personalized note referencing user context.",
+            description:
+              "Short note on what is visibly apparent in the photo for this dimension, plus any mapped profile primaryConcerns using cosmetic language.",
           },
         },
       },
@@ -74,12 +75,12 @@ export const skinAssessmentJsonSchema = {
     summary: {
       type: Type.STRING,
       description:
-        "2-4 sentence personalized cosmetic summary. Not a medical diagnosis.",
+        "2-4 sentence personalized cosmetic summary grounded in visible photo patterns across dimensions. Acknowledge profile primaryConcerns when listed, and call out other visible patterns even if not in the profile. Not a medical diagnosis.",
     },
     naturalRecommendations: {
       type: Type.ARRAY,
       description:
-        "3-4 personalized natural-care steps before products: lifestyle habits, climate-aware routines, and gentle at-home natural-ingredient ideas. Cosmetic guidance only.",
+        "3-4 natural-care steps tied to this scan's visible photo findings, dimension bands, and profile concerns/goals. Not generic advice. Cosmetic guidance only.",
       items: {
         type: Type.OBJECT,
         required: [
@@ -101,7 +102,7 @@ export const skinAssessmentJsonSchema = {
           description: {
             type: Type.STRING,
             description:
-              "1-2 sentences explaining the step and why it fits this user. Do not repeat applicationTime or applicationFrequency here.",
+              "1-2 sentences explaining the step and which scan finding or concern it addresses. Do not repeat applicationTime or applicationFrequency here.",
           },
           applicationTime: {
             type: Type.STRING,
@@ -127,7 +128,7 @@ export const skinAssessmentJsonSchema = {
     recommendations: {
       type: Type.ARRAY,
       description:
-        "2-4 Aurora product recommendations. id must be an exact catalog slug.",
+        "2-4 Aurora catalog products targeting this scan's visible findings, elevated/moderate dimension bands, and matching profile concerns. id must be an exact catalog slug.",
       items: {
         type: Type.OBJECT,
         required: [
@@ -146,7 +147,7 @@ export const skinAssessmentJsonSchema = {
           reason: {
             type: Type.STRING,
             description:
-              "Why this product fits the scan and user context, including how to use it. Do not repeat applicationTime or applicationFrequency here.",
+              "Why this product fits this scan's visible findings and concerns. Name the specific pattern or dimension it targets. Do not repeat applicationTime or applicationFrequency here.",
           },
           applicationTime: {
             type: Type.STRING,

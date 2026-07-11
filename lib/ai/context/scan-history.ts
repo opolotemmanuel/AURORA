@@ -5,7 +5,11 @@ import {
   SCAN_HISTORY_CACHE_REVALIDATE_SECONDS,
   scanHistoryContextTag,
 } from "@/lib/ai/context/cache-tags"
+import {
+  rememberScanHistoryContext,
+} from "@/lib/ai/context/memory-snapshot"
 import { prisma } from "@/lib/db/client"
+import { withDbRetry } from "@/lib/db/retry"
 import type { ScanHistoryContextItem } from "@/lib/ai/types"
 import type {
   NaturalRecommendation,
@@ -13,12 +17,15 @@ import type {
   SkinDimension,
 } from "@/lib/scan/types"
 
-export const CHAT_SCAN_HISTORY_LIMIT = 3
+export const SCAN_ANALYSIS_HISTORY_LIMIT = 3
+export const CHAT_SCAN_HISTORY_LIMIT = SCAN_ANALYSIS_HISTORY_LIMIT
 
 type GetUserScanHistoryOptions = {
   excludeScanId?: string
   limit?: number
 }
+
+export type { GetUserScanHistoryOptions }
 
 function compactDimensions(dimensions: unknown): ScanHistoryContextItem["dimensions"] {
   if (!Array.isArray(dimensions)) return []
@@ -79,29 +86,31 @@ async function fetchUserScanHistoryContext(
   excludeScanId: string,
   limit: number,
 ): Promise<ScanHistoryContextItem[]> {
-  const scans = await prisma.scan.findMany({
-    where: {
-      userId,
-      status: "completed",
-      result: { isNot: null },
-      ...(excludeScanId ? { id: { not: excludeScanId } } : {}),
-    },
-    orderBy: { createdAt: "desc" },
-    take: limit,
-    include: {
-      result: {
-        select: {
-          overallBand: true,
-          summary: true,
-          dimensions: true,
-          naturalRecommendations: true,
-          recommendations: true,
+  const scans = await withDbRetry(() =>
+    prisma.scan.findMany({
+      where: {
+        userId,
+        status: "completed",
+        result: { isNot: null },
+        ...(excludeScanId ? { id: { not: excludeScanId } } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+      include: {
+        result: {
+          select: {
+            overallBand: true,
+            summary: true,
+            dimensions: true,
+            naturalRecommendations: true,
+            recommendations: true,
+          },
         },
       },
-    },
-  })
+    }),
+  )
 
-  return scans.map((scan) => ({
+  const history = scans.map((scan) => ({
     scanId: scan.id,
     createdAt: scan.createdAt.toISOString(),
     overallBand: scan.result!.overallBand,
@@ -114,6 +123,9 @@ async function fetchUserScanHistoryContext(
       scan.result!.recommendations,
     ),
   }))
+
+  rememberScanHistoryContext(userId, excludeScanId, limit, history)
+  return history
 }
 
 export const getUserScanHistoryContext = cache(

@@ -14,6 +14,7 @@ type Ctx = {
   setValue: (v: string) => void;
   layoutId: string;
   variant: Variant;
+  roundedSegment: boolean;
 };
 
 const TabsCtx = createContext<Ctx | null>(null);
@@ -38,6 +39,7 @@ export function Tabs({
   value,
   onValueChange,
   variant = "pill",
+  roundedSegment = false,
   children,
   className,
 }: {
@@ -45,6 +47,7 @@ export function Tabs({
   value?: string;
   onValueChange?: (v: string) => void;
   variant?: Variant;
+  roundedSegment?: boolean;
   children: ReactNode;
   className?: string;
 }) {
@@ -59,7 +62,9 @@ export function Tabs({
   };
   return (
     <MotionConfig transition={reduce ? { duration: 0 } : transition}>
-      <TabsCtx.Provider value={{ value: current, setValue, layoutId, variant }}>
+      <TabsCtx.Provider
+        value={{ value: current, setValue, layoutId, variant, roundedSegment }}
+      >
         {/* layoutRoot: the indicator's layoutId measures in page coordinates, so
             inside fixed/scrolled containers it would replay scroll offsets as
             movement. The pill only ever travels within the list, so scoping
@@ -75,13 +80,23 @@ export function Tabs({
 const listClasses: Record<Variant, string> = {
   pill: "inline-flex items-center gap-1 rounded-full bg-card p-1",
   underline: "inline-flex items-center gap-1 border-b border-border",
-  segment: "inline-flex items-center gap-0 rounded-lg bg-card p-0.5",
+  segment: "inline-flex items-center gap-0 rounded-none bg-card p-0.5",
 };
 
 export function TabsList({ children, className }: { children: ReactNode; className?: string }) {
-  const { variant } = useTabs();
+  const { variant, roundedSegment } = useTabs();
+  const segmentListClass = roundedSegment
+    ? "inline-flex items-center gap-0 rounded-lg bg-card p-0.5"
+    : listClasses.segment;
+
   return (
-    <div role="tablist" className={cn(listClasses[variant], className)}>
+    <div
+      role="tablist"
+      className={cn(
+        variant === "segment" ? segmentListClass : listClasses[variant],
+        className,
+      )}
+    >
       {children}
     </div>
   );
@@ -100,7 +115,7 @@ export function TabsTrigger({
   indicatorClassName?: string;
   pending?: boolean;
 }) {
-  const { value: current, setValue, layoutId, variant } = useTabs();
+  const { value: current, setValue, layoutId, variant, roundedSegment } = useTabs();
   const active = current === value;
   const showPending = Boolean(pending);
 
@@ -136,14 +151,23 @@ export function TabsTrigger({
 
   // Pill + Segment use the same trick: a max-contrast pill slides via layoutId,
   // text uses `mix-blend-exclusion` so it inverts dynamically against the moving bg.
-  const radius = variant === "pill" ? "rounded-full" : "rounded-md";
+  const radius =
+    variant === "pill"
+      ? "rounded-full"
+      : variant === "segment"
+        ? roundedSegment
+          ? "rounded-md"
+          : "rounded-none"
+        : "rounded-md"
+  const indicatorRadius =
+    variant === "pill" ? 9999 : variant === "segment" ? (roundedSegment ? 8 : 0) : 8
 
   return (
     <div className="relative">
       {active ? (
         <motion.span
           layoutId={layoutId}
-          style={{ borderRadius: variant === "pill" ? 9999 : 8 }}
+          style={{ borderRadius: indicatorRadius }}
           className={cn(
             "absolute inset-0 bg-primary",
             radius,
@@ -169,7 +193,7 @@ export function TabsTrigger({
         {children}
       </button>
     </div>
-  );
+  )
 }
 
 export function TabsContent({

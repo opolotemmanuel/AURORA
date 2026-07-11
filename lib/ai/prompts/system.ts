@@ -1,6 +1,7 @@
 import type {
   AnalyzeSkinInput,
   CatalogProductContext,
+  ScanHistoryContextItem,
   UserScanContext,
 } from "@/lib/ai/types"
 import { SKIN_DIMENSIONS } from "@/lib/scan/dimensions"
@@ -29,6 +30,8 @@ ${dimensionList}
 - Weight product recommendations toward catalog items whose climateTags match the user's active climate tags when provided.
 - Recommend 2-4 products ONLY from the provided catalog. Each recommendation id must be an exact catalog slug.
 - When a catalog product has ingredientList, use it for ingredient-aware reasoning. Fall back to ingredients text only when ingredientList is empty. Cosmetic framing only.
+- Use prior scan history when provided to note cosmetic trends — never invent numeric progress scores.
+- Use personalized ingredient actives when provided to inform natural recommendations and product reasons.
 - Never recommend a catalog product whose ingredientList conflicts with profile.allergies when allergies are provided.
 - Explain each recommendation with a personalized reason, including how the product type is typically used (e.g. serum after cleansing). applicationTime and applicationFrequency fields are the source of truth for timing — keep reason/description focused on why it fits this user.
 - If the image quality is insufficient, use not_assessed bands and explain briefly in the summary.
@@ -39,6 +42,10 @@ export function buildUserContextText(
   userContext: UserScanContext,
   catalog: CatalogProductContext[],
   activeClimateTags: string[] = [],
+  options: {
+    scanHistory?: ScanHistoryContextItem[]
+    recommendedActives?: string
+  } = {},
 ): string {
   const profileBlock = userContext.profile
     ? JSON.stringify(userContext.profile, null, 2)
@@ -51,6 +58,12 @@ export function buildUserContextText(
       ? activeClimateTags.join(", ")
       : "No active climate tags."
   const catalogBlock = JSON.stringify(catalog, null, 2)
+  const historyBlock =
+    options.scanHistory && options.scanHistory.length > 0
+      ? JSON.stringify(options.scanHistory, null, 2)
+      : "No prior completed scans."
+  const activesBlock =
+    options.recommendedActives ?? "No structured ingredient actives matched."
 
   return `User profile (JSON):
 ${profileBlock}
@@ -60,6 +73,12 @@ ${locationBlock}
 
 Active climate tags for catalog matching:
 ${climateTagsBlock}
+
+Prior scan history (JSON):
+${historyBlock}
+
+Personalized ingredient actives to consider (cosmetic guidance only):
+${activesBlock}
 
 Aurora product catalog (JSON). Use only these slugs for recommendation ids. Products listed first are climate-matched when tags apply:
 ${catalogBlock}
@@ -72,6 +91,10 @@ export function buildLiveTranscriptContextText(
   catalog: CatalogProductContext[],
   transcript: string,
   activeClimateTags: string[] = [],
+  options: {
+    scanHistory?: ScanHistoryContextItem[]
+    recommendedActives?: string
+  } = {},
 ): string {
   const profileBlock = userContext.profile
     ? JSON.stringify(userContext.profile, null, 2)
@@ -84,6 +107,12 @@ export function buildLiveTranscriptContextText(
       ? activeClimateTags.join(", ")
       : "No active climate tags."
   const catalogBlock = JSON.stringify(catalog, null, 2)
+  const historyBlock =
+    options.scanHistory && options.scanHistory.length > 0
+      ? JSON.stringify(options.scanHistory, null, 2)
+      : "No prior completed scans."
+  const activesBlock =
+    options.recommendedActives ?? "No structured ingredient actives matched."
 
   return `User profile (JSON):
 ${profileBlock}
@@ -93,6 +122,12 @@ ${locationBlock}
 
 Active climate tags for catalog matching:
 ${climateTagsBlock}
+
+Prior scan history (JSON):
+${historyBlock}
+
+Personalized ingredient actives to consider (cosmetic guidance only):
+${activesBlock}
 
 Aurora product catalog (JSON). Use only these slugs for recommendation ids. Products listed first are climate-matched when tags apply:
 ${catalogBlock}
@@ -120,12 +155,15 @@ export function buildAnalyzeContents(
         input.catalog,
         input.liveTranscript,
         activeClimateTags,
+        {
+          scanHistory: input.scanHistory,
+          recommendedActives: input.recommendedActives,
+        },
       )
-    : buildUserContextText(
-        input.userContext,
-        input.catalog,
-        activeClimateTags,
-      )
+    : buildUserContextText(input.userContext, input.catalog, activeClimateTags, {
+        scanHistory: input.scanHistory,
+        recommendedActives: input.recommendedActives,
+      })
 
   return {
     systemInstruction,

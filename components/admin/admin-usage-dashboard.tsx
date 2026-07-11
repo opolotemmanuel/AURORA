@@ -5,6 +5,7 @@ import { AdminUsageFilters } from "@/components/admin/admin-usage-filters"
 import { ModelHealthPanel } from "@/components/admin/model-health-panel"
 import { UsageBarChart } from "@/components/dashboard/usage-chart"
 import { StatCard } from "@/components/dashboard/page-header"
+import { CompactNumber } from "@/components/ui/compact-number"
 import {
   Table,
   TableBody,
@@ -16,7 +17,11 @@ import {
 import type { AdminUsageAnalytics } from "@/lib/admin/usage-analytics"
 import { buildModelHealthSummary } from "@/lib/models/status"
 import { listModelRates } from "@/lib/models/queries"
-import { formatMicroUsdCompact } from "@/lib/pricing/format-cost"
+import {
+  formatExactMicroUsd,
+  formatMicroUsdCompact,
+  shouldCompactMicroUsd,
+} from "@/lib/pricing/format-cost"
 import { formatTokenBreakdown } from "@/lib/tokens/format-usage"
 
 type AdminUsageDashboardProps = {
@@ -79,17 +84,26 @@ export async function AdminUsageDashboard({
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="AI tokens"
-          value={tokens.totalTokens.toLocaleString()}
+          value={tokens.totalTokens}
           hint={formatTokenBreakdown(tokens)}
         />
         <StatCard
           label="Est. provider cost"
           value={formatMicroUsdCompact(tokens.estimatedCostMicros)}
+          tooltip={
+            shouldCompactMicroUsd(tokens.estimatedCostMicros)
+              ? formatExactMicroUsd(tokens.estimatedCostMicros)
+              : undefined
+          }
         />
         <StatCard
           label="Scans used"
-          value={analytics.scansUsed.toLocaleString()}
-          hint={`${analytics.scansGranted.toLocaleString()} granted`}
+          value={analytics.scansUsed}
+          hint={
+            <>
+              <CompactNumber value={analytics.scansGranted} /> granted
+            </>
+          }
         />
         <StatCard label="Chat replies" value={analytics.chatCount} />
       </div>

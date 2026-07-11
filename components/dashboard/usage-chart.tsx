@@ -8,6 +8,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart"
+import { formatCompactNumber } from "@/lib/format/compact-number"
 
 const CHART_MARGIN = { top: 8, right: 8, left: 12, bottom: 0 }
 
@@ -49,7 +50,7 @@ export function UsageBarChart({
           tickMargin={8}
           className="text-xs fill-muted-foreground"
         />
-        <YAxis {...yAxisProps} />
+        <YAxis {...yAxisProps} tickFormatter={(value) => formatCompactNumber(value)} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Bar dataKey="value" fill="var(--color-value)" radius={[4, 4, 0, 0]} />
       </BarChart>
@@ -77,7 +78,7 @@ export function RoleDistributionChart({
           tickMargin={8}
           className="text-xs fill-muted-foreground"
         />
-        <YAxis {...yAxisProps} />
+        <YAxis {...yAxisProps} tickFormatter={(value) => formatCompactNumber(value)} />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Bar dataKey="count" fill="var(--color-count)" radius={[4, 4, 0, 0]} />
       </BarChart>

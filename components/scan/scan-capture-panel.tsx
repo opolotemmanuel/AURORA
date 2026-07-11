@@ -7,15 +7,24 @@ import { ScanCameraHints } from "@/components/scan/scan-camera-hints"
 import { ScanCameraView } from "@/components/scan/scan-camera-view"
 import { ScanCaptureHeader } from "@/components/scan/scan-capture-header"
 import { ScanCaptureAdvicePanel } from "@/components/scan/scan-capture-advice-panel"
+import { ScanLivePanel } from "@/components/scan/scan-live-panel"
 import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import { ScanUploadPanel } from "@/components/scan/scan-upload-panel"
-import type { CaptureMode } from "@/lib/scan/types"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import type { CaptureMode, ScanTier } from "@/lib/scan/types"
 import { CAPTURE_COPY } from "@/lib/scan/capture-copy"
 
 type ScanCapturePanelProps = {
   mode: CaptureMode
+  scanTier: ScanTier
   onModeChange: (mode: CaptureMode) => void
   onImageSelected: (file: File, previewUrl: string, source: CaptureMode) => void
+  onLiveComplete: (result: {
+    transcript: string
+    bestFrameBlob: Blob
+    previewUrl: string
+    sessionDurationMs: number
+  }) => void
 }
 
 function useIsMobile() {
@@ -34,18 +43,15 @@ function useIsMobile() {
 
 export function ScanCapturePanel({
   mode,
+  scanTier,
   onModeChange,
   onImageSelected,
+  onLiveComplete,
 }: ScanCapturePanelProps) {
   const isMobile = useIsMobile()
-  const activeMode = mode === "live" ? "upload" : mode
+  const activeMode = mode === "advice" ? "advice" : mode === "live" ? "live" : mode
   const copy = CAPTURE_COPY[activeMode]
-
-  useEffect(() => {
-    if (mode === "live") {
-      onModeChange("upload")
-    }
-  }, [mode, onModeChange])
+  const canUseLiveScan = scanTier === "pro"
 
   if (isMobile && mode === "camera") {
     return (
@@ -62,15 +68,44 @@ export function ScanCapturePanel({
     )
   }
 
+  if (mode === "live") {
+    if (!canUseLiveScan) {
+      return (
+        <ScanStepShell
+          title={copy.title}
+          description="Live scan is available on the Pro tier."
+        >
+          <Alert>
+            <AlertTitle>Pro feature</AlertTitle>
+            <AlertDescription>
+              Upgrade to Pro to use real-time live skin guidance. You can still
+              scan with upload or camera.
+            </AlertDescription>
+          </Alert>
+        </ScanStepShell>
+      )
+    }
+
+    return (
+      <ScanStepShell title={copy.title} description={copy.description}>
+        <ScanLivePanel
+          onComplete={onLiveComplete}
+          onCancel={() => onModeChange("upload")}
+        />
+      </ScanStepShell>
+    )
+  }
+
   return (
     <div className="flex w-full flex-col items-center overflow-visible">
       <Tabs
         value={activeMode}
         onValueChange={(value) => onModeChange(value as CaptureMode)}
         variant="segment"
+        roundedSegment
         className="relative w-full max-w-2xl overflow-visible"
       >
-        <ScanCaptureHeader />
+        <ScanCaptureHeader showLiveTab={canUseLiveScan} />
 
         <div className="relative overflow-visible">
           {activeMode === "advice" ? (

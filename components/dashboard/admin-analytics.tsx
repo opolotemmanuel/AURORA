@@ -1,7 +1,11 @@
 import { RoleDistributionChart, UsageBarChart } from "@/components/dashboard/usage-chart"
 import { StatCard } from "@/components/dashboard/page-header"
 import { getAdminDashboardStats } from "@/lib/dashboard/stats"
-import { formatMicroUsdCompact } from "@/lib/pricing/format-cost"
+import {
+  formatExactMicroUsd,
+  formatMicroUsdCompact,
+  shouldCompactMicroUsd,
+} from "@/lib/pricing/format-cost"
 import { formatTokenBreakdown } from "@/lib/tokens/format-usage"
 
 export async function AdminAnalytics() {
@@ -12,22 +16,27 @@ export async function AdminAnalytics() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Users" value={stats.userCount} />
         <StatCard label="Scans" value={stats.scanCount} />
-        <StatCard label="Scans used" value={stats.scansUsed.toLocaleString()} />
+        <StatCard label="Scans used" value={stats.scansUsed} />
         <StatCard
           label="Scans granted"
-          value={stats.scansGranted.toLocaleString()}
+          value={stats.scansGranted}
         />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           label="AI tokens (all time)"
-          value={stats.aiTokens.toLocaleString()}
+          value={stats.aiTokens}
           hint={formatTokenBreakdown(stats.tokenBreakdown)}
         />
         <StatCard
           label="Est. provider cost"
           value={formatMicroUsdCompact(stats.estimatedCostMicros)}
+          tooltip={
+            shouldCompactMicroUsd(stats.estimatedCostMicros)
+              ? formatExactMicroUsd(stats.estimatedCostMicros)
+              : undefined
+          }
           hint="Recorded scan + chat usage"
         />
         <StatCard label="Scans today" value={stats.scansToday} />

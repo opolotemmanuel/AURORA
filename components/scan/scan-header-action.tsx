@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 export const scanHeaderActionClassName =
-  "h-9 w-9 shrink-0 gap-0 rounded-full p-0 sm:h-9 sm:w-auto sm:gap-1.5 sm:px-3"
+  "h-9 w-9 shrink-0 gap-0 rounded-lg p-0 sm:h-9 sm:w-auto sm:gap-1.5 sm:px-3"
 
 type ScanHeaderActionButtonProps = {
   label: string

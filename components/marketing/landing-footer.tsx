@@ -21,6 +21,7 @@ export function LandingFooter() {
         ],
         cool: [
           { label: "Aurora Organics", href: AURORA_STORE_ORIGIN },
+          { label: "Embed skin scan", href: "/embed/scan" },
           { label: "Contact", href: "mailto:info@auroraorganics.co" },
         ],
       }}

@@ -62,6 +62,8 @@ export type AnalyzeSkinInput = {
   userContext: UserScanContext
   activeClimateTags?: string[]
   liveTranscript?: string
+  scanHistory?: ScanHistoryContextItem[]
+  recommendedActives?: string
 }
 
 export type AnalyzeSkinResult = {

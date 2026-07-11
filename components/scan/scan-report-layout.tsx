@@ -4,8 +4,11 @@ import type { ReactNode } from "react"
 import { IconCrop, IconFileText, IconRefresh } from "@tabler/icons-react"
 
 import { ScanFlowHeader } from "@/components/scan/scan-flow-header"
-import { ScanHeaderActionButton } from "@/components/scan/scan-header-action"
 import { ScanImagePanel } from "@/components/scan/scan-image-panel"
+import {
+  ScanSegmentButton,
+  ScanSegmentGroup,
+} from "@/components/scan/scan-segment-controls"
 import { cn } from "@/lib/utils"
 
 type ScanReportLayoutProps = {
@@ -36,42 +39,45 @@ export function ScanReportLayout({
   const showImageColumn = Boolean(imageSrc) || imageLoading
 
   return (
-    <div className={cn("mx-auto w-full max-w-5xl space-y-4", className)}>
+    <div className={cn("mx-auto w-full max-w-5xl space-y-8", className)}>
       {showActions ? (
         <ScanFlowHeader
           className="max-w-5xl"
           trailing={
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+            <ScanSegmentGroup>
               {onReEdit ? (
-                <ScanHeaderActionButton
-                  label="Adjust crop"
-                  icon={<IconCrop className="size-3.5" />}
+                <ScanSegmentButton
+                  aria-label="Adjust crop"
                   onClick={onReEdit}
-                />
+                >
+                  <IconCrop className="size-3.5" />
+                  <span className="hidden sm:inline">Adjust crop</span>
+                </ScanSegmentButton>
               ) : null}
               {onRescan ? (
-                <ScanHeaderActionButton
-                  label="Rescan"
-                  icon={<IconRefresh className="size-3.5" />}
-                  onClick={onRescan}
-                />
+                <ScanSegmentButton aria-label="Rescan" onClick={onRescan}>
+                  <IconRefresh className="size-3.5" />
+                  <span className="hidden sm:inline">Rescan</span>
+                </ScanSegmentButton>
               ) : null}
               {onViewReport ? (
-                <ScanHeaderActionButton
-                  label="View report"
-                  icon={<IconFileText className="size-3.5" />}
+                <ScanSegmentButton
+                  aria-label="View report"
+                  active
                   onClick={onViewReport}
-                  variant="default"
-                />
+                >
+                  <IconFileText className="size-3.5" />
+                  <span className="hidden sm:inline">View report</span>
+                </ScanSegmentButton>
               ) : null}
-            </div>
+            </ScanSegmentGroup>
           }
         />
       ) : null}
 
       <div
         className={cn(
-          "grid w-full items-start gap-6",
+          "grid w-full items-start gap-6 pt-2 sm:pt-4",
           showImageColumn &&
             "justify-items-center lg:grid-cols-[minmax(0,280px)_1fr] lg:justify-items-stretch lg:gap-8",
         )}

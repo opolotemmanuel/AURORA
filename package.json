@@ -11,10 +11,13 @@
     "lint": "eslint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "typecheck": "tsc --noEmit",
+    "test": "npx tsx --test lib/**/*.test.ts lib/**/**/*.test.ts",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
     "db:seed-admin": "npx tsx scripts/seed-admin.ts",
     "db:seed-products": "npx tsx scripts/seed-products.ts",
+    "db:sync-products": "npx tsx scripts/sync-products.ts",
+    "db:seed-ingredients": "npx tsx scripts/seed-ingredients.ts",
     "db:seed-rates": "npx tsx scripts/seed-model-rates.ts",
     "db:seed-packs": "npx tsx scripts/seed-scan-packs.ts",
     "db:reset-domain": "npx tsx scripts/reset-domain-data.ts"

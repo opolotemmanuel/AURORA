@@ -14,12 +14,13 @@ import type {
   CaptureMode,
   LiveScanPayload,
   ScanClimateContext,
+  ScanTier,
   ScanWizardStep,
   SkinAssessment,
 } from "@/lib/scan/types"
 import { cn } from "@/lib/utils"
 
-export function ScanWizard() {
+export function ScanWizard({ scanTier }: { scanTier: ScanTier }) {
   const [step, setStep] = useState<ScanWizardStep>("capture")
   const [captureMode, setCaptureMode] = useState<CaptureMode>("upload")
   const [rawPreviewUrl, setRawPreviewUrl] = useState<string | null>(null)
@@ -77,6 +78,25 @@ export function ScanWizard() {
     setStep("edit")
   }, [croppedPreviewUrl])
 
+  const handleLiveComplete = useCallback(
+    (result: {
+      transcript: string
+      bestFrameBlob: Blob
+      previewUrl: string
+      sessionDurationMs: number
+    }) => {
+      trackUrl(result.previewUrl)
+      setCroppedPreviewUrl(result.previewUrl)
+      setImageBlob(result.bestFrameBlob)
+      setLivePayload({
+        transcript: result.transcript,
+        sessionDurationMs: result.sessionDurationMs,
+      })
+      setStep("analyzing")
+    },
+    [trackUrl],
+  )
+
   const handleImageSelected = useCallback(
     (file: File, previewUrl: string, _source: CaptureMode) => {
       trackUrl(previewUrl)
@@ -121,8 +141,8 @@ export function ScanWizard() {
     <div className="relative flex min-h-svh flex-col">
       <div
         className={cn(
-          "flex flex-1 flex-col items-center justify-center px-4 py-8",
-          isReportPhase ? "py-10" : "py-12",
+          "flex flex-1 flex-col items-center px-4 py-8",
+          isReportPhase ? "justify-start pt-10 pb-12" : "justify-center py-12",
         )}
       >
         <AnimatePresence mode="wait">
@@ -140,8 +160,10 @@ export function ScanWizard() {
             {step === "capture" ? (
               <ScanCapturePanel
                 mode={captureMode}
+                scanTier={scanTier}
                 onModeChange={setCaptureMode}
                 onImageSelected={handleImageSelected}
+                onLiveComplete={handleLiveComplete}
               />
             ) : null}
 

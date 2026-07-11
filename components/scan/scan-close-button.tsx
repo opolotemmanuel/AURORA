@@ -54,7 +54,7 @@ export function ScanDashboardLink({
         href="/dashboard"
         aria-label="Go to dashboard"
         className={cn(
-          "grid size-10 place-items-center rounded-full border border-border bg-background/80 text-muted-foreground backdrop-blur-sm transition-colors hover:text-foreground active:scale-95",
+          "grid size-10 place-items-center rounded-lg border border-border bg-background/80 text-muted-foreground backdrop-blur-sm transition-colors hover:text-foreground active:scale-95",
           className,
         )}
       >

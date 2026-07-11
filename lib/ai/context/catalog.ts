@@ -9,11 +9,13 @@ import {
 } from "@/lib/ai/context/cache-tags"
 import { resolveIngredientList } from "@/lib/products/parse-inci"
 import { resolveStoreUrl } from "@/lib/products/store-url"
+import { withDbRetry } from "@/lib/db/retry"
 
 export { CATALOG_CONTEXT_TAG } from "@/lib/ai/context/cache-tags"
 
 async function fetchCatalogContext(): Promise<CatalogProductContext[]> {
-  const products = await prisma.product.findMany({
+  const products = await withDbRetry(() =>
+    prisma.product.findMany({
     where: { isActive: true },
     orderBy: { name: "asc" },
     select: {
@@ -28,7 +30,8 @@ async function fetchCatalogContext(): Promise<CatalogProductContext[]> {
       climateTags: true,
       storeUrl: true,
     },
-  })
+    }),
+  )
 
   return products.map((product) => ({
     slug: product.slug,

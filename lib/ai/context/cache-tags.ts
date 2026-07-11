@@ -8,7 +8,7 @@ const SCAN_HISTORY_CONTEXT_PREFIX = "scan-history-context"
 /** Safety TTL when tag revalidation is missed (seconds). */
 export const CATALOG_CACHE_REVALIDATE_SECONDS = 3600
 export const USER_SCAN_CONTEXT_REVALIDATE_SECONDS = 300
-export const SCAN_HISTORY_CACHE_REVALIDATE_SECONDS = 60
+export const SCAN_HISTORY_CACHE_REVALIDATE_SECONDS = 300
 
 export function userScanContextTag(userId: string): string {
   return `${USER_SCAN_CONTEXT_PREFIX}:${userId}`

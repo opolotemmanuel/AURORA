@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 
 import { ImpersonationBanner } from "@/components/admin/impersonation-banner"
 import { DashboardShell } from "@/components/layouts/dashboard-shell"
+import { scheduleAiScanContextWarmup } from "@/lib/ai/context/warm"
 import {
   AuthShellGate,
   getResolvedAuthContext,
@@ -28,6 +29,8 @@ async function DashboardAuthShellInner({
   if (!ctx) {
     return null
   }
+
+  scheduleAiScanContextWarmup(ctx.userId)
 
   const isImpersonating = Boolean(
     ctx.session.session &&

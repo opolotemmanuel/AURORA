@@ -2,14 +2,17 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
+  IconLayoutGrid,
+  IconList,
   IconLoader2,
   IconMessage,
   IconTrash,
 } from "@tabler/icons-react"
 
 import { ChatsPagination } from "@/components/dashboard/chats-pagination"
+import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +26,14 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
   deleteAdviceChatAction,
   deleteAllAdviceChatsAction,
 } from "@/lib/chat/actions"
@@ -35,6 +46,8 @@ export type AdviceChatListItem = {
   preview: string
 }
 
+type AdviceChatsViewMode = "grid" | "table"
+
 type ChatsListClientProps = {
   chats: AdviceChatListItem[]
   page: number
@@ -42,11 +55,73 @@ type ChatsListClientProps = {
   totalCount: number
 }
 
+const VIEW_MODE_STORAGE_KEY = "aura-advice-chats-view"
+
 function formatChatDate(iso: string) {
   return new Intl.DateTimeFormat(undefined, {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(iso))
+}
+
+function readStoredViewMode(): AdviceChatsViewMode {
+  if (typeof window === "undefined") return "grid"
+  const stored = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY)
+  return stored === "table" ? "table" : "grid"
+}
+
+type DeleteChatButtonProps = {
+  chatId: string
+  deleting: boolean
+  onDelete: (chatId: string) => void
+  className?: string
+}
+
+function DeleteChatButton({
+  chatId,
+  deleting,
+  onDelete,
+  className,
+}: DeleteChatButtonProps) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          className={cn(
+            "shrink-0 text-muted-foreground hover:text-destructive",
+            className,
+          )}
+          disabled={deleting}
+          aria-label="Delete chat"
+          onClick={(event) => event.stopPropagation()}
+        >
+          {deleting ? (
+            <IconLoader2 className="size-4 animate-spin" />
+          ) : (
+            <IconTrash className="size-4" />
+          )}
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete this chat?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This permanently removes the conversation and its messages. This
+            cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={() => onDelete(chatId)}>
+            Delete chat
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
 }
 
 export function ChatsListClient({
@@ -56,9 +131,19 @@ export function ChatsListClient({
   totalCount,
 }: ChatsListClientProps) {
   const router = useRouter()
+  const [viewMode, setViewMode] = useState<AdviceChatsViewMode>("grid")
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [clearingAll, setClearingAll] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setViewMode(readStoredViewMode())
+  }, [])
+
+  function handleViewModeChange(mode: AdviceChatsViewMode) {
+    setViewMode(mode)
+    window.localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode)
+  }
 
   async function handleDeleteChat(conversationId: string) {
     setPendingId(conversationId)
@@ -94,6 +179,27 @@ export function ChatsListClient({
           a scan
         </p>
         <div className="flex flex-wrap items-center gap-2">
+          <Tabs
+            value={viewMode}
+            onValueChange={(value) =>
+              handleViewModeChange(value as AdviceChatsViewMode)
+            }
+            variant="segment"
+          >
+            <TabsList
+              className="border border-border"
+              aria-label="Chat list layout"
+            >
+              <TabsTrigger value="grid" className="gap-1.5 px-3">
+                <IconLayoutGrid className="size-4" />
+                <span className="sr-only sm:not-sr-only">Grid</span>
+              </TabsTrigger>
+              <TabsTrigger value="table" className="gap-1.5 px-3">
+                <IconList className="size-4" />
+                <span className="sr-only sm:not-sr-only">Table</span>
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
           {totalCount > 0 ? (
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -116,9 +222,9 @@ export function ChatsListClient({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Clear all advice chats?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This permanently deletes every skin advice chat on your account.
-                    Scan follow-up chats stay with their reports. This cannot be
-                    undone.
+                    This permanently deletes every skin advice chat on your
+                    account. Scan follow-up chats stay with their reports. This
+                    cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -138,82 +244,108 @@ export function ChatsListClient({
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-      <ul className="divide-y divide-border rounded-lg border border-border bg-card">
-        {chats.map((chat) => {
-          const deleting = pendingId === chat.id
+      {viewMode === "grid" ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          {chats.map((chat) => {
+            const deleting = pendingId === chat.id
 
-          return (
-            <li
-              key={chat.id}
-              className="flex items-start gap-2 px-2 py-2 sm:gap-3 sm:px-4 sm:py-4"
-            >
-              <Link
-                href={`/chats/${chat.id}`}
-                className={cn(
-                  "flex min-w-0 flex-1 items-start gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-muted/30 sm:px-0 sm:py-0 sm:hover:bg-transparent",
-                )}
+            return (
+              <article
+                key={chat.id}
+                className="relative rounded-none border border-border bg-card p-5 transition-colors hover:bg-muted/30"
               >
-                <div className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <IconMessage className="size-4" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                    <p className="font-heading text-sm font-semibold">
-                      Skin advice chat
-                    </p>
-                    <span className="text-xs text-muted-foreground">
-                      {formatChatDate(chat.updatedAt)}
-                    </span>
+                <Link
+                  href={`/chats/${chat.id}`}
+                  className="flex min-w-0 items-start gap-3 pr-8"
+                >
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <IconMessage className="size-4" />
                   </div>
-                  <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                    {chat.preview}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {chat.messageCount}{" "}
-                    {chat.messageCount === 1 ? "message" : "messages"}
-                  </p>
-                </div>
-              </Link>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <p className="font-heading text-sm font-semibold">
+                        Skin advice chat
+                      </p>
+                      <span className="text-xs text-muted-foreground">
+                        {formatChatDate(chat.updatedAt)}
+                      </span>
+                    </div>
+                    <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">
+                      {chat.preview}
+                    </p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {chat.messageCount}{" "}
+                      {chat.messageCount === 1 ? "message" : "messages"}
+                    </p>
+                  </div>
+                </Link>
+                <DeleteChatButton
+                  chatId={chat.id}
+                  deleting={deleting}
+                  onDelete={(id) => void handleDeleteChat(id)}
+                  className="absolute top-3 right-3"
+                />
+              </article>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="rounded-none border border-border bg-card">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Updated</TableHead>
+                <TableHead>Preview</TableHead>
+                <TableHead className="w-28 text-right">Messages</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {chats.map((chat) => {
+                const deleting = pendingId === chat.id
 
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    className="mt-1 shrink-0 text-muted-foreground hover:text-destructive"
-                    disabled={deleting}
-                    aria-label="Delete chat"
-                  >
-                    {deleting ? (
-                      <IconLoader2 className="size-4 animate-spin" />
-                    ) : (
-                      <IconTrash className="size-4" />
-                    )}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Delete this chat?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This permanently removes the conversation and its messages.
-                      This cannot be undone.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => void handleDeleteChat(chat.id)}
-                    >
-                      Delete chat
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </li>
-          )
-        })}
-      </ul>
+                return (
+                  <TableRow key={chat.id} className="group">
+                    <TableCell className="align-top text-muted-foreground">
+                      <Link
+                        href={`/chats/${chat.id}`}
+                        className="block hover:text-foreground"
+                      >
+                        {formatChatDate(chat.updatedAt)}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="max-w-md align-top whitespace-normal">
+                      <Link
+                        href={`/chats/${chat.id}`}
+                        className="block font-medium hover:underline"
+                      >
+                        Skin advice chat
+                      </Link>
+                      <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                        {chat.preview}
+                      </p>
+                    </TableCell>
+                    <TableCell className="align-top text-right">
+                      <div className="flex h-9 items-center justify-end gap-2">
+                        <Link
+                          href={`/chats/${chat.id}`}
+                          className="tabular-nums text-muted-foreground hover:text-foreground"
+                        >
+                          {chat.messageCount}
+                        </Link>
+                        <DeleteChatButton
+                          chatId={chat.id}
+                          deleting={deleting}
+                          onDelete={(id) => void handleDeleteChat(id)}
+                        />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       <ChatsPagination page={page} totalPages={totalPages} />
     </div>

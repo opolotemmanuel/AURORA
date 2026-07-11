@@ -12,7 +12,7 @@ export type SessionResolveResult =
   | { status: "none" }
   | { status: "db_unavailable" }
 
-const SESSION_LOOKUP_RETRIES = 5
+const SESSION_LOOKUP_RETRIES = 2
 
 export const resolveSession = cache(async (): Promise<SessionResolveResult> => {
   const requestHeaders = await headers()

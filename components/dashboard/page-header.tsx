@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+
+export { StatCard } from "@/components/dashboard/stat-card"
 
 export function DashboardPageHeader({
   title,
@@ -23,28 +24,6 @@ export function DashboardPageHeader({
       {description ? (
         <p className="text-sm text-muted-foreground">{description}</p>
       ) : null}
-    </div>
-  )
-}
-
-export function StatCard({
-  label,
-  value,
-  hint,
-  className,
-}: {
-  label: string
-  value: string | number
-  hint?: string
-  className?: string
-}) {
-  return (
-    <div className={cn("rounded-none border border-border bg-card p-5", className)}>
-      <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-        {label}
-      </p>
-      <p className="mt-2 font-heading text-3xl font-medium tabular-nums">{value}</p>
-      {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   )
 }

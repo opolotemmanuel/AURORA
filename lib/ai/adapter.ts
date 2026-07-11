@@ -1,5 +1,8 @@
 import { getCatalogContext } from "@/lib/ai/context/catalog"
-import { getUserScanHistoryContext } from "@/lib/ai/context/scan-history"
+import {
+  getUserScanHistoryContextSafe,
+} from "@/lib/ai/context/scan-history-safe"
+import { SCAN_ANALYSIS_HISTORY_LIMIT } from "@/lib/ai/context/scan-history"
 import { getUserScanContext } from "@/lib/ai/context/user"
 import { enrichProductLinks } from "@/lib/ai/enrich-product-links"
 import {
@@ -25,6 +28,12 @@ import {
   rankCatalogByClimateTags,
 } from "@/lib/climate/tag-match"
 import { parseLocationSnapshot } from "@/lib/climate/snapshot"
+import {
+  formatRecommendedActivesForPrompt,
+} from "@/lib/ingredients/format-actives"
+import {
+  recommendActivesForUser,
+} from "@/lib/ingredients/recommend-actives"
 import { prisma } from "@/lib/db/client"
 import { getScanModelForTier, getUserScanTier } from "@/lib/models/queries"
 import { fromScanResult } from "@/lib/scan/persist"
@@ -33,11 +42,14 @@ import type { ChatHistoryMessage } from "@/lib/ai/providers/gemini-chat"
 import type { ChatConversationKind } from "@/generated/prisma/client"
 
 export async function analyzeSkin(
-  input: Omit<AnalyzeSkinInput, "catalog" | "userContext">,
+  input: Omit<AnalyzeSkinInput, "catalog" | "userContext" | "scanHistory" | "recommendedActives">,
 ): Promise<AnalyzeSkinResult> {
-  const [catalog, userContext] = await Promise.all([
+  const [catalog, userContext, scanHistory] = await Promise.all([
     getCatalogContext(),
     getUserScanContext(input.userId),
+    getUserScanHistoryContextSafe(input.userId, {
+      limit: SCAN_ANALYSIS_HISTORY_LIMIT,
+    }),
   ])
 
   if (catalog.length === 0) {
@@ -46,6 +58,10 @@ export async function analyzeSkin(
 
   const activeClimateTags = mapUserClimateToTags(userContext.location)
   const rankedCatalog = rankCatalogByClimateTags(catalog, activeClimateTags)
+  const recommendedActives = await recommendActivesForUser({
+    profile: userContext.profile,
+    location: userContext.location,
+  })
 
   if (input.model.provider !== "gemini") {
     throw new Error(`Provider ${input.model.provider} is not supported yet`)
@@ -56,6 +72,8 @@ export async function analyzeSkin(
     catalog: rankedCatalog,
     userContext,
     activeClimateTags,
+    scanHistory,
+    recommendedActives: formatRecommendedActivesForPrompt(recommendedActives),
   })
 }
 
@@ -117,7 +135,7 @@ export async function chatAboutSkin(
   const [catalog, userContext, scanHistory] = await Promise.all([
     getCatalogContext(),
     getUserScanContext(input.userId),
-    getUserScanHistoryContext(input.userId, {
+    getUserScanHistoryContextSafe(input.userId, {
       excludeScanId:
         input.kind === "follow_up" && input.scanId ? input.scanId : undefined,
     }),

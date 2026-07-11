@@ -4,6 +4,7 @@ import {
   DEFAULT_POST_ONBOARDING_PATH,
   safeCallbackPath,
 } from "@/lib/auth/callback-url"
+import { scheduleAiScanContextWarmup } from "@/lib/ai/context/warm"
 import { prisma } from "@/lib/db/client"
 import { withDbRetry } from "@/lib/db/retry"
 
@@ -17,6 +18,8 @@ export async function getPostAuthRedirect(
       select: { onboardingCompletedAt: true },
     }),
   )
+
+  scheduleAiScanContextWarmup(userId)
 
   const target = safeCallbackPath(callbackUrl, DEFAULT_POST_ONBOARDING_PATH)
 

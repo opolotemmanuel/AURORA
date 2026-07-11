@@ -54,7 +54,8 @@ function createPgPool() {
   const pool = new Pool({
     connectionString: normalized,
     max: process.env.NODE_ENV === "production" ? 10 : 5,
-    connectionTimeoutMillis: 45_000,
+    connectionTimeoutMillis:
+      process.env.NODE_ENV === "production" ? 20_000 : 10_000,
     idleTimeoutMillis: 30_000,
     keepAlive: true,
     keepAliveInitialDelayMillis: 10_000,

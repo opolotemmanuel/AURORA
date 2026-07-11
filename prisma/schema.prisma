@@ -417,6 +417,23 @@ model Product {
   @@map("product")
 }
 
+model Ingredient {
+  id                String   @id @default(cuid())
+  inciName          String   @unique
+  displayName       String?
+  synonyms          String[] @default([])
+  targetConcerns    String[] @default([])
+  suitableSkinTypes String[] @default([])
+  climateTags       String[] @default([])
+  doshaAffinities   String[] @default([])
+  notes             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([targetConcerns])
+  @@map("ingredient")
+}
+
 model Scan {
   id               String        @id @default(cuid())
   userId           String

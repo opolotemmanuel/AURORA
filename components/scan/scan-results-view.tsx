@@ -76,7 +76,7 @@ export function ScanResultsView({
           />
 
           <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
-            <ScanDashboardLink className="rounded-full" />
+            <ScanDashboardLink />
             {scanId ? (
               <Button
                 type="button"

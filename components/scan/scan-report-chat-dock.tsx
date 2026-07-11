@@ -4,6 +4,7 @@ import { useState } from "react"
 import { IconMessage, IconSparkles } from "@tabler/icons-react"
 
 import { ScanAdviceComposer } from "@/components/scan/scan-advice-composer"
+import { FeedbackSuccessTick } from "@/components/scan/feedback-success-tick"
 import {
   ScanFeedbackForm,
   ScanFeedbackWidget,
@@ -59,10 +60,17 @@ function ScanReportFooterActions({
           variant="outline"
           size="sm"
           disabled={feedbackSubmitted}
+          className={feedbackSubmitted ? "px-2.5" : undefined}
           onClick={() => setFeedbackOpen(true)}
         >
-          <IconMessage className="size-3.5" />
-          {feedbackSubmitted ? "Thanks for feedback" : "Feedback"}
+          {feedbackSubmitted ? (
+            <FeedbackSuccessTick size="sm" />
+          ) : (
+            <>
+              <IconMessage className="size-3.5" />
+              Feedback
+            </>
+          )}
         </Button>
       </div>
 

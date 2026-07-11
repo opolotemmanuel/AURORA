@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { IconLoader2, IconStar, IconStarFilled } from "@tabler/icons-react"
 
+import { FeedbackSuccessTick } from "@/components/scan/feedback-success-tick"
 import { FeedbackWidget } from "@/components/motion/feedback-widget"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -110,9 +111,9 @@ export function ScanFeedbackForm({
 
   if (submitted) {
     return (
-      <p className={cn("text-sm text-muted-foreground", className)}>
-        Thanks for your feedback.
-      </p>
+      <div className={cn("flex justify-center py-2", className)}>
+        <FeedbackSuccessTick size="md" />
+      </div>
     )
   }
 
@@ -171,9 +172,9 @@ export function ScanFeedbackWidget({
     return (
       <div
         className={cn(
-          "pointer-events-none z-30 rounded-full border border-border bg-background/90 px-3 py-1.5 text-xs text-muted-foreground shadow-sm backdrop-blur-sm",
+          "pointer-events-none z-30 flex items-center justify-center",
           anchored
-            ? "relative"
+            ? "relative size-12"
             : cn(
                 "absolute bottom-4",
                 position === "bottom-left" ? "left-4" : "right-4",
@@ -181,7 +182,7 @@ export function ScanFeedbackWidget({
           className,
         )}
       >
-        Thanks for your feedback
+        <FeedbackSuccessTick size={anchored ? "lg" : "md"} />
       </div>
     )
   }

@@ -87,7 +87,7 @@ export function RecommendedProducts({ vm }: { vm: ReportViewModel }) {
                 {match.product.officialUrl ? (
                   <Button asChild variant="outline" size="sm" className="mt-auto">
                     <a href={match.product.officialUrl} target="_blank" rel="noopener noreferrer">
-                      View Product on Aurora
+                      Purchase
                       <IconExternalLink className="size-3.5" />
                     </a>
                   </Button>

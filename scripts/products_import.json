@@ -1,0 +1,604 @@
+[
+  {
+    "name": "Beard and Hair Balm",
+    "slug": "beard-and-hair-balm",
+    "category": "Hair & Beard Care",
+    "routineStep": "treat",
+    "shortDescription": "This beard and hair balm is all you need to add smoothness and shine to the rough, dry, brittle and shabby beard and scalp hair. It combats dandruff and hair fall and\u2026",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/06/beared-balm-1.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/beard-and-hair-balm.jpg",
+    "cosmeticBenefits": [
+      "Beard & scalp smoothing",
+      "Dandruff support",
+      "Daily shine"
+    ],
+    "bestFor": [],
+    "avoidIf": null,
+    "keyIngredients": null,
+    "officialUrl": "https://www.auroraorganics.co/product/beard-and-hair-balm/",
+    "priority": 40,
+    "active": false,
+    "priceUsd": "90"
+  },
+  {
+    "name": "Botanical Nutrify Hair Oil",
+    "slug": "botanical-nutrify-hair-oil",
+    "category": "Hair Care",
+    "routineStep": "treat",
+    "shortDescription": "Everyday Dose of Strength and Shine Formulated with essential oils and infused with 7 precious time-tested herbs, our hair serum for men gives strength, smoothness and\u2026",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/06/hair-oil-1.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/botanical-nutrify-hair-oil.jpg",
+    "cosmeticBenefits": [
+      "Hair strength & shine",
+      "Anti-hair-fall formula",
+      "Scalp nourishment"
+    ],
+    "bestFor": [],
+    "avoidIf": null,
+    "keyIngredients": null,
+    "officialUrl": "https://www.auroraorganics.co/product/botanical-nutrify-hair-oil/",
+    "priority": 40,
+    "active": false,
+    "priceUsd": "69.30"
+  },
+  {
+    "name": "Botanical Repair Mist",
+    "slug": "botanical-repair-mist",
+    "category": "Face Mist",
+    "routineStep": "treat",
+    "shortDescription": "Infused with ayurvedic healing botanical \u2013 Anti Bacterial \u2013 Anti Allergic \u2013 Anti Funga \u2013 Antiseptic \u2013 Youth-affirming, brightening, congestion-clearing &\u2026",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/08/Botanical-Repair-serum.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/botanical-repair-mist.jpg",
+    "cosmeticBenefits": [
+      "Redness-appearance support",
+      "Botanical skin repair",
+      "Hydration mist"
+    ],
+    "bestFor": [
+      "rednessAppearance",
+      "pigmentationAppearance",
+      "barrierComfort"
+    ],
+    "avoidIf": null,
+    "keyIngredients": null,
+    "officialUrl": "https://www.auroraorganics.co/product/botanical-repair-mist/",
+    "priority": 78,
+    "active": true,
+    "priceUsd": "30"
+  },
+  {
+    "name": "Calmer Blend and Soap",
+    "slug": "calmer-blend-and-soap",
+    "category": "Aromatherapy",
+    "routineStep": "cleanse",
+    "shortDescription": "How to use: Diffuse Diffuse calmer blend 5 drops in diffuser The old-fashioned way. Take deep breaths of the aroma after opening the bottle. Dry evaporation. Put a few\u2026",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/06/calmer-2.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/calmer-blend-and-soap.jpg",
+    "cosmeticBenefits": [
+      "Aromatherapy blend",
+      "Calming soap formula",
+      "Stress-relief ritual"
+    ],
+    "bestFor": [],
+    "avoidIf": null,
+    "keyIngredients": null,
+    "officialUrl": "https://www.auroraorganics.co/product/calmer-blend-and-soap/",
+    "priority": 40,
+    "active": false,
+    "priceUsd": "13.09"
+  },
+  {
+    "name": "Charcoal Detox Soap",
+    "slug": "charcoal-detox-soap",
+    "category": "Soap",
+    "routineStep": "cleanse",
+    "shortDescription": "Exfoliates, deep cleanses and removes impurities from the skin Specially formulated to refresh, detoxify and deep cleanse, our charcoal and clay formula deeply cleanses\u2026",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/06/charcaol-soap-1.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/charcoal-detox-soap.jpg",
+    "cosmeticBenefits": [
+      "Charcoal deep-cleanse",
+      "Impurity removal",
+      "Non-drying formula"
+    ],
+    "bestFor": [],
+    "avoidIf": null,
+    "keyIngredients": null,
+    "officialUrl": "https://www.auroraorganics.co/product/charcoal-detox-soap/",
+    "priority": 40,
+    "active": false,
+    "priceUsd": "14"
+  },
+  {
+    "name": "Detox Sandal Scrub",
+    "slug": "detox-sandal-scrub",
+    "category": "Scrub",
+    "routineStep": "cleanse",
+    "shortDescription": "Detox, Exfoliate and Glow Our Sandal facial and body scrub detoxify, exfoliate and deep cleanse your skin with the detoxifying powers of sandal and turmeric and soothing\u2026",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/06/detox-sandal-scrub-1.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/detox-sandal-scrub.jpg",
+    "cosmeticBenefits": [
+      "Detoxifying exfoliation",
+      "Tone-balancing scrub",
+      "Radiance-revealing formula"
+    ],
+    "bestFor": [
+      "texture",
+      "oilBalance",
+      "radiance"
+    ],
+    "avoidIf": null,
+    "keyIngredients": [
+      "Sandal: Extraction Oil and water from the Santalum album tree"
+    ],
+    "officialUrl": "https://www.auroraorganics.co/product/detox-sandal-scrub/",
+    "priority": 73,
+    "active": true,
+    "priceUsd": "26.95"
+  },
+  {
+    "name": "Gift For Her",
+    "slug": "gift-for-her",
+    "category": "Gift Box",
+    "routineStep": "treat",
+    "shortDescription": "Gift For Her",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/06/gift-for-her-2.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/gift-for-her.jpg",
+    "cosmeticBenefits": [
+      "Curated gift set",
+      "Aurora self-care bundle"
+    ],
+    "bestFor": [],
+    "avoidIf": null,
+    "keyIngredients": null,
+    "officialUrl": "https://www.auroraorganics.co/product/gift-for-her/",
+    "priority": 40,
+    "active": false,
+    "priceUsd": "30"
+  },
+  {
+    "name": "Gift For Him",
+    "slug": "gift-for-him",
+    "category": "Gift Box",
+    "routineStep": "treat",
+    "shortDescription": "Treat yourself or the men in your life with some extra care with our complete Men\u2019s Care Kit. WHAT\u2019s INSIDE? . Bearded Balm . Brushless Shaving Cream . Botanical Nutrify\u2026",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/06/gift-for-him-1.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/gift-for-him.jpg",
+    "cosmeticBenefits": [
+      "Men's care kit",
+      "Grooming bundle"
+    ],
+    "bestFor": [],
+    "avoidIf": null,
+    "keyIngredients": null,
+    "officialUrl": "https://www.auroraorganics.co/product/gift-for-him/",
+    "priority": 40,
+    "active": false,
+    "priceUsd": "6"
+  },
+  {
+    "name": "Gold Serum",
+    "slug": "gold-serum",
+    "category": "Serum",
+    "routineStep": "treat",
+    "shortDescription": "Restores dull skin\u2019s elasticity for firmer, youthful-looking & glowing skin with our Gold Serum. A lightweight serum, the 23K Gold Serum helps to restore dull skin\u2019s\u2026",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/06/gold-serum-1-2.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/gold-serum.jpg",
+    "cosmeticBenefits": [
+      "Elasticity & firmness support",
+      "Radiance boost",
+      "Fine-line appearance support"
+    ],
+    "bestFor": [
+      "radiance",
+      "hydration"
+    ],
+    "avoidIf": null,
+    "keyIngredients": null,
+    "officialUrl": "https://www.auroraorganics.co/product/gold-serum/",
+    "priority": 88,
+    "active": true,
+    "priceUsd": "10.74"
+  },
+  {
+    "name": "Intensive Skin Repair Sandal Lotion",
+    "slug": "intensive-skin-repair-sandal-lotion",
+    "category": "Lotion",
+    "routineStep": "treat",
+    "shortDescription": "\u2013 Non-Sticky \u2013 Anti Bacterial \u2013 Anti Allergic \u2013 Anti Funga \u2013 Antiseptic \u2013 It is imperative to save yourself from the harmful rays of the sun. Has Anti-inflammatory\u2026",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/07/Sandal-Repairing-Lotion.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/intensive-skin-repair-sandal-lotion.jpg",
+    "cosmeticBenefits": [
+      "Skin-repair support",
+      "Even-tone appearance",
+      "Soothing botanical formula"
+    ],
+    "bestFor": [
+      "rednessAppearance",
+      "pigmentationAppearance"
+    ],
+    "avoidIf": null,
+    "keyIngredients": null,
+    "officialUrl": "https://www.auroraorganics.co/product/sandal-moisturiser/",
+    "priority": 74,
+    "active": true,
+    "priceUsd": "13.09"
+  },
+  {
+    "name": "Lavender Foaming Face Wash",
+    "slug": "lavender-foaming-face-wash",
+    "category": "Cleanser",
+    "routineStep": "cleanse",
+    "shortDescription": "Sooth skin & prevent acne formulated with botanical extracts and natural salicylic acid Benefits: Prevent and treat acne Shrink enlarged pores Improve skin smoothness\u2026",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/07/Lavender-foaming.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/lavender-foaming-face-wash.jpg",
+    "cosmeticBenefits": [
+      "Gentle daily cleansing",
+      "Pore-refining feel",
+      "Breakout-prone skin support"
+    ],
+    "bestFor": [
+      "oilBalance",
+      "texture",
+      "barrierComfort"
+    ],
+    "avoidIf": null,
+    "keyIngredients": null,
+    "officialUrl": "https://www.auroraorganics.co/product/lavender-foaming-soothing-anti-acne-cleanser/",
+    "priority": 82,
+    "active": true,
+    "priceUsd": "30"
+  },
+  {
+    "name": "Lavender Soothing Lotion",
+    "slug": "lavender-soothing-lotion",
+    "category": "Lotion",
+    "routineStep": "moisturize",
+    "shortDescription": "Breathe in soothing & comforting lavender Keeps skin moisturized Calms dry irritated skin for naturally glowing, naturally healthy skin Soothe and calm the mind by\u2026",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/07/Soothing-Lavender-Lotion-1.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/lavender-soothing-lotion.jpg",
+    "cosmeticBenefits": [
+      "Calming lavender formula",
+      "Redness-appearance support",
+      "Moisture lock-in"
+    ],
+    "bestFor": [
+      "rednessAppearance",
+      "pigmentationAppearance",
+      "barrierComfort"
+    ],
+    "avoidIf": null,
+    "keyIngredients": null,
+    "officialUrl": "https://www.auroraorganics.co/product/lavender-soothing-lotion/",
+    "priority": 80,
+    "active": true,
+    "priceUsd": "30"
+  },
+  {
+    "name": "Natural Hand Sanitizer / Disinfectant SPRAY",
+    "slug": "natural-hand-sanitizer-disinfectant-spray",
+    "category": "Sanitizer",
+    "routineStep": "protect",
+    "shortDescription": "Kills 99.9% of All Germs One-Step Safe Disinfectant Portable spray bottle for the on-the-go peace of mind Size :200ML",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/06/senitizer.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/natural-hand-sanitizer-disinfectant-spray.jpg",
+    "cosmeticBenefits": [
+      "Germ protection",
+      "Alcohol-free formula",
+      "On-the-go sanitizing"
+    ],
+    "bestFor": [],
+    "avoidIf": null,
+    "keyIngredients": [
+      "(v/v) Purpose Benzalkonium Chloride 0.15%, Copper, Water, Propylene Glycol, Aloe Vera Leaf Juice, Neem & Turmeric Hydrosol, Hydroxyethylcellulose, Melaleuca Alternifolia (Tea Tree) EO, Lavender, Eucalyptus, Wild Orange, Rosemary, Camphor, Glycrin & Euclutus Features: Alcohol-free, non-drying to the skin Kills 99.99% of harmful germs and bacteria Rinse-free formula \u2014 no soap, water, or towels neede"
+    ],
+    "officialUrl": "https://www.auroraorganics.co/product/natural-hand-sanitizer-disinfectant-spray/",
+    "priority": 40,
+    "active": false,
+    "priceUsd": "16.50"
+  },
+  {
+    "name": "Natural Hand Senitizer / Foaming",
+    "slug": "natural-hand-senitizer-foaming",
+    "category": "Sanitizer",
+    "routineStep": "protect",
+    "shortDescription": "Kills 99.9% of All Germs One-Step Safe Disinfectant Portable bottle for the on-the-go peace of mind Size 200ML",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/06/natural-senitizer-spray.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/natural-hand-senitizer-foaming.jpg",
+    "cosmeticBenefits": [
+      "Germ protection",
+      "Foaming hand care",
+      "Rinse-free formula"
+    ],
+    "bestFor": [],
+    "avoidIf": null,
+    "keyIngredients": [
+      "(v/v) Purpose Benzalkonium Chloride 0.15%, Copper, Water, Propylene Glycol, Aloe Vera Leaf Juice, Neem & Turmeric Hydrosol, Hydroxyethylcellulose, Melaleuca Alternifolia (Tea Tree) EO, Lavender, Eucalyptus, Wild Orange, Rosemary, Camphor, Glycrin & Euclutus Features: Alcohol-free, non-drying to the skin Kills 99.99% of harmful germs and bacteria Rinse-free formula \u2014 no soap, water, or towels neede"
+    ],
+    "officialUrl": "https://www.auroraorganics.co/product/natural-hand-senitizer-foaming/",
+    "priority": 40,
+    "active": false,
+    "priceUsd": "14"
+  },
+  {
+    "name": "Natural Multi-Surface Cleaner",
+    "slug": "natural-multi-surface-cleaner",
+    "category": "Household Cleaner",
+    "routineStep": "cleanse",
+    "shortDescription": "Our plant-powered multi-surface cleaner is an effective universal cleaner that removes dirt, residue, grease, and other impressions from the surfaces. It is suitable for\u2026",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/06/Natural-Multi-Surface-Cleaner-1.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/natural-multi-surface-cleaner.jpg",
+    "cosmeticBenefits": [
+      "Plant-powered cleaning",
+      "Multi-surface use",
+      "Residue-free finish"
+    ],
+    "bestFor": [],
+    "avoidIf": null,
+    "keyIngredients": null,
+    "officialUrl": "https://www.auroraorganics.co/product/natural-multi-surface-cleaner/",
+    "priority": 40,
+    "active": false,
+    "priceUsd": "16.50"
+  },
+  {
+    "name": "Neem Liquid Dishwash",
+    "slug": "neem-liquid-dishwash",
+    "category": "Household Cleaner",
+    "routineStep": "cleanse",
+    "shortDescription": "While Aurora dish wash is tough on grease, it is made to be gentle on the earth with biodegradable cleaning ingredients and sustainable packaging. Make a difference at\u2026",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/06/Neem-Dish-Wash-1.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/neem-liquid-dishwash.jpg",
+    "cosmeticBenefits": [
+      "Grease-cutting formula",
+      "Biodegradable ingredients",
+      "Gentle on hands"
+    ],
+    "bestFor": [],
+    "avoidIf": null,
+    "keyIngredients": null,
+    "officialUrl": "https://www.auroraorganics.co/product/neem-liquid-dishwash/",
+    "priority": 40,
+    "active": false,
+    "priceUsd": "20"
+  },
+  {
+    "name": "Niacinamide & NEEM Toner",
+    "slug": "niacinamide-neem-toner",
+    "category": "Toner",
+    "routineStep": "treat",
+    "shortDescription": "Enriched with the antifungal and antibacterial properties this skin-brightening and relaxing serum is the ultimate solution to all your dry, darkening, blotchy and\u2026",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/07/SALICYLIC-ACID-NEEM-Toner-1.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/niacinamide-neem-toner.jpg",
+    "cosmeticBenefits": [
+      "Brightening toner",
+      "Even-tone support",
+      "Antibacterial botanical formula"
+    ],
+    "bestFor": [
+      "pigmentationAppearance",
+      "radiance"
+    ],
+    "avoidIf": null,
+    "keyIngredients": null,
+    "officialUrl": "https://www.auroraorganics.co/product/salicylic-acid-neem-toner/",
+    "priority": 79,
+    "active": true,
+    "priceUsd": "30"
+  },
+  {
+    "name": "Plump Lip Balm",
+    "slug": "plump-lip-balm",
+    "category": "Lip Care",
+    "routineStep": "treat",
+    "shortDescription": "Power Up Your Persona The ultra-hydrating, moisturizing and healing lip balm restores your confidence and boosts your aura by strengthening the natural firmness of your\u2026",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/06/lipbalm.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/plump-lip-balm.jpg",
+    "cosmeticBenefits": [
+      "Lip hydration",
+      "Softening lip care",
+      "Daily lip comfort"
+    ],
+    "bestFor": [
+      "hydration"
+    ],
+    "avoidIf": null,
+    "keyIngredients": null,
+    "officialUrl": "https://www.auroraorganics.co/product/light-lip-balm/",
+    "priority": 55,
+    "active": true,
+    "priceUsd": "14"
+  },
+  {
+    "name": "Radiant Plump Lip Mask",
+    "slug": "radiant-plump-lip-mask",
+    "category": "Lip Care",
+    "routineStep": "treat",
+    "shortDescription": "Our luxurious Overnight Radiant Plump Lip Mask deeply hydrates, smooths fine lines, and visibly enhances lip volume over time by supporting natural collagen production\u2026",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/themes/cerla/images/placeholder.jpg",
+    "isPlaceholderImage": true,
+    "imageExt": "jpg",
+    "imagePath": null,
+    "cosmeticBenefits": [
+      "Overnight lip hydration",
+      "Plumping lip treatment",
+      "Smoothing lip care"
+    ],
+    "bestFor": [
+      "hydration"
+    ],
+    "avoidIf": null,
+    "keyIngredients": [
+      "Clinically proven to boost lip volume by up to 40% Shea Butter \u2013 Nourishes, soothes, and locks in moisture Hyaluronic Acid \u2013 Delivers intense hydration for soft, pillowy lips"
+    ],
+    "officialUrl": "https://www.auroraorganics.co/product/radiant-plump-lip-mask/",
+    "priority": 50,
+    "active": true,
+    "priceUsd": "35"
+  },
+  {
+    "name": "Radiant Plump Moisturizer with Glutathione",
+    "slug": "radiant-plump-moisturizer-with-glutathione",
+    "category": "Moisturizer",
+    "routineStep": "moisturize",
+    "shortDescription": "Bring out the Brightness Enriched with turmeric and the soothing effects of Sandalwood, this skin-brightening moisturizer is the ultimate solution to all your darkening\u2026",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/06/20240125_024924-scaled.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/radiant-plump-moisturizer-with-glutathione.jpg",
+    "cosmeticBenefits": [
+      "Brightening moisturizer",
+      "Glutathione-enriched formula",
+      "Even-tone support"
+    ],
+    "bestFor": [
+      "pigmentationAppearance",
+      "radiance",
+      "hydration"
+    ],
+    "avoidIf": null,
+    "keyIngredients": null,
+    "officialUrl": "https://www.auroraorganics.co/product/radiant-plump-moisturizer/",
+    "priority": 86,
+    "active": true,
+    "priceUsd": "30"
+  },
+  {
+    "name": "Radiant Plump Serum",
+    "slug": "radiant-plump-serum",
+    "category": "Serum",
+    "routineStep": "treat",
+    "shortDescription": "Enriched with the antifungal and antibacterial properties this skin-brightening and relaxing serum is the ultimate solution to all your dry, darkening, blotchy and\u2026",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/06/radiant-pump-soap-1.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/radiant-plump-serum.jpg",
+    "cosmeticBenefits": [
+      "Brightening serum",
+      "Even-tone support",
+      "Antibacterial botanical formula"
+    ],
+    "bestFor": [
+      "pigmentationAppearance",
+      "radiance",
+      "hydration"
+    ],
+    "avoidIf": null,
+    "keyIngredients": null,
+    "officialUrl": "https://www.auroraorganics.co/product/radiant-plump-serum/",
+    "priority": 90,
+    "active": true,
+    "priceUsd": "90"
+  },
+  {
+    "name": "Radiant Plump Soap",
+    "slug": "radiant-plump-soap",
+    "category": "Soap",
+    "routineStep": "cleanse",
+    "shortDescription": "Suitable For Skin Types Normal Skin \u2013 Maintains balance and clarity Dry Skin \u2013 Nourishes with rich botanical oils and butters Oily Skin \u2013 Clarifies without stripping\u2026",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/06/radiant-soap-1.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/radiant-plump-soap.jpg",
+    "cosmeticBenefits": [
+      "Gentle daily cleansing",
+      "Multi skin-type formula",
+      "Calming, non-stripping wash"
+    ],
+    "bestFor": [
+      "oilBalance",
+      "rednessAppearance",
+      "barrierComfort"
+    ],
+    "avoidIf": null,
+    "keyIngredients": null,
+    "officialUrl": "https://www.auroraorganics.co/product/radiant-plump-soap/",
+    "priority": 77,
+    "active": true,
+    "priceUsd": "30"
+  },
+  {
+    "name": "Radiant Rose Face Mist",
+    "slug": "radiant-rose-face-mist",
+    "category": "Face Mist",
+    "routineStep": "treat",
+    "shortDescription": "Silky Spray Mist 100% Pure & Certified Natural Moisturizer to Add Hydrated Glow to all Skin Types. Instantly brightens the appearance of dull skin, hydrate & protect\u2026",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/06/rose-mist-1.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/radiant-rose-face-mist.jpg",
+    "cosmeticBenefits": [
+      "Hydrating rose mist",
+      "Brightening finish",
+      "Lightweight daily refresh"
+    ],
+    "bestFor": [
+      "hydration",
+      "radiance"
+    ],
+    "avoidIf": null,
+    "keyIngredients": null,
+    "officialUrl": "https://www.auroraorganics.co/product/radiant-rose-face-mist/",
+    "priority": 76,
+    "active": true,
+    "priceUsd": "30"
+  },
+  {
+    "name": "Skin Professional Gender-Neutral Foot Care",
+    "slug": "skin-professional-gender-neutral-foot-care",
+    "category": "Foot Care",
+    "routineStep": "treat",
+    "shortDescription": "Bring the spa and relaxation to you with Razia Sultana\u2019s Cooling pain free Foot Soak. * It will leave you feeling pampered in the comfort of your own home. * This soak\u2026",
+    "imageUrl": "https://www.auroraorganics.co/wp-content/uploads/2022/06/foot-soak-1.jpg",
+    "isPlaceholderImage": false,
+    "imageExt": "jpg",
+    "imagePath": "/products/skin-professional-gender-neutral-foot-care.jpg",
+    "cosmeticBenefits": [
+      "Relaxing foot soak",
+      "Muscle-soothing blend",
+      "Spa-at-home ritual"
+    ],
+    "bestFor": [],
+    "avoidIf": null,
+    "keyIngredients": null,
+    "officialUrl": "https://www.auroraorganics.co/product/foot-soak/",
+    "priority": 40,
+    "active": false,
+    "priceUsd": "30"
+  }
+]

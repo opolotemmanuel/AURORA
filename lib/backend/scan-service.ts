@@ -37,6 +37,7 @@ export const FINDING_CONCERN_MAP: Record<string, SkinConcern> = {
   "redness appearance": "rednessAppearance",
   redness: "rednessAppearance",
   pigmentation: "pigmentationAppearance",
+  "pigmentation appearance": "pigmentationAppearance",
   "tone unevenness": "pigmentationAppearance",
   radiance: "radiance",
 }

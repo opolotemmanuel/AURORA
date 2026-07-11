@@ -15,6 +15,7 @@ const MODELS_PATH = "/admin/models"
 function revalidateModelCaches() {
   revalidatePath(MODELS_PATH)
   revalidatePath("/admin/tokens")
+  revalidatePath("/admin/usage")
   revalidateTag(ACTIVE_SCAN_MODEL_TAG, "max")
 }
 

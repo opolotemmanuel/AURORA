@@ -1,5 +1,6 @@
 import type { UserLocation } from "@/generated/prisma/client"
 
+import { revalidateUserScanContext } from "@/lib/ai/context/cache-tags"
 import {
   fetchClimateSnapshot,
   type ClimateSnapshot,
@@ -66,6 +67,9 @@ export async function ensureClimateForScan(
         longitude: refreshed.longitude,
         lastSyncedAt: new Date(),
       },
+    }).then((updated) => {
+      revalidateUserScanContext(userId)
+      return updated
     })
   } catch {
     return location

@@ -1,7 +1,9 @@
 import type { ChatConversationKind, ChatMessageRole } from "@/generated/prisma/client"
+import type { Prisma } from "@/generated/prisma/client"
 
 import type { ChatHistoryMessage } from "@/lib/ai/providers/gemini-chat"
 import type { ChatImageInput } from "@/lib/chat/image"
+import type { ChatMessageMetadata } from "@/lib/chat/types"
 import { prisma } from "@/lib/db/client"
 import { MAX_CHAT_TURNS_PER_CONVERSATION } from "@/lib/scans/constants"
 
@@ -188,8 +190,27 @@ export async function appendChatMessages(input: {
   assistantRole: ChatMessageRole
   inputTokens: number
   outputTokens: number
+  cachedTokens?: number
+  reasoningTokens?: number | null
   totalTokens: number
+  modelId?: string | null
+  estimatedCostMicros?: number | null
+  metadata?: ChatMessageMetadata | null
 }): Promise<string> {
+  const assistantData = {
+    role: input.assistantRole,
+    content: input.assistantContent,
+    blocked: false,
+    inputTokens: input.inputTokens,
+    outputTokens: input.outputTokens,
+    cachedTokens: input.cachedTokens ?? 0,
+    reasoningTokens: input.reasoningTokens ?? null,
+    totalTokens: input.totalTokens,
+    modelId: input.modelId ?? null,
+    estimatedCostMicros: input.estimatedCostMicros ?? null,
+    metadata: (input.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
+  }
+
   if (input.conversationId) {
     await prisma.$transaction([
       prisma.chatMessage.create({
@@ -210,12 +231,7 @@ export async function appendChatMessages(input: {
       prisma.chatMessage.create({
         data: {
           conversationId: input.conversationId,
-          role: input.assistantRole,
-          content: input.assistantContent,
-          blocked: false,
-          inputTokens: input.inputTokens,
-          outputTokens: input.outputTokens,
-          totalTokens: input.totalTokens,
+          ...assistantData,
         },
       }),
       prisma.chatConversation.update({
@@ -259,12 +275,7 @@ export async function appendChatMessages(input: {
     await tx.chatMessage.create({
       data: {
         conversationId: conversation.id,
-        role: input.assistantRole,
-        content: input.assistantContent,
-        blocked: false,
-        inputTokens: input.inputTokens,
-        outputTokens: input.outputTokens,
-        totalTokens: input.totalTokens,
+        ...assistantData,
       },
     })
 

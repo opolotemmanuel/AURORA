@@ -8,25 +8,43 @@ import {
   scanHeaderActionClassName,
 } from "@/components/scan/scan-header-action"
 import { Button } from "@/components/ui/button"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { CAPTURE_TAB_TOOLTIPS } from "@/lib/scan/capture-copy"
 import { cn } from "@/lib/utils"
 
 type ScanDashboardLinkProps = {
   className?: string
   variant?: "icon" | "label" | "segment" | "action"
+  alwaysShowLabel?: boolean
 }
 
 export function ScanDashboardLink({
   className,
   variant = "action",
+  alwaysShowLabel = false,
 }: ScanDashboardLinkProps) {
   if (variant === "action") {
     return (
-      <ScanHeaderActionLink
-        href="/dashboard"
-        label="Dashboard"
-        icon={<IconLayoutDashboard className="size-3.5" />}
-        className={className}
-      />
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex">
+            <ScanHeaderActionLink
+              href="/dashboard"
+              label="Dashboard"
+              icon={<IconLayoutDashboard className="size-3.5" />}
+              className={className}
+              alwaysShowLabel={alwaysShowLabel}
+            />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={6}>
+          {CAPTURE_TAB_TOOLTIPS.dashboard}
+        </TooltipContent>
+      </Tooltip>
     )
   }
 

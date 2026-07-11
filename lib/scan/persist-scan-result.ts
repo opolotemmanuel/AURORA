@@ -1,6 +1,7 @@
 import type { Prisma } from "@/generated/prisma/client"
 import { revalidatePath } from "next/cache"
 
+import { revalidateScanHistoryContext } from "@/lib/ai/context/cache-tags"
 import type { ScanCaptureMode } from "@/generated/prisma/client"
 import { CONSENT_VERSION } from "@/lib/onboarding/constants"
 import { prisma } from "@/lib/db/client"
@@ -140,6 +141,7 @@ export async function persistScanResult(input: PersistScanResultInput) {
     revalidatePath("/reports")
     revalidatePath("/dashboard")
     revalidatePath("/dashboard/usage")
+    revalidateScanHistoryContext(input.userId)
     return saved
   })
 }

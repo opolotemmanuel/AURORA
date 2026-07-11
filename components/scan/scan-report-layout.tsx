@@ -41,7 +41,7 @@ export function ScanReportLayout({
         <ScanFlowHeader
           className="max-w-5xl"
           trailing={
-            <div className="flex shrink-0 flex-nowrap items-center justify-end gap-1.5 sm:gap-2">
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
               {onReEdit ? (
                 <ScanHeaderActionButton
                   label="Adjust crop"

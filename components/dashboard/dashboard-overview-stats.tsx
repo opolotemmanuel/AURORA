@@ -16,7 +16,11 @@ export async function DashboardOverviewStats() {
           value={stats.lifetimeUsed.toLocaleString()}
           hint="All time"
         />
-        <StatCard label="Total scans" value={stats.scanCount} />
+        <StatCard
+          label="Chat budget"
+          value={stats.chatBudgetRemaining.toLocaleString()}
+          hint="Tokens for skin advice"
+        />
         <StatCard
           label="Skin type"
           value={String(stats.profile?.skinType ?? "—")}

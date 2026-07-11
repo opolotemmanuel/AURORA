@@ -1,3 +1,10 @@
+import { unstable_cache } from "next/cache"
+import { cache } from "react"
+
+import {
+  SCAN_HISTORY_CACHE_REVALIDATE_SECONDS,
+  scanHistoryContextTag,
+} from "@/lib/ai/context/cache-tags"
 import { prisma } from "@/lib/db/client"
 import type { ScanHistoryContextItem } from "@/lib/ai/types"
 import type {
@@ -67,18 +74,17 @@ function compactProductRecommendations(
     }))
 }
 
-export async function getUserScanHistoryContext(
+async function fetchUserScanHistoryContext(
   userId: string,
-  options: GetUserScanHistoryOptions = {},
+  excludeScanId: string,
+  limit: number,
 ): Promise<ScanHistoryContextItem[]> {
-  const limit = options.limit ?? CHAT_SCAN_HISTORY_LIMIT
-
   const scans = await prisma.scan.findMany({
     where: {
       userId,
       status: "completed",
       result: { isNot: null },
-      ...(options.excludeScanId ? { id: { not: options.excludeScanId } } : {}),
+      ...(excludeScanId ? { id: { not: excludeScanId } } : {}),
     },
     orderBy: { createdAt: "desc" },
     take: limit,
@@ -109,3 +115,22 @@ export async function getUserScanHistoryContext(
     ),
   }))
 }
+
+export const getUserScanHistoryContext = cache(
+  async (
+    userId: string,
+    options: GetUserScanHistoryOptions = {},
+  ): Promise<ScanHistoryContextItem[]> => {
+    const limit = options.limit ?? CHAT_SCAN_HISTORY_LIMIT
+    const excludeScanId = options.excludeScanId ?? ""
+
+    return unstable_cache(
+      () => fetchUserScanHistoryContext(userId, excludeScanId, limit),
+      ["scan-history-context", userId, excludeScanId, String(limit)],
+      {
+        tags: [scanHistoryContextTag(userId)],
+        revalidate: SCAN_HISTORY_CACHE_REVALIDATE_SECONDS,
+      },
+    )()
+  },
+)

@@ -29,9 +29,22 @@ function formatWhen(createdAt: string | Date): string {
   })
 }
 
+function formatActivityDelta(entry: RecentActivityEntry): string {
+  if (entry.reason === "chat_token_debit") {
+    const data = entry.metadata as { tokensDebited?: number } | null
+    if (data?.tokensDebited) {
+      return `-${data.tokensDebited.toLocaleString()}`
+    }
+    return "—"
+  }
+
+  return `${entry.delta > 0 ? "+" : ""}${entry.delta.toLocaleString()}`
+}
+
 function ActivityRow({ entry }: { entry: RecentActivityEntry }) {
   const detail = getLedgerDetail(entry.reason, entry.metadata)
   const fullLabel = getLedgerFullLabel(entry.reason, entry.metadata)
+  const deltaLabel = formatActivityDelta(entry)
 
   return (
     <li
@@ -50,11 +63,12 @@ function ActivityRow({ entry }: { entry: RecentActivityEntry }) {
       <span
         className={cn(
           "shrink-0 pt-0.5 text-sm font-medium tabular-nums",
-          entry.delta > 0 ? "text-foreground" : "text-muted-foreground",
+          entry.delta > 0 || entry.reason === "chat_token_debit"
+            ? "text-foreground"
+            : "text-muted-foreground",
         )}
       >
-        {entry.delta > 0 ? "+" : ""}
-        {entry.delta.toLocaleString()}
+        {deltaLabel}
       </span>
     </li>
   )

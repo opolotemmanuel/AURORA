@@ -5,6 +5,7 @@ import type { ProductRecommendation } from "@/lib/scan/types"
 
 type CatalogProductFields = {
   slug: string
+  name: string
   imageUrl: string | null
   storeUrl: string | null
 }
@@ -18,7 +19,7 @@ async function getCatalogProductMap(
 
   const products = await prisma.product.findMany({
     where: { slug: { in: slugs }, isActive: true },
-    select: { slug: true, imageUrl: true, storeUrl: true },
+    select: { slug: true, name: true, imageUrl: true, storeUrl: true },
   })
 
   return new Map(products.map((product) => [product.slug, product]))
@@ -33,6 +34,7 @@ function applyCatalogFields(
 
     return {
       ...item,
+      name: item.name ?? catalog?.name ?? item.id,
       imageUrl: item.imageUrl ?? catalog?.imageUrl ?? null,
       storeUrl:
         item.storeUrl ??
@@ -42,6 +44,21 @@ function applyCatalogFields(
         }),
     }
   })
+}
+
+/** Chat-safe enrich: keeps all valid catalog matches, never throws. */
+export async function enrichChatProductRecommendations(
+  recommendations: ProductRecommendation[],
+): Promise<ProductRecommendation[]> {
+  if (recommendations.length === 0) {
+    return recommendations
+  }
+
+  const catalogBySlug = await getCatalogProductMap(
+    recommendations.map((item) => item.id),
+  )
+  const valid = recommendations.filter((item) => catalogBySlug.has(item.id))
+  return applyCatalogFields(valid, catalogBySlug)
 }
 
 export async function enrichRecommendationsWithImages(

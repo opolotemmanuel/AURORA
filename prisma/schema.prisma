@@ -530,20 +530,27 @@ model ChatConversation {
 }
 
 model ChatMessage {
-  id             String           @id @default(cuid())
-  conversationId String
-  conversation   ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  role           ChatMessageRole
-  content        String
-  imageMimeType  String?
-  imageData      Bytes?
-  inputTokens    Int              @default(0)
-  outputTokens   Int              @default(0)
-  totalTokens    Int              @default(0)
-  blocked        Boolean          @default(false)
-  createdAt      DateTime         @default(now())
+  id                  String           @id @default(cuid())
+  conversationId      String
+  conversation        ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role                ChatMessageRole
+  content             String
+  imageMimeType       String?
+  imageData           Bytes?
+  inputTokens         Int              @default(0)
+  outputTokens        Int              @default(0)
+  cachedTokens        Int              @default(0)
+  reasoningTokens     Int?
+  totalTokens         Int              @default(0)
+  modelId             String?
+  estimatedCostMicros Int?
+  metadata            Json?
+  blocked             Boolean          @default(false)
+  createdAt           DateTime         @default(now())
 
   @@index([conversationId])
   @@index([conversationId, createdAt])
+  @@index([modelId])
+  @@index([createdAt])
   @@map("chat_message")
 }

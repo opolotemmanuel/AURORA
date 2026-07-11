@@ -103,7 +103,7 @@ export async function chatAboutSkin(
     input.userMessage,
     model.modelId,
     hasScanContext,
-    { hasImage },
+    { hasImage, history: input.history },
   )
   if (!guardrails.allowed) {
     return { allowed: false, reason: guardrails.reason }

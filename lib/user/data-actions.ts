@@ -4,6 +4,11 @@ import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { revalidatePath } from "next/cache"
 
+import {
+  revalidateAiUserContext,
+  revalidateScanHistoryContext,
+  revalidateUserScanContext,
+} from "@/lib/ai/context/cache-tags"
 import { auth } from "@/lib/auth/server"
 import { requireSession } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/client"
@@ -33,6 +38,7 @@ export async function deleteProfileDataAction() {
 
   revalidatePath("/dashboard/profile")
   revalidatePath("/dashboard/privacy")
+  revalidateUserScanContext(session.user.id)
 }
 
 export async function deleteLocationDataAction() {
@@ -59,6 +65,7 @@ export async function deleteLocationDataAction() {
 
   revalidatePath("/dashboard/profile")
   revalidatePath("/dashboard/privacy")
+  revalidateUserScanContext(session.user.id)
 }
 
 export async function deleteScanAction(scanId: string) {
@@ -73,6 +80,7 @@ export async function deleteScanAction(scanId: string) {
   revalidatePath("/reports")
   revalidatePath("/dashboard/privacy")
   revalidatePath("/dashboard/usage")
+  revalidateScanHistoryContext(session.user.id)
 }
 
 export async function deleteAllScansAction() {
@@ -81,6 +89,7 @@ export async function deleteAllScansAction() {
   revalidatePath("/reports")
   revalidatePath("/dashboard")
   revalidatePath("/dashboard/usage")
+  revalidateScanHistoryContext(session.user.id)
 }
 
 export async function deleteAllPersonalDataAction() {
@@ -138,6 +147,7 @@ export async function deleteAllPersonalDataAction() {
   revalidatePath("/dashboard")
   revalidatePath("/reports")
   revalidatePath("/dashboard/privacy")
+  revalidateAiUserContext(session.user.id)
 }
 
 export async function deleteAccountAction() {

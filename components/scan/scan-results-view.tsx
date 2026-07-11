@@ -6,6 +6,7 @@ import { IconDownload, IconLoader2 } from "@tabler/icons-react"
 import { ReportDocumentHeader } from "@/components/reports/report-document-header"
 import { SkinReportDocument } from "@/components/reports/skin-report-document"
 import { ScanReportChatDock } from "@/components/scan/scan-report-chat-dock"
+import { ScanDashboardLink } from "@/components/scan/scan-close-button"
 import { ScanReportLayout } from "@/components/scan/scan-report-layout"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -59,7 +60,7 @@ export function ScanResultsView({
         onReEdit={onReEdit}
         onViewReport={onViewReport}
       >
-        <div className="mx-auto max-w-3xl space-y-6 pb-44">
+        <div className="mx-auto max-w-5xl space-y-6 pb-44">
           <ReportDocumentHeader scanDate={formattedDate} />
 
           <Alert>
@@ -74,8 +75,9 @@ export function ScanResultsView({
             climateContext={climateContext}
           />
 
-          {scanId ? (
-            <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+          <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+            <ScanDashboardLink className="rounded-full" />
+            {scanId ? (
               <Button
                 type="button"
                 size="sm"
@@ -90,8 +92,8 @@ export function ScanResultsView({
                 )}
                 {downloading ? "Generating…" : "Download PDF"}
               </Button>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
       </ScanReportLayout>
 

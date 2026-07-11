@@ -24,3 +24,10 @@ export const CAPTURE_COPY: Record<
     description: "Ask about routines, concerns & recommendations",
   },
 }
+
+export const CAPTURE_TAB_TOOLTIPS = {
+  upload: "Upload a clear face photo for a personalized skin report",
+  camera: "Use your camera with live lighting guidance for a scan",
+  advice: "Chat with Aura about routines, products, and skin concerns",
+  dashboard: "Open your dashboard for reports, usage, and account settings",
+} as const

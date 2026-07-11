@@ -3,6 +3,7 @@ import {
 } from "@/lib/ai/prompts/chat"
 import {
   classifyChatInput,
+  type ChatHistoryMessage,
 } from "@/lib/ai/providers/gemini-chat"
 import { MAX_CHAT_MESSAGE_LENGTH } from "@/lib/scans/constants"
 
@@ -27,6 +28,23 @@ const MEDICAL_OUTPUT_PATTERNS: RegExp[] = [
   /\b(prescri(be|ption)|take this medication|antibiotic|steroid)\b/i,
   /\b(melanoma|carcinoma|basal cell)\b/i,
 ]
+
+const GREETING_PATTERN =
+  /^(hi|hello|hey|howdy|yo|sup|greetings|good\s+(morning|afternoon|evening|day)|what'?s\s+up)(?:\s+(there|aura))?[!.?]*$/i
+
+const SOCIAL_ACK_PATTERN =
+  /^(thanks?|thank\s+you|thx|ty|ok|okay|got\s+it|cool|sounds\s+good|great|nice|perfect)[!.?]*$/i
+
+/** Short greetings and social openers that should never be classified as off-topic. */
+export function isConversationalOpener(message: string): boolean {
+  const normalized = message.trim()
+  if (!normalized) {
+    return false
+  }
+  return (
+    GREETING_PATTERN.test(normalized) || SOCIAL_ACK_PATTERN.test(normalized)
+  )
+}
 
 export function checkInputGuardrails(
   message: string,
@@ -65,11 +83,22 @@ export async function runFullInputGuardrails(
   message: string,
   modelId: string,
   hasScanContext: boolean,
-  options?: { hasImage?: boolean },
+  options?: { hasImage?: boolean; history?: ChatHistoryMessage[] },
 ): Promise<GuardrailResult> {
   const local = checkInputGuardrails(message, options)
   if (!local.allowed) {
     return local
+  }
+
+  // Established chats already have model context + local blocklist; classifying
+  // isolated follow-ups like "thanks" or "that's good" causes false refusals.
+  if ((options?.history?.length ?? 0) > 0) {
+    return { allowed: true }
+  }
+
+  // First-message greetings ("hi", "hello") are valid chat openers, not off-topic.
+  if (isConversationalOpener(message)) {
+    return { allowed: true }
   }
 
   const messageForClassifier =

@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   IconArrowUp,
   IconLoader2,
@@ -15,12 +15,19 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { ChatMessageContent } from "@/components/chat/chat-message-content"
+import { ChatMessageFooter } from "@/components/chat/chat-message-footer"
+import { ChatNaturalRecommendations } from "@/components/chat/chat-natural-recommendations"
+import { ChatProductList } from "@/components/chat/chat-product-list"
 import { BloomGlow } from "@/components/chat/bloom-glow"
 import { ChatThinkingIndicator } from "@/components/chat/chat-thinking-indicator"
 import { VoiceRecordingBar } from "@/components/chat/voice-recording-bar"
 import { useVoiceDictation } from "@/hooks/use-voice-dictation"
 import { MAX_CHAT_MESSAGE_LENGTH } from "@/lib/scans/constants"
+import { extractChatRecommendationsFromContent } from "@/lib/chat/extract-recommendations"
 import { toUserFacingChatError } from "@/lib/chat/errors"
+import { formatChatMessageBody } from "@/lib/chat/format-message-body"
+import { splitChatDisclaimer } from "@/lib/chat/split-disclaimer"
+import type { ChatMessageMetadata } from "@/lib/chat/types"
 import { cn } from "@/lib/utils"
 
 import type { AdviceChatToolbarProps } from "@/components/scan/advice-chat-toolbar"
@@ -31,6 +38,7 @@ export type ChatMessageItem = {
   content: string
   blocked?: boolean
   imageUrl?: string | null
+  metadata?: ChatMessageMetadata | null
 }
 
 type ScanAdviceComposerProps = {
@@ -72,6 +80,29 @@ const MESSAGE_LIST_HEIGHT = {
 
 const ACCEPTED_IMAGE_TYPES = "image/jpeg,image/png,image/webp"
 
+function scrollElementToTopOfContainer(
+  container: HTMLElement,
+  element: HTMLElement,
+  behavior: ScrollBehavior,
+) {
+  const offset =
+    element.getBoundingClientRect().top - container.getBoundingClientRect().top
+  container.scrollTo({
+    top: Math.max(0, container.scrollTop + offset),
+    behavior,
+  })
+}
+
+function scrollContainerToBottom(
+  container: HTMLElement,
+  behavior: ScrollBehavior,
+) {
+  container.scrollTo({
+    top: container.scrollHeight,
+    behavior,
+  })
+}
+
 type PendingImage = {
   file: File
   previewUrl: string
@@ -81,16 +112,45 @@ function MessageBubble({ message }: { message: ChatMessageItem }) {
   const isUser = message.role === "user"
   const useMarkdown = message.role === "assistant" || message.role === "system_refusal"
 
+  const extracted = useMemo(
+    () =>
+      message.role === "assistant" || message.role === "system_refusal"
+        ? extractChatRecommendationsFromContent(message.content)
+        : null,
+    [message.content, message.role],
+  )
+
+  const naturalRecommendations =
+    message.metadata?.naturalRecommendations ??
+    extracted?.naturalRecommendations ??
+    []
+  const productRecommendations =
+    message.metadata?.productRecommendations ??
+    extracted?.productRecommendations ??
+    []
+  const body = formatChatMessageBody(message.content, {
+    naturalRecommendations,
+    productRecommendations,
+  })
+  const { consultationNote } = splitChatDisclaimer(message.content)
+  const consultationNoteText =
+    message.metadata?.consultationNote ?? consultationNote
+  const hasStructuredContent =
+    naturalRecommendations.length > 0 || productRecommendations.length > 0
+
   return (
     <div
-      className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}
+      data-message-id={message.id}
+      className={cn("flex w-full min-w-0", isUser ? "justify-end" : "justify-start")}
     >
       <div
         className={cn(
-          "flex flex-col gap-2 rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed break-words",
+          "flex min-w-0 flex-col gap-2 rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed break-words",
           isUser
             ? "w-fit max-w-[min(85%,18rem)] bg-primary/10 text-foreground"
-            : "w-[80%] max-w-[80%] bg-muted/40 text-foreground",
+            : hasStructuredContent
+              ? "w-full max-w-[min(100%,34rem)] bg-muted/40 text-foreground"
+              : "w-[80%] max-w-[80%] bg-muted/40 text-foreground",
         )}
       >
         {message.imageUrl ? (
@@ -101,11 +161,20 @@ function MessageBubble({ message }: { message: ChatMessageItem }) {
             className="max-h-40 w-full rounded-xl object-cover"
           />
         ) : null}
-        {message.content ? (
+        {body ? (
           <ChatMessageContent
-            content={message.content}
+            content={body}
             markdown={useMarkdown}
           />
+        ) : null}
+        {naturalRecommendations.length > 0 ? (
+          <ChatNaturalRecommendations items={naturalRecommendations} />
+        ) : null}
+        {productRecommendations.length > 0 ? (
+          <ChatProductList products={productRecommendations} />
+        ) : null}
+        {consultationNoteText ? (
+          <ChatMessageFooter consultationNote={consultationNoteText} />
         ) : null}
       </div>
     </div>
@@ -337,9 +406,44 @@ export function ScanAdviceComposer({
   }, [handleNewChat, mode, onToolbarStateChange, sending, startingNew])
 
   useEffect(() => {
-    if (!listRef.current) return
-    listRef.current.scrollTop = listRef.current.scrollHeight
-  }, [messages, open, pendingImage])
+    const container = listRef.current
+    if (!container || messages.length === 0) return
+
+    const behavior: ScrollBehavior = reduce ? "auto" : "smooth"
+    const last = messages[messages.length - 1]
+
+    const scrollToMessageStart = (messageId: string) => {
+      const element = container.querySelector(
+        `[data-message-id="${messageId}"]`,
+      )
+      if (element instanceof HTMLElement) {
+        scrollElementToTopOfContainer(container, element, behavior)
+      }
+    }
+
+    const align = () => {
+      if (
+        last.role === "assistant" ||
+        last.role === "system_refusal"
+      ) {
+        scrollToMessageStart(last.id)
+        return
+      }
+
+      scrollContainerToBottom(container, behavior)
+    }
+
+    const frame = requestAnimationFrame(align)
+    const retry =
+      last.role === "assistant" || last.role === "system_refusal"
+        ? window.setTimeout(() => scrollToMessageStart(last.id), 120)
+        : undefined
+
+    return () => {
+      cancelAnimationFrame(frame)
+      if (retry) window.clearTimeout(retry)
+    }
+  }, [messages, open, pendingImage, sending, reduce])
 
   useEffect(() => {
     if (!open || inline) return
@@ -434,6 +538,7 @@ export function ScanAdviceComposer({
         error?: string
         conversationId?: string
         assistantMessage?: string
+        assistantMetadata?: ChatMessageMetadata | null
         blocked?: boolean
         estimatedMessagesRemaining?: number
       }
@@ -462,6 +567,7 @@ export function ScanAdviceComposer({
           id: `assistant-${tempIdCounter.current}`,
           role: data.blocked ? "system_refusal" : "assistant",
           content: data.assistantMessage ?? "",
+          metadata: data.assistantMetadata ?? null,
         },
       ])
     } catch {
@@ -595,7 +701,7 @@ export function ScanAdviceComposer({
           <div
             ref={listRef}
             className={cn(
-              "chat-message-scroll flex flex-col gap-3 overflow-y-auto bg-background px-1 py-1",
+              "chat-message-scroll flex flex-col gap-3 overflow-y-auto scroll-pt-1 bg-background px-1 py-1",
               pinnedInput
                 ? MESSAGE_LIST_HEIGHT.scanPinned
                 : inline

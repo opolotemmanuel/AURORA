@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { headers } from "next/headers"
 
+import { revalidateUserScanContext } from "@/lib/ai/context/cache-tags"
 import { auth } from "@/lib/auth/server"
 import { grantFreeStarterScansIfNeeded } from "@/lib/auth/bootstrap"
 import { requireSession } from "@/lib/auth/session"
@@ -118,6 +119,7 @@ export async function saveBasicsAction(input: unknown) {
     },
   })
 
+  revalidateUserScanContext(session.user.id)
 }
 
 export async function saveSkinAction(input: unknown) {
@@ -138,6 +140,7 @@ export async function saveSkinAction(input: unknown) {
     },
   })
 
+  revalidateUserScanContext(session.user.id)
 }
 
 export async function saveRoutineAction(input: unknown) {
@@ -154,6 +157,7 @@ export async function saveRoutineAction(input: unknown) {
     },
   })
 
+  revalidateUserScanContext(session.user.id)
 }
 
 export async function saveLifestyleAction(input: unknown) {
@@ -168,6 +172,7 @@ export async function saveLifestyleAction(input: unknown) {
     },
   })
 
+  revalidateUserScanContext(session.user.id)
 }
 
 export async function saveLocationAction(input: unknown) {
@@ -227,6 +232,7 @@ export async function saveLocationAction(input: unknown) {
   }
 
   await advanceStep(session.user.id, "password")
+  revalidateUserScanContext(session.user.id)
 }
 
 export async function syncUserClimateAction() {
@@ -248,7 +254,7 @@ export async function syncUserClimateAction() {
     throw new Error("Could not resolve location for climate sync")
   }
 
-  return prisma.userLocation.update({
+  const updated = await prisma.userLocation.update({
     where: { userId: session.user.id },
     data: {
       ...refreshed.climate,
@@ -257,6 +263,9 @@ export async function syncUserClimateAction() {
       lastSyncedAt: new Date(),
     },
   })
+
+  revalidateUserScanContext(session.user.id)
+  return updated
 }
 
 export async function savePasswordAction(input: unknown) {
@@ -300,6 +309,7 @@ export async function completeOnboardingAction() {
   revalidatePath("/onboarding")
   revalidatePath("/scan")
   revalidatePath("/dashboard")
+  revalidateUserScanContext(session.user.id)
 }
 
 export async function setWelcomeStepAction() {

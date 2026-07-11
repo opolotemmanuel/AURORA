@@ -1,5 +1,8 @@
 export const DISCLAIMER_VERSION = "1.1"
 
+export const CHAT_COSMETIC_DISCLAIMER =
+  "Cosmetic guidance only — not medical advice."
+
 export const CONSULTATION_BOOKING_URL =
   "https://calendly.com/auroraorganic4u"
 

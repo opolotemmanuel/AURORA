@@ -1,8 +1,5 @@
-import { Button } from "@/components/ui/button"
-import {
-  CONSULTATION_BOOKING_URL,
-  SKIN_DISCLAIMER,
-} from "@/lib/scan/constants"
+import { ConsultationBookingButton } from "@/components/chat/consultation-booking-button"
+import { SKIN_DISCLAIMER } from "@/lib/scan/constants"
 import { cn } from "@/lib/utils"
 
 type ReportDisclaimerProps = {
@@ -15,15 +12,7 @@ export function ReportDisclaimer({ className }: ReportDisclaimerProps) {
       <p className="text-xs leading-relaxed text-muted-foreground">
         {SKIN_DISCLAIMER}
       </p>
-      <Button asChild variant="outline" size="sm" className="h-8 text-xs">
-        <a
-          href={CONSULTATION_BOOKING_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Book a consultation
-        </a>
-      </Button>
+      <ConsultationBookingButton />
     </div>
   )
 }

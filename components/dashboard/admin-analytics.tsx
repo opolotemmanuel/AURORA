@@ -1,6 +1,8 @@
 import { RoleDistributionChart, UsageBarChart } from "@/components/dashboard/usage-chart"
 import { StatCard } from "@/components/dashboard/page-header"
 import { getAdminDashboardStats } from "@/lib/dashboard/stats"
+import { formatMicroUsdCompact } from "@/lib/pricing/format-cost"
+import { formatTokenBreakdown } from "@/lib/tokens/format-usage"
 
 export async function AdminAnalytics() {
   const stats = await getAdminDashboardStats()
@@ -10,21 +12,64 @@ export async function AdminAnalytics() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Users" value={stats.userCount} />
         <StatCard label="Scans" value={stats.scanCount} />
+        <StatCard label="Scans used" value={stats.scansUsed.toLocaleString()} />
+        <StatCard
+          label="Scans granted"
+          value={stats.scansGranted.toLocaleString()}
+        />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="AI tokens (all time)"
+          value={stats.aiTokens.toLocaleString()}
+          hint={formatTokenBreakdown(stats.tokenBreakdown)}
+        />
+        <StatCard
+          label="Est. provider cost"
+          value={formatMicroUsdCompact(stats.estimatedCostMicros)}
+          hint="Recorded scan + chat usage"
+        />
+        <StatCard label="Scans today" value={stats.scansToday} />
+        <StatCard label="Chats today" value={stats.chatsToday} />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Active products" value={stats.productCount} />
-        <StatCard label="Tokens used" value={stats.totalUsed.toLocaleString()} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="rounded-none border border-border bg-card p-5">
-          <h2 className="font-heading text-sm font-medium">Token grants (14 days)</h2>
+          <h2 className="font-heading text-sm font-medium">Scans granted (14 days)</h2>
           <div className="mt-4">
             <UsageBarChart data={stats.grantsByDay} label="Granted" />
           </div>
         </div>
         <div className="rounded-none border border-border bg-card p-5">
-          <h2 className="font-heading text-sm font-medium">Token usage (14 days)</h2>
+          <h2 className="font-heading text-sm font-medium">Scans used (14 days)</h2>
           <div className="mt-4">
             <UsageBarChart data={stats.usageByDay} label="Used" />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-none border border-border bg-card p-5">
+          <h2 className="font-heading text-sm font-medium">AI tokens (14 days)</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Scan analysis + skin advice chat
+          </p>
+          <div className="mt-4">
+            <UsageBarChart data={stats.aiTokensByDay} label="Tokens" />
+          </div>
+        </div>
+        <div className="rounded-none border border-border bg-card p-5">
+          <h2 className="font-heading text-sm font-medium">Provider cost (14 days)</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            USD from recorded micros
+          </p>
+          <div className="mt-4">
+            <UsageBarChart data={stats.costByDay} label="USD" />
           </div>
         </div>
       </div>

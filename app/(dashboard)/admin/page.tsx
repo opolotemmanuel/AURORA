@@ -29,7 +29,7 @@ export default function AdminPage() {
     <div className="space-y-8">
       <DashboardPageHeader
         title="Analytics"
-        description="Platform usage, users, and scan allowances at a glance."
+        description="Platform usage, scan allowances, and AI cost at a glance."
         badge="Admin"
       />
 

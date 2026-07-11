@@ -11,10 +11,15 @@ export async function UsageStats() {
 
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Remaining" value={stats.remaining.toLocaleString()} />
         <StatCard label="Used" value={stats.lifetimeUsed.toLocaleString()} />
         <StatCard label="Granted" value={stats.lifetimeGranted.toLocaleString()} />
+        <StatCard
+          label="Chat tokens used"
+          value={stats.lifetimeChatTokensUsed.toLocaleString()}
+          hint={`${stats.chatBudgetRemaining.toLocaleString()} remaining`}
+        />
       </div>
 
       <div className="rounded-none border border-border bg-card p-5">

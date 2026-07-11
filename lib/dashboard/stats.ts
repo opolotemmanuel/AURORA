@@ -1,6 +1,7 @@
 import { cache } from "react"
 import { connection } from "next/server"
 
+import { getAdminUsageSnapshot } from "@/lib/admin/usage-analytics"
 import { prisma } from "@/lib/db/client"
 import { withDbRetry } from "@/lib/db/retry"
 
@@ -52,6 +53,8 @@ export const getUserDashboardStats = cache(async (userId: string) => {
       remaining: balance?.remaining ?? 0,
       lifetimeUsed: balance?.lifetimeUsed ?? 0,
       lifetimeGranted: balance?.lifetimeGranted ?? 0,
+      chatBudgetRemaining: Number(balance?.tokenBudgetRemaining ?? BigInt(0)),
+      lifetimeChatTokensUsed: Number(balance?.lifetimeTokensUsed ?? BigInt(0)),
       scanCount,
       totalDebited: Math.abs(ledgerAgg._sum.delta ?? 0),
       profile,
@@ -67,28 +70,19 @@ export const getAdminDashboardStats = cache(async () => {
   return withDbRetry(async () => {
     const thirtyDaysAgo = daysAgo(30)
 
-    const [userCount, scanCount, productCount] = await Promise.all([
+    const [userCount, scanCount, productCount, usageSnapshot] = await Promise.all([
       prisma.user.count(),
       prisma.scan.count(),
       prisma.product.count({ where: { isActive: true } }),
+      getAdminUsageSnapshot(),
     ])
 
-    const [totalGranted, totalUsed, usersByRole] = await Promise.all([
-      prisma.scanLedger.aggregate({
-        where: { delta: { gt: 0 } },
-        _sum: { delta: true },
-      }),
-      prisma.scanLedger.aggregate({
-        where: { delta: { lt: 0 } },
-        _sum: { delta: true },
-      }),
+    const [usersByRole, scansByStatus, recentUsers, scanActivity] =
+      await Promise.all([
       prisma.user.groupBy({
         by: ["role"],
         _count: { role: true },
       }),
-    ])
-
-    const [scansByStatus, recentUsers, scanActivity] = await Promise.all([
       prisma.scan.groupBy({
         by: ["status"],
         _count: { status: true },
@@ -125,8 +119,13 @@ export const getAdminDashboardStats = cache(async () => {
       userCount,
       scanCount,
       productCount,
-      totalGranted: totalGranted._sum.delta ?? 0,
-      totalUsed: Math.abs(totalUsed._sum.delta ?? 0),
+      scansGranted: usageSnapshot.scansGranted,
+      scansUsed: usageSnapshot.scansUsed,
+      scansToday: usageSnapshot.scansToday,
+      chatsToday: usageSnapshot.chatsToday,
+      aiTokens: usageSnapshot.allTimeTokens.totalTokens,
+      estimatedCostMicros: usageSnapshot.allTimeTokens.estimatedCostMicros,
+      tokenBreakdown: usageSnapshot.allTimeTokens,
       usersByRole: usersByRole.map((r) => ({
         role: r.role ?? "user",
         count: r._count.role,
@@ -138,6 +137,11 @@ export const getAdminDashboardStats = cache(async () => {
       recentUsers,
       grantsByDay,
       usageByDay,
+      aiTokensByDay: usageSnapshot.tokenSeries14.map((bucket) => ({
+        label: bucket.label,
+        value: bucket.tokens,
+      })),
+      costByDay: usageSnapshot.costSeries14,
     }
   })
 })

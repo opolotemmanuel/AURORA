@@ -90,7 +90,7 @@ export function ScanReportModal({
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-6">
             <ScanReportLayout imageSrc={imageSrc} showActions={false}>
-              <div className="mx-auto max-w-3xl space-y-6">
+              <div className="mx-auto max-w-5xl space-y-6">
                 <ReportDocumentHeader scanDate={formattedDate} />
                 <SkinReportDocument
                   assessment={assessment}

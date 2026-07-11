@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 
+import { revalidateUserScanContext } from "@/lib/ai/context/cache-tags"
 import { requireSession } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/client"
 import { deriveAgeBand } from "@/lib/onboarding/constants"
@@ -34,6 +35,7 @@ export async function updateBasicsAction(input: unknown) {
   })
 
   revalidatePath("/dashboard/profile")
+  revalidateUserScanContext(session.user.id)
 }
 
 export async function updateSkinAction(input: unknown) {
@@ -54,6 +56,7 @@ export async function updateSkinAction(input: unknown) {
   })
 
   revalidatePath("/dashboard/profile")
+  revalidateUserScanContext(session.user.id)
 }
 
 export async function updateRoutineAction(input: unknown) {
@@ -70,6 +73,7 @@ export async function updateRoutineAction(input: unknown) {
   })
 
   revalidatePath("/dashboard/profile")
+  revalidateUserScanContext(session.user.id)
 }
 
 export async function updateLifestyleAction(input: unknown) {
@@ -82,6 +86,7 @@ export async function updateLifestyleAction(input: unknown) {
   })
 
   revalidatePath("/dashboard/profile")
+  revalidateUserScanContext(session.user.id)
 }
 
 export async function updateLocationAction(input: unknown) {
@@ -131,4 +136,5 @@ export async function updateLocationAction(input: unknown) {
   })
 
   revalidatePath("/dashboard/profile")
+  revalidateUserScanContext(session.user.id)
 }

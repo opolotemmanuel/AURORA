@@ -24,7 +24,7 @@ export function ReportProductList({
   }
 
   return (
-    <div className={cn("grid gap-4 font-sans sm:grid-cols-2", className)}>
+    <div className={cn("grid gap-4 font-sans sm:grid-cols-2 md:grid-cols-3", className)}>
       {products.map((product) => {
         const imageSrc = product.imageUrl?.trim()
           ? product.imageUrl
@@ -41,7 +41,7 @@ export function ReportProductList({
                 alt={product.name}
                 fill
                 className="object-cover"
-                sizes="(max-width: 640px) 100vw, 240px"
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               />
             </div>
             <div className="space-y-2 p-3">

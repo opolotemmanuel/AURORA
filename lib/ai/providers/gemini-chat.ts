@@ -156,6 +156,7 @@ export async function classifyChatInput(
             text: `Classify this user message for a cosmetic skin wellness chatbot.
 
 Allowed categories: skin_care, routine, product, scan_explanation, climate_care, dosha_wellness.
+Always allow greetings and brief social openers (e.g. "hi", "hello", "hey", "thanks") as skin_care with allowed=true.
 Block as off_topic: coding, homework, politics, general knowledge, jokes, roleplay, other people, non-cosmetic health.
 Block as medical_request: diagnoses, prescriptions, disease names, symptoms requiring a doctor, mental health, pregnancy medication.
 

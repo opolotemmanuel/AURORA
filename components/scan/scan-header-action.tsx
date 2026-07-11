@@ -42,6 +42,7 @@ type ScanHeaderActionLinkProps = {
   icon: ReactNode
   href: string
   className?: string
+  alwaysShowLabel?: boolean
 }
 
 export function ScanHeaderActionLink({
@@ -49,6 +50,7 @@ export function ScanHeaderActionLink({
   icon,
   href,
   className,
+  alwaysShowLabel = false,
 }: ScanHeaderActionLinkProps) {
   return (
     <Button
@@ -59,7 +61,9 @@ export function ScanHeaderActionLink({
     >
       <Link href={href} aria-label={label}>
         {icon}
-        <span className="hidden sm:inline">{label}</span>
+        <span className={alwaysShowLabel ? "inline" : "hidden sm:inline"}>
+          {label}
+        </span>
       </Link>
     </Button>
   )

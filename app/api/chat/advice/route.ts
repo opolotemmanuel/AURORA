@@ -43,6 +43,7 @@ export async function POST(request: Request) {
       ok: true,
       conversationId: result.conversationId,
       assistantMessage: result.assistantMessage,
+      assistantMetadata: result.assistantMetadata,
       blocked: result.blocked,
       estimatedMessagesRemaining: result.estimatedMessagesRemaining,
     })

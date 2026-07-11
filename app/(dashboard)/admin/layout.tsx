@@ -1,6 +1,7 @@
 import { Suspense } from "react"
 
 import { AdminAuthGate } from "@/components/layouts/admin-auth-gate"
+import { ModelHealthBanner } from "@/components/admin/model-health-banner"
 import { DashboardPageSkeleton } from "@/components/dashboard/skeletons/dashboard-page-skeleton"
 
 export default function AdminLayout({
@@ -10,7 +11,12 @@ export default function AdminLayout({
 }>) {
   return (
     <Suspense fallback={<DashboardPageSkeleton />}>
-      <AdminAuthGate>{children}</AdminAuthGate>
+      <AdminAuthGate>
+        <Suspense fallback={null}>
+          <ModelHealthBanner />
+        </Suspense>
+        {children}
+      </AdminAuthGate>
     </Suspense>
   )
 }

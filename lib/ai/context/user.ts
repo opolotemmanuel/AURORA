@@ -1,9 +1,14 @@
+import { unstable_cache } from "next/cache"
+import { cache } from "react"
+
+import {
+  USER_SCAN_CONTEXT_REVALIDATE_SECONDS,
+  userScanContextTag,
+} from "@/lib/ai/context/cache-tags"
 import { prisma } from "@/lib/db/client"
 import type { UserScanContext } from "@/lib/ai/types"
 
-export async function getUserScanContext(
-  userId: string,
-): Promise<UserScanContext> {
+async function fetchUserScanContext(userId: string): Promise<UserScanContext> {
   const [profile, location] = await Promise.all([
     prisma.userProfile.findUnique({ where: { userId } }),
     prisma.userLocation.findUnique({ where: { userId } }),
@@ -37,3 +42,16 @@ export async function getUserScanContext(
       : null,
   }
 }
+
+export const getUserScanContext = cache(
+  async (userId: string): Promise<UserScanContext> => {
+    return unstable_cache(
+      () => fetchUserScanContext(userId),
+      ["user-scan-context", userId],
+      {
+        tags: [userScanContextTag(userId)],
+        revalidate: USER_SCAN_CONTEXT_REVALIDATE_SECONDS,
+      },
+    )()
+  },
+)

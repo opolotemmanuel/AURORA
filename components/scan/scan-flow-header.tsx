@@ -1,8 +1,11 @@
+"use client"
+
 import Image from "next/image"
 import Link from "next/link"
 import type { ReactNode } from "react"
 
 import brandIcon from "@/app/icon.png"
+import { ScanDashboardLink } from "@/components/scan/scan-close-button"
 import { cn } from "@/lib/utils"
 
 type ScanFlowHeaderProps = {
@@ -35,9 +38,10 @@ export function ScanFlowHeader({ trailing, className }: ScanFlowHeaderProps) {
         </span>
       </Link>
 
-      {trailing ? (
-        <div className="flex shrink-0 items-center gap-2">{trailing}</div>
-      ) : null}
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+        {trailing}
+        <ScanDashboardLink />
+      </div>
     </div>
   )
 }

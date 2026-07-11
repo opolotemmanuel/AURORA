@@ -54,6 +54,7 @@ const ADMIN: NavSection = {
   title: "Administration",
   items: [
     { href: "/admin", label: "Analytics", icon: IconChartBar },
+    { href: "/admin/usage", label: "Usage", icon: IconChartBar },
     { href: "/admin/users", label: "Users", icon: IconUsers },
     { href: "/admin/tokens", label: "Scans", icon: IconCoin },
     { href: "/admin/models", label: "Models", icon: IconBrain },
@@ -76,12 +77,18 @@ export function getNavSections(role: AppRole): NavSection[] {
   return sections
 }
 
+const EXACT_MATCH_HREFS = new Set(["/dashboard", "/admin"])
+
 export function isNavItemActive(pathname: string, href: string): boolean {
-  return (
-    pathname === href ||
-    (href !== "/dashboard" && pathname.startsWith(`${href}/`)) ||
-    (href === "/dashboard" && pathname === "/dashboard")
-  )
+  if (pathname === href) {
+    return true
+  }
+
+  if (EXACT_MATCH_HREFS.has(href)) {
+    return false
+  }
+
+  return pathname.startsWith(`${href}/`)
 }
 
 export function getActiveNavItem(

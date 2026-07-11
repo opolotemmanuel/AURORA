@@ -13,9 +13,12 @@ import {
 import {
   debitChatTokens,
 } from "@/lib/chat/token-budget"
+import { parseAndEnrichChatReply } from "@/lib/chat/parse-recommendations"
+import type { ChatMessageMetadata } from "@/lib/chat/types"
 import { prisma } from "@/lib/db/client"
 import { CHAT_REFUSAL_MESSAGE } from "@/lib/ai/prompts/chat"
 import { CHAT_RATE_LIMIT_PER_MINUTE } from "@/lib/scans/constants"
+import { estimateScanProviderCost } from "@/lib/scans/cost"
 import { getUsageTotalTokens } from "@/lib/tokens/format-usage"
 
 import type { ChatImageInput } from "@/lib/chat/image"
@@ -34,6 +37,7 @@ export type SendChatMessageResult =
       ok: true
       conversationId: string
       assistantMessage: string
+      assistantMetadata: ChatMessageMetadata | null
       blocked: boolean
       estimatedMessagesRemaining: number
     }
@@ -145,12 +149,15 @@ export async function sendChatMessage(
       ok: true,
       conversationId: savedConversationId,
       assistantMessage: CHAT_REFUSAL_MESSAGE,
+      assistantMetadata: null,
       blocked: true,
       estimatedMessagesRemaining: budget.estimatedMessagesRemaining,
     }
   }
 
+  const parsedReply = await parseAndEnrichChatReply(chatResult.reply)
   const totalTokens = getUsageTotalTokens(chatResult.usage)
+  const costEstimate = await estimateScanProviderCost(chatResult.usage)
 
   const savedConversationId = await appendChatMessages({
     conversationId: conversation?.id,
@@ -159,11 +166,16 @@ export async function sendChatMessage(
     userContent,
     userBlocked: false,
     userImage: input.image,
-    assistantContent: chatResult.reply,
+    assistantContent: parsedReply.content,
     assistantRole: "assistant",
     inputTokens: chatResult.usage.inputTokens,
     outputTokens: chatResult.usage.outputTokens,
+    cachedTokens: chatResult.usage.cachedTokens,
+    reasoningTokens: chatResult.usage.reasoningTokens,
     totalTokens,
+    modelId: chatResult.usage.modelId,
+    estimatedCostMicros: costEstimate?.costMicros ?? null,
+    metadata: parsedReply.metadata,
   })
 
   await debitChatTokens({
@@ -175,6 +187,8 @@ export async function sendChatMessage(
       modelId: chatResult.usage.modelId,
       inputTokens: chatResult.usage.inputTokens,
       outputTokens: chatResult.usage.outputTokens,
+      cachedTokens: chatResult.usage.cachedTokens,
+      reasoningTokens: chatResult.usage.reasoningTokens,
     },
   })
 
@@ -185,7 +199,8 @@ export async function sendChatMessage(
   return {
     ok: true,
     conversationId: savedConversationId,
-    assistantMessage: chatResult.reply,
+    assistantMessage: parsedReply.content,
+    assistantMetadata: parsedReply.metadata,
     blocked: false,
     estimatedMessagesRemaining: budget.estimatedMessagesRemaining,
   }
@@ -199,6 +214,7 @@ function mapMessageForClient(m: {
   createdAt: Date
   imageMimeType: string | null
   imageData: Buffer | Uint8Array | null
+  metadata: unknown
 }) {
   return {
     id: m.id,
@@ -209,6 +225,7 @@ function mapMessageForClient(m: {
     imageUrl: m.imageMimeType
       ? chatImageToDataUrl(m.imageMimeType, m.imageData)
       : null,
+    metadata: (m.metadata as ChatMessageMetadata | null) ?? null,
   }
 }
 

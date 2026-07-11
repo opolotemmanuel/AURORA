@@ -127,6 +127,29 @@ function scoreProduct(
     reasons.push("Supports a dry-climate cosmetic routine.")
   }
 
+  if (analysis.climate === "humid" && product.bestFor.includes("oilBalance")) {
+    score += 10
+    reasons.push("Supports a humid-climate cosmetic routine.")
+  }
+
+  if (analysis.climate === "cold" && product.bestFor.includes("barrierComfort")) {
+    score += 10
+    reasons.push("Supports a cold-climate barrier-comfort routine.")
+  }
+
+  // 6+ is where standard UV-index guidance starts recommending active sun
+  // protection ("high" on the common 0-11+ scale) — a coarse threshold,
+  // not a precise medical cutoff, consistent with this app's bands-only
+  // cosmetic framing.
+  if (
+    typeof analysis.uvIndex === "number" &&
+    analysis.uvIndex >= 6 &&
+    product.bestFor.includes("daytimeProtection")
+  ) {
+    score += 14
+    reasons.push("Boosted for high local UV exposure today.")
+  }
+
   if (analysis.routinePreference === "minimal" && product.routineStep === "treat") {
     score += 8
   }

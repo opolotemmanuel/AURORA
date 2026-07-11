@@ -3,6 +3,7 @@
 // Fetches the signed-in user's own row via findReportOwner (report-store.ts),
 // scoped by session.user.id — never any other user's row.
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { IconCalendar, IconLock, IconMail, IconShieldCheck, IconUserCircle } from "@tabler/icons-react"
 
 import { Button } from "@/components/ui/button"
@@ -19,8 +20,15 @@ import { findReportOwner } from "@/lib/backend/report-store"
 export const dynamic = "force-dynamic"
 
 export default async function ProfilePage() {
-  // Non-null: (dashboard)/layout.tsx already redirects to /login otherwise.
-  const session = (await getSession())!
+  const session = await getSession()
+  if (!session) {
+    // (dashboard)/layout.tsx already redirects when there's no session, but
+    // that's a separate, independent getSession() call (a fresh DB
+    // round-trip) — under a transient failure the two can disagree, so this
+    // page can't just assume the layout's check already covered it.
+    redirect("/login")
+  }
+
   const profile = await findReportOwner(session.user.id)
 
   return (

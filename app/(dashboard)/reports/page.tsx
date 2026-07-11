@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation"
 import { IconReportAnalytics } from "@tabler/icons-react"
 
 import { ReportsTable } from "@/components/report/reports-table"
@@ -15,9 +16,15 @@ type ReportsPageProps = {
 export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   const params = await searchParams
   const query = parseReportQuery(params)
-  // (dashboard)/layout.tsx already guarantees a session here — this just
-  // reads it to scope non-admin users to their own reports.
-  const session = (await getSession())!
+  const session = await getSession()
+  if (!session) {
+    // (dashboard)/layout.tsx already redirects when there's no session, but
+    // that's a separate, independent getSession() call (a fresh DB
+    // round-trip) — under a transient failure the two can disagree, so this
+    // page can't just assume the layout's check already covered it.
+    redirect("/login")
+  }
+
   const isAdminTier = Boolean(await getAdminPrincipal())
   const scopedQuery = isAdminTier ? query : { ...query, userId: session.user.id }
   const result = await listReportsPage(scopedQuery)

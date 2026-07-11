@@ -29,6 +29,13 @@ export type CosmeticAnalysisInput = {
   daytimeProtection?: CosmeticBand
   skinProfile?: SkinProfile
   climate?: "dry" | "humid" | "cold" | "hot" | "temperate"
+  // Optional live UV index (from lib/climate/adapter.ts's ClimateSnapshot,
+  // via lib/backend/scan-service.ts) — separate from `climate` above since
+  // "high UV" and "dry/humid/cold/hot" are independent axes (e.g. a cold,
+  // dry, high-UV day at altitude). Undefined whenever climate data wasn't
+  // fetched for a scan (location declined/unavailable, or Open-Meteo
+  // failed) — existing matching is unaffected when this is absent.
+  uvIndex?: number
   routinePreference?: "minimal" | "standard" | "complete"
 }
 

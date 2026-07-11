@@ -13,6 +13,7 @@
 // Data fetching, session/ownership scoping, and the userId-threading fix
 // are all unchanged from before.
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { IconArrowUpRight, IconCamera } from "@tabler/icons-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -32,8 +33,15 @@ import { worstBandVisual } from "@/lib/reports/band-visuals"
 export const dynamic = "force-dynamic"
 
 export default async function DashboardPage() {
-  // Non-null: (dashboard)/layout.tsx already redirects to /login otherwise.
-  const session = (await getSession())!
+  const session = await getSession()
+  if (!session) {
+    // (dashboard)/layout.tsx already redirects when there's no session, but
+    // that's a separate, independent getSession() call (a fresh DB
+    // round-trip) — under a transient failure the two can disagree, so this
+    // page can't just assume the layout's check already covered it.
+    redirect("/login")
+  }
+
   const reports = await listReportsForUser(session.user.id, 6)
   const latest = reports[0] ?? null
   const latestVisual = latest ? worstBandVisual(latest.analysis.cosmeticFindings) : null

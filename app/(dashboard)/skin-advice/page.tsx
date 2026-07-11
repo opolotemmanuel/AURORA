@@ -3,6 +3,7 @@
 // report). See components/skin-advice/skin-advice-chat.tsx, shared with the
 // scan flow's "Advice" tab (components/scan/ScanFlow.tsx).
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { IconArrowUpRight, IconSparkles } from "@tabler/icons-react"
 
 import { SkinAdviceChat } from "@/components/skin-advice/skin-advice-chat"
@@ -12,8 +13,15 @@ import { listReportsForUser } from "@/lib/backend/report-store"
 export const dynamic = "force-dynamic"
 
 export default async function SkinAdvicePage() {
-  // Non-null: (dashboard)/layout.tsx already redirects to /login otherwise.
-  const session = (await getSession())!
+  const session = await getSession()
+  if (!session) {
+    // (dashboard)/layout.tsx already redirects when there's no session, but
+    // that's a separate, independent getSession() call (a fresh DB
+    // round-trip) — under a transient failure the two can disagree, so this
+    // page can't just assume the layout's check already covered it.
+    redirect("/login")
+  }
+
   const [latest] = await listReportsForUser(session.user.id, 1)
 
   return (

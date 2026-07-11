@@ -3,6 +3,7 @@
 // components/layouts/dashboard-sidebar.tsx's ADMINISTRATION_SECTION comment for
 // why these are two separate routes). Self-service only, scoped to the
 // signed-in user's own row via getSession(), same pattern as /profile.
+import { redirect } from "next/navigation"
 import { IconCloud, IconSettings, IconUserCircle } from "@tabler/icons-react"
 
 import { ManageYourDataCard } from "@/components/account/manage-your-data-card"
@@ -14,8 +15,15 @@ import { findReportOwner } from "@/lib/backend/report-store"
 export const dynamic = "force-dynamic"
 
 export default async function AccountSettingsPage() {
-  // Non-null: (dashboard)/layout.tsx already redirects to /login otherwise.
-  const session = (await getSession())!
+  const session = await getSession()
+  if (!session) {
+    // (dashboard)/layout.tsx already redirects when there's no session, but
+    // that's a separate, independent getSession() call (a fresh DB
+    // round-trip) — under a transient failure the two can disagree, so this
+    // page can't just assume the layout's check already covered it.
+    redirect("/login")
+  }
+
   const profile = await findReportOwner(session.user.id)
 
   return (

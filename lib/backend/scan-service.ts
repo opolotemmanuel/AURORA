@@ -17,6 +17,7 @@ import type {
   ScanStatus,
   StoredReportBundle,
 } from "@/lib/backend/types"
+import type { ClimateSnapshot } from "@/lib/climate/adapter"
 import {
   RECOMMENDATION_DISCLAIMER,
   recommendAuroraProducts,
@@ -49,13 +50,19 @@ export async function createScanReport(input: {
   userId?: string
   userAgent?: string
   aiDurationMs?: number
+  // Transient only — the raw lat/lon never reach this function (see
+  // app/api/scan/analyze/route.ts, which fetches this from lib/climate/
+  // adapter.ts and discards the coordinates immediately after). Nothing
+  // below persists this snapshot: it only shapes this one call's
+  // recommendation scoring, per AGENTS.md's privacy-by-design rule.
+  climate?: ClimateSnapshot | null
 }): Promise<StoredReportBundle> {
   const now = new Date().toISOString()
   const scanId = createId("scan")
   const reportId = createId("report")
   // Recommendations are computed here (not by the AI adapter) so the
   // product catalog can change independently of what the model returns.
-  const recommendationInput = buildRecommendationInput(input.analysis)
+  const recommendationInput = buildRecommendationInput(input.analysis, input.climate)
   const products = await listActiveRecommendationProducts()
   const recommendations = recommendAuroraProducts(recommendationInput, 3, products)
   const status: ScanStatus = input.analysis.source === "fallback" ? "fallback" : "analyzed"
@@ -120,7 +127,10 @@ export async function createScanReport(input: {
 // actually found — so a finding the model didn't report (or reported with
 // an unrecognized label/band) just falls back to a safe neutral value
 // instead of skewing recommendations.
-function buildRecommendationInput(analysis: ScanAnalysisReport): CosmeticAnalysisInput {
+function buildRecommendationInput(
+  analysis: ScanAnalysisReport,
+  climate?: ClimateSnapshot | null,
+): CosmeticAnalysisInput {
   const input: CosmeticAnalysisInput = {
     hydration: "balanced",
     texture: "balanced",
@@ -129,6 +139,7 @@ function buildRecommendationInput(analysis: ScanAnalysisReport): CosmeticAnalysi
     radiance: "mild",
     daytimeProtection: "mild",
     routinePreference: "standard",
+    ...deriveClimateSignals(climate),
   }
 
   for (const finding of analysis.cosmeticFindings) {
@@ -138,6 +149,31 @@ function buildRecommendationInput(analysis: ScanAnalysisReport): CosmeticAnalysi
   }
 
   return input
+}
+
+// Turns a raw ClimateSnapshot into the recommendation engine's coarse
+// vocabulary (CosmeticAnalysisInput's `climate` category + `uvIndex`).
+// Dry/humid checked before cold/hot: low or high humidity is a stronger,
+// more direct driver of skincare needs (barrier/hydration) than ambient
+// temperature alone, so it takes priority when a reading could arguably
+// fit either bucket. Returns {} (both fields undefined) when there's no
+// snapshot — buildRecommendationInput's spread then leaves climate/uvIndex
+// unset entirely, so recommendation-engine.ts's climate-based scoring
+// simply doesn't fire, same as before this feature existed.
+function deriveClimateSignals(
+  climate?: ClimateSnapshot | null,
+): Pick<CosmeticAnalysisInput, "climate" | "uvIndex"> {
+  if (!climate) return {}
+
+  const { temperatureC, humidityPercent, uvIndex } = climate
+
+  let category: CosmeticAnalysisInput["climate"] = "temperate"
+  if (humidityPercent < 30) category = "dry"
+  else if (humidityPercent > 65) category = "humid"
+  else if (temperatureC < 10) category = "cold"
+  else if (temperatureC > 28) category = "hot"
+
+  return { climate: category, uvIndex }
 }
 
 // Narrows a finding's free-form `band: string` down to the specific literal

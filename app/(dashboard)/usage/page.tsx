@@ -3,6 +3,7 @@
 // anywhere in this app today (no separate metering/quota system exists).
 // Counts are derived from listReportsPage's existing userId + dateRange
 // filtering (same helper the admin reports table uses), not a new query.
+import { redirect } from "next/navigation"
 import { IconCamera, IconCalendarStats, IconChartBar } from "@tabler/icons-react"
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,8 +13,14 @@ import { listReportsPage } from "@/lib/backend/report-store"
 export const dynamic = "force-dynamic"
 
 export default async function UsagePage() {
-  // Non-null: (dashboard)/layout.tsx already redirects to /login otherwise.
-  const session = (await getSession())!
+  const session = await getSession()
+  if (!session) {
+    // (dashboard)/layout.tsx already redirects when there's no session, but
+    // that's a separate, independent getSession() call (a fresh DB
+    // round-trip) — under a transient failure the two can disagree, so this
+    // page can't just assume the layout's check already covered it.
+    redirect("/login")
+  }
 
   const [monthly, lifetime] = await Promise.all([
     listReportsPage({ page: 1, pageSize: 1, sort: "newest", userId: session.user.id, dateRange: "month" }),

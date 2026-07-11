@@ -15,6 +15,7 @@ import { getSession } from "@/lib/auth/session"
 import { readImageDimensions } from "@/lib/backend/image-dimensions"
 import { createScanReport } from "@/lib/backend/scan-service"
 import type { ScanAnalysisReport, ScanSource } from "@/lib/backend/types"
+import { getClimateSnapshot, type ClimateSnapshot } from "@/lib/climate/adapter"
 
 const MAX_IMAGE_SIZE = 8 * 1024 * 1024
 const DISCLAIMER =
@@ -58,6 +59,13 @@ export async function POST(request: Request) {
       return jsonError("Image upload is empty.", 400)
     }
 
+    // Climate is entirely optional and independent of the Gemini call above
+    // — it never touches the AI adapter or its quota. `lat`/`lon` only ever
+    // exist for the duration of this request (see getScanClimate below);
+    // they're never written to the database, and neither is the resulting
+    // snapshot — it only shapes this one call's recommendation scoring.
+    const climate = await getScanClimate(formData)
+
     const geminiResult = await analyzeImageWithFallback(image)
     const dimensions = readImageDimensions(
       Buffer.from(await image.arrayBuffer()),
@@ -81,6 +89,7 @@ export async function POST(request: Request) {
       userAgent: request.headers.get("user-agent") ?? undefined,
       aiDurationMs: geminiResult.durationMs,
       userId: session?.user.id,
+      climate,
     })
 
     return NextResponse.json({
@@ -102,6 +111,11 @@ export async function POST(request: Request) {
       },
       recommendations: bundle.report.recommendations,
       reportDownloadUrl: `/api/reports/${bundle.report.id}/print`,
+      // Only present when climate data actually informed this scan's
+      // recommendations — the client shows an indicator when this is set,
+      // and shows nothing when it's null, per the "coarse, honest output
+      // only" rule (never imply climate was used when it wasn't).
+      climate,
     })
   } catch (error) {
     const fallback = buildFallbackSkinAnalysis()
@@ -173,6 +187,38 @@ function jsonError(message: string, status: number) {
 function normalizeScanSource(value: FormDataEntryValue | null): ScanSource {
   if (value === "camera" || value === "upload") return value
   return "unknown"
+}
+
+// `lat`/`lon` are only present when the user explicitly granted location
+// access in the scan flow (see components/scan/ScanFlow.tsx's location
+// consent button) — absent whenever they declined, the browser blocked it,
+// or geolocation isn't supported. Missing or invalid coordinates just mean
+// "no climate boost for this scan," never a request failure.
+async function getScanClimate(
+  formData: FormData,
+): Promise<ClimateSnapshot | null> {
+  const rawLat = formData.get("lat")
+  const rawLon = formData.get("lon")
+
+  if (typeof rawLat !== "string" || typeof rawLon !== "string") {
+    return null
+  }
+
+  const lat = Number(rawLat)
+  const lon = Number(rawLon)
+
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lon) ||
+    lat < -90 ||
+    lat > 90 ||
+    lon < -180 ||
+    lon > 180
+  ) {
+    return null
+  }
+
+  return getClimateSnapshot(lat, lon)
 }
 
 // Wraps the Gemini call so a provider failure (quota, timeout, invalid

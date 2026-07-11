@@ -13,6 +13,7 @@ import {
   IconFileAnalytics,
   IconFlipHorizontal,
   IconLoader2,
+  IconMapPin,
   IconMessageCircle,
   IconPhotoScan,
   IconRefresh,
@@ -68,6 +69,18 @@ type ScanAnalysis = {
   model: string
 }
 
+// Mirrors lib/climate/adapter.ts's ClimateSnapshot — only ever present in a
+// response when the user granted location and Open-Meteo succeeded; null
+// (declined/unavailable/failed) means recommendations used scan data only,
+// and the UI must not imply otherwise (see the Results-step indicator).
+type ClimateInfo = {
+  temperatureC: number
+  humidityPercent: number
+  uvIndex: number
+}
+
+type LocationStatus = "idle" | "requesting" | "granted" | "denied" | "unavailable"
+
 type AnalyzeScanResponse = {
   success: boolean
   fallback: boolean
@@ -79,6 +92,7 @@ type AnalyzeScanResponse = {
     createdAt: string
   }
   reportDownloadUrl?: string
+  climate?: ClimateInfo | null
 }
 
 type ImageEditState = {
@@ -205,6 +219,48 @@ function PrivacyNotice() {
       <IconShieldCheck className="mr-2 inline size-4 text-primary" />
       Aurora SkinSense provides cosmetic skin wellness insights and product
       recommendations only. This is not a medical diagnosis tool.
+    </div>
+  )
+}
+
+// Explicit, opt-in location consent for climate-aware recommendations —
+// same "clear prompt/button, never silent" standard as intro-step scan
+// consent (AGENTS.md's "explicit consent before first scan" non-negotiable,
+// applied here too). Shown at the capture step, alongside where camera
+// permission is requested, not buried later in the flow. Declining or the
+// browser blocking it just means no climate boost — never blocks the scan.
+function LocationPrompt({
+  status,
+  onRequestLocation,
+}: {
+  status: LocationStatus
+  onRequestLocation: () => void
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted p-4 text-sm">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <IconMapPin className="size-4 shrink-0 text-primary" />
+        {status === "granted" ? (
+          <span>Location shared — recommendations will factor in local climate.</span>
+        ) : status === "denied" ? (
+          <span>Location declined — recommendations will use your scan only.</span>
+        ) : status === "unavailable" ? (
+          <span>Location isn&apos;t available in this browser — recommendations will use your scan only.</span>
+        ) : (
+          <span>Optionally share your location for climate-aware product recommendations.</span>
+        )}
+      </div>
+      {status === "idle" || status === "requesting" ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={status === "requesting"}
+          onClick={onRequestLocation}
+        >
+          {status === "requesting" ? "Requesting..." : "Use my location"}
+        </Button>
+      ) : null}
     </div>
   )
 }
@@ -694,7 +750,13 @@ function ProcessingStep({
   )
 }
 
-function ResultsStep({ analysis }: { analysis: ScanAnalysis | null }) {
+function ResultsStep({
+  analysis,
+  climate,
+}: {
+  analysis: ScanAnalysis | null
+  climate: ClimateInfo | null
+}) {
   if (!analysis) {
     return (
       <div className="rounded-lg border border-border bg-muted p-4 text-sm text-muted-foreground">
@@ -715,6 +777,13 @@ function ResultsStep({ analysis }: { analysis: ScanAnalysis | null }) {
           · Confidence: {analysis.quality.confidence}
         </p>
       </div>
+      {climate ? (
+        <div className="flex items-center gap-2 rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+          <IconMapPin className="size-4 shrink-0 text-primary" />
+          Recommendations tailored using local climate: {Math.round(climate.temperatureC)}°C,{" "}
+          {Math.round(climate.humidityPercent)}% humidity, UV index {Math.round(climate.uvIndex)}.
+        </div>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
         {analysis.cosmeticFindings.map((finding) => (
           <div
@@ -858,6 +927,16 @@ export function ScanFlow() {
   const [reportDownloadUrl, setReportDownloadUrl] = useState<string | null>(
     null
   )
+  // Transient only — coords live in component state for this session and
+  // are only ever sent as part of the one /api/scan/analyze request that
+  // uses them; they're never written to localStorage/cookies/the database
+  // (see lib/backend/scan-service.ts's createScanReport for the server
+  // side of that same rule).
+  const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle")
+  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(
+    null
+  )
+  const [climateUsed, setClimateUsed] = useState<ClimateInfo | null>(null)
   // The persisted Report row's id — createScanReport (called from
   // /api/scan/analyze) always creates this before the response comes back,
   // so it's available as soon as analysis completes. Used to link to the
@@ -923,6 +1002,33 @@ export function ScanFlow() {
     }
   }
 
+  // Explicit opt-in only — never called automatically. getCurrentPosition's
+  // own browser permission prompt is the actual consent gate; this button
+  // is what triggers it, same as "Use Camera" triggers the camera
+  // permission prompt.
+  function requestLocation() {
+    if (!navigator.geolocation) {
+      setLocationStatus("unavailable")
+      return
+    }
+
+    setLocationStatus("requesting")
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setCoords({
+          lat: position.coords.latitude,
+          lon: position.coords.longitude,
+        })
+        setLocationStatus("granted")
+      },
+      () => {
+        setCoords(null)
+        setLocationStatus("denied")
+      },
+      { timeout: 8000 }
+    )
+  }
+
   // Snapshots the current video frame onto the hidden <canvas> (declared in
   // CameraPanel), then reads it back out as a data URL — this is how a
   // <video> stream becomes a still image without any server round-trip.
@@ -955,6 +1061,7 @@ export function ScanFlow() {
     setAnalysisError(null)
     setReportDownloadUrl(null)
     setReportId(null)
+    setClimateUsed(null)
     setInputMethod("camera")
     stopCamera()
     setCurrentStep("review")
@@ -979,6 +1086,7 @@ export function ScanFlow() {
         setAnalysisError(null)
         setReportDownloadUrl(null)
         setReportId(null)
+        setClimateUsed(null)
         setInputMethod("upload")
         stopCamera()
         setCurrentStep("review")
@@ -996,6 +1104,7 @@ export function ScanFlow() {
     setAnalysisError(null)
     setReportDownloadUrl(null)
     setReportId(null)
+    setClimateUsed(null)
     setCurrentStep("capture")
   }
 
@@ -1007,6 +1116,7 @@ export function ScanFlow() {
     setAnalysisError(null)
     setReportDownloadUrl(null)
     setReportId(null)
+    setClimateUsed(null)
     setCurrentStep("capture")
   }
 
@@ -1037,6 +1147,7 @@ export function ScanFlow() {
     setAnalysisError(null)
     setReportDownloadUrl(null)
     setReportId(null)
+    setClimateUsed(null)
     setCurrentStep("intro")
   }
 
@@ -1065,6 +1176,7 @@ export function ScanFlow() {
       setAnalysisError(null)
       setReportDownloadUrl(null)
       setReportId(null)
+      setClimateUsed(null)
       setCurrentStep("capture")
     }
 
@@ -1080,6 +1192,7 @@ export function ScanFlow() {
     setAnalysisError(null)
     setReportDownloadUrl(null)
     setReportId(null)
+    setClimateUsed(null)
 
     try {
       // Bakes the user's crop/zoom/rotate/flip adjustments from the Review
@@ -1094,6 +1207,13 @@ export function ScanFlow() {
       const formData = new FormData()
       formData.append("image", imageFile)
       formData.append("source", inputMethod ?? "unknown")
+      // Only present if the user explicitly granted location via
+      // LocationPrompt/requestLocation — omitted entirely otherwise, which
+      // is exactly what tells the server to skip climate lookup.
+      if (coords) {
+        formData.append("lat", String(coords.lat))
+        formData.append("lon", String(coords.lon))
+      }
 
       const response = await fetch("/api/scan/analyze", {
         method: "POST",
@@ -1108,6 +1228,7 @@ export function ScanFlow() {
       setAnalysisResult(payload.analysis)
       setReportDownloadUrl(payload.reportDownloadUrl ?? null)
       setReportId(payload.report?.id ?? null)
+      setClimateUsed(payload.climate ?? null)
       setAnalysisError(
         payload.fallback
           ? (payload.error ?? "Fallback cosmetic report returned.")
@@ -1172,17 +1293,23 @@ export function ScanFlow() {
               <div className="mt-8">
                 {currentStep === "intro" ? <IntroStep /> : null}
                 {currentStep === "capture" ? (
-                  <CaptureStep
-                    method={activeTab}
-                    videoRef={videoRef}
-                    canvasRef={canvasRef}
-                    fileInputRef={fileInputRef}
-                    cameraError={cameraError}
-                    isCameraActive={isCameraActive}
-                    onStartCamera={() => void startCamera()}
-                    onCapture={captureImage}
-                    onUpload={uploadImage}
-                  />
+                  <div className="grid gap-5">
+                    <LocationPrompt
+                      status={locationStatus}
+                      onRequestLocation={requestLocation}
+                    />
+                    <CaptureStep
+                      method={activeTab}
+                      videoRef={videoRef}
+                      canvasRef={canvasRef}
+                      fileInputRef={fileInputRef}
+                      cameraError={cameraError}
+                      isCameraActive={isCameraActive}
+                      onStartCamera={() => void startCamera()}
+                      onCapture={captureImage}
+                      onUpload={uploadImage}
+                    />
+                  </div>
                 ) : null}
                 {currentStep === "review" && selectedImage ? (
                   <ReviewStep
@@ -1202,7 +1329,7 @@ export function ScanFlow() {
                   />
                 ) : null}
                 {currentStep === "results" ? (
-                  <ResultsStep analysis={analysisResult} />
+                  <ResultsStep analysis={analysisResult} climate={climateUsed} />
                 ) : null}
               </div>
 

@@ -7,6 +7,7 @@ import { getSession } from "@/lib/auth/session"
 export type AdminPermission =
   | "admin:read"
   | "analytics:read"
+  | "users:read"
   | "settings:read"
   | "settings:manage"
   | "products:read"
@@ -36,11 +37,11 @@ export type AdminAccess =
 // intentionally identical today — kept as separate roles because they're
 // expected to diverge later (e.g. owner-only billing controls).
 const rolePermissions: Record<AdminRole, AdminPermission[]> = {
-  owner: ["admin:read", "analytics:read", "settings:read", "settings:manage", "products:read", "products:manage"],
-  admin: ["admin:read", "analytics:read", "settings:read", "settings:manage", "products:read", "products:manage"],
+  owner: ["admin:read", "analytics:read", "users:read", "settings:read", "settings:manage", "products:read", "products:manage"],
+  admin: ["admin:read", "analytics:read", "users:read", "settings:read", "settings:manage", "products:read", "products:manage"],
   operations: ["admin:read", "analytics:read", "products:read", "products:manage"],
-  privacy: ["admin:read", "analytics:read", "settings:read"],
-  support: ["admin:read", "analytics:read", "products:read"],
+  privacy: ["admin:read", "analytics:read", "users:read", "settings:read"],
+  support: ["admin:read", "analytics:read", "users:read", "products:read"],
 }
 
 // Maps the Prisma `User.role` enum (uppercase) to the lowercase AdminRole

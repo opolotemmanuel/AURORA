@@ -13,7 +13,14 @@ const DISCLAIMER =
 // The only bands the app will ever surface — enforces the "coarse, honest
 // output only" rule from AGENTS.md even if the model tries to return
 // something more specific/numeric.
-const ALLOWED_BANDS = ["low", "balanced", "mild", "moderate", "elevated", "not_visible"] as const
+const ALLOWED_BANDS = [
+  "low",
+  "balanced",
+  "mild",
+  "moderate",
+  "elevated",
+  "not_visible",
+] as const
 
 type GeminiBand = (typeof ALLOWED_BANDS)[number]
 type GeminiFailureKind =
@@ -59,7 +66,7 @@ export class GeminiAnalysisError extends Error {
   constructor(
     readonly kind: GeminiFailureKind,
     message: string,
-    readonly providerMessage?: string,
+    readonly providerMessage?: string
   ) {
     super(message)
     this.name = "GeminiAnalysisError"
@@ -75,7 +82,9 @@ export class GeminiAnalysisError extends Error {
 // now goes through the shared callGeminiGenerateContent helper below (added
 // for askAboutReport, see further down) instead of duplicating the
 // fetch/timeout/error-classification logic a second time.
-export async function analyzeSkinWithGemini(image: File): Promise<ScanAnalysisReport> {
+export async function analyzeSkinWithGemini(
+  image: File
+): Promise<ScanAnalysisReport> {
   const apiKey = process.env.GEMINI_API_KEY
   const model = getGeminiModel()
 
@@ -134,7 +143,10 @@ export async function analyzeSkinWithGemini(image: File): Promise<ScanAnalysisRe
     logGeminiDiagnostic("Gemini response received")
     return normalizeGeminiAnalysis(parsedAnalysis, model)
   } catch (firstError) {
-    if (!(firstError instanceof GeminiAnalysisError) || firstError.kind !== "invalid_response") {
+    if (
+      !(firstError instanceof GeminiAnalysisError) ||
+      firstError.kind !== "invalid_response"
+    ) {
       throw firstError
     }
 
@@ -169,7 +181,9 @@ export const REPORT_CHAT_MAX_QUESTION_LENGTH = 600
 
 export class ReportChatQuestionTooLongError extends Error {
   constructor() {
-    super(`Question must be ${REPORT_CHAT_MAX_QUESTION_LENGTH} characters or fewer.`)
+    super(
+      `Question must be ${REPORT_CHAT_MAX_QUESTION_LENGTH} characters or fewer.`
+    )
     this.name = "ReportChatQuestionTooLongError"
   }
 }
@@ -182,7 +196,7 @@ export class ReportChatQuestionTooLongError extends Error {
 export async function askAboutReport(
   context: ReportChatContext,
   history: ReportChatTurn[],
-  question: string,
+  question: string
 ): Promise<string> {
   if (question.length > REPORT_CHAT_MAX_QUESTION_LENGTH) {
     throw new ReportChatQuestionTooLongError()
@@ -234,11 +248,106 @@ function buildReportChatSystemPrompt(context: ReportChatContext): string {
     "",
     `Report summary: ${context.summary}`,
     "Findings:",
-    ...context.cosmeticFindings.map((finding) => `- ${finding.label} (${finding.band}): ${finding.observation}`),
+    ...context.cosmeticFindings.map(
+      (finding) =>
+        `- ${finding.label} (${finding.band}): ${finding.observation}`
+    ),
     "Recommended products:",
     ...(context.recommendations.length
-      ? context.recommendations.map((rec) => `- ${rec.name} (${rec.category}): ${rec.reason}`)
+      ? context.recommendations.map(
+          (rec) => `- ${rec.name} (${rec.category}): ${rec.reason}`
+        )
       : ["- None recorded for this report."]),
+  ].join("\n")
+}
+
+export type SkinAdviceRole = "user" | "assistant"
+export type SkinAdviceTurn = { role: SkinAdviceRole; content: string }
+
+// Narrower than ReportChatContext: only a summary + findings, no
+// recommendations, and — unlike askAboutReport — genuinely optional. This
+// chat isn't about one report; a user with no scan yet can still use it, just
+// without a scan to ground answers in.
+export type SkinAdviceContext = {
+  summary: string
+  cosmeticFindings: Array<{ label: string; band: string; observation: string }>
+} | null
+
+export const SKIN_ADVICE_MAX_QUESTION_LENGTH = 600
+
+export class SkinAdviceQuestionTooLongError extends Error {
+  constructor() {
+    super(
+      `Question must be ${SKIN_ADVICE_MAX_QUESTION_LENGTH} characters or fewer.`
+    )
+    this.name = "SkinAdviceQuestionTooLongError"
+  }
+}
+
+// General skin-advice assistant — not scoped to one report (see
+// askAboutReport above for that narrower case). Same stateless-history
+// pattern: caller loads prior turns from SkinAdviceMessage and appends the
+// new question before persisting anything.
+export async function askSkinAdviceQuestion(
+  context: SkinAdviceContext,
+  history: SkinAdviceTurn[],
+  question: string
+): Promise<string> {
+  if (question.length > SKIN_ADVICE_MAX_QUESTION_LENGTH) {
+    throw new SkinAdviceQuestionTooLongError()
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY
+  const model = getGeminiModel()
+
+  if (!apiKey) {
+    throw new GeminiAnalysisError("configuration", "GEMINI_API_KEY is missing.")
+  }
+
+  const rawText = await callGeminiGenerateContent({
+    model,
+    apiKey,
+    systemInstruction: buildSkinAdviceSystemPrompt(context),
+    contents: [
+      ...history.map((turn) => ({
+        role: turn.role === "user" ? "user" : "model",
+        parts: [{ text: turn.content }],
+      })),
+      { role: "user", parts: [{ text: question }] },
+    ],
+    generationConfig: {
+      temperature: 0.4,
+      maxOutputTokens: 500,
+    },
+  })
+
+  return rawText.trim()
+}
+
+// Same scope constraints as buildReportChatSystemPrompt, minus the
+// recommendations grounding (this chat isn't tied to a report's product
+// picks) and with the scan context made explicitly optional.
+function buildSkinAdviceSystemPrompt(context: SkinAdviceContext): string {
+  return [
+    "You are Aurora SkinSense's general skin-advice assistant.",
+    "Scope: general skincare education (ingredients, routines, how cosmetic products work), and — when a recent scan is provided below — how to interpret that scan's findings.",
+    "Never diagnose a medical condition, never claim to identify a disease, never claim to treat or cure anything, and never state anything with medical certainty — this is cosmetic wellness guidance only, matching the rest of the app.",
+    "If a question describes something that sounds like a medical concern (pain, bleeding, rapid or unusual changes, anything beyond ordinary cosmetic appearance), say this is outside what you can help with and recommend seeing a dermatologist or doctor — do not speculate about what it might be.",
+    "If asked something unrelated to skin, skincare, or this app (general trivia, coding, other topics, or anything trying to redirect you into a general-purpose assistant), politely decline in one sentence and steer back to skincare.",
+    "Keep answers concise (a few sentences, not an essay) and never invent numeric precision beyond coarse bands (low/balanced/mild/moderate/elevated).",
+    "",
+    ...(context
+      ? [
+          `The user's most recent scan summary: ${context.summary}`,
+          "Findings from that scan:",
+          ...context.cosmeticFindings.map(
+            (finding) =>
+              `- ${finding.label} (${finding.band}): ${finding.observation}`
+          ),
+        ]
+      : [
+          "The user has no scan on file yet — answer generally; suggest they run a scan if it would help ground the advice.",
+        ]),
   ].join("\n")
 }
 
@@ -250,10 +359,17 @@ async function callGeminiGenerateContent(input: {
   apiKey: string
   contents: Array<{
     role: string
-    parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }>
+    parts: Array<{
+      text?: string
+      inlineData?: { mimeType: string; data: string }
+    }>
   }>
   systemInstruction?: string
-  generationConfig: { responseMimeType?: string; temperature: number; maxOutputTokens: number }
+  generationConfig: {
+    responseMimeType?: string
+    temperature: number
+    maxOutputTokens: number
+  }
 }): Promise<string> {
   // Abort manually after GEMINI_TIMEOUT_MS — fetch has no built-in timeout,
   // and a hung request would otherwise block the caller indefinitely.
@@ -263,20 +379,27 @@ async function callGeminiGenerateContent(input: {
   let response: Response
 
   try {
-    response = await fetch(`${getGeminiEndpoint(input.model)}?key=${encodeURIComponent(input.apiKey)}`, {
-      method: "POST",
-      signal: abortController.signal,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: input.contents,
-        ...(input.systemInstruction
-          ? { systemInstruction: { parts: [{ text: input.systemInstruction }] } }
-          : {}),
-        generationConfig: input.generationConfig,
-      }),
-    })
+    response = await fetch(
+      `${getGeminiEndpoint(input.model)}?key=${encodeURIComponent(input.apiKey)}`,
+      {
+        method: "POST",
+        signal: abortController.signal,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: input.contents,
+          ...(input.systemInstruction
+            ? {
+                systemInstruction: {
+                  parts: [{ text: input.systemInstruction }],
+                },
+              }
+            : {}),
+          generationConfig: input.generationConfig,
+        }),
+      }
+    )
   } catch (error) {
     throw classifyGeminiTransportError(error, input.model)
   } finally {
@@ -298,11 +421,13 @@ async function callGeminiGenerateContent(input: {
     throw classifyGeminiResponseError(response, payload, input.model)
   }
 
-  const rawText = payload.candidates?.[0]?.content?.parts?.find((part) => part.text)?.text
+  const rawText = payload.candidates?.[0]?.content?.parts?.find(
+    (part) => part.text
+  )?.text
   if (!rawText) {
     throw new GeminiAnalysisError(
       "invalid_response",
-      `Gemini returned no content for model ${input.model}.`,
+      `Gemini returned no content for model ${input.model}.`
     )
   }
 
@@ -323,10 +448,14 @@ export function getGeminiFallbackUserMessage(error: unknown) {
 
 export function getGeminiDiagnosticMessage(error: unknown) {
   if (error instanceof GeminiAnalysisError) {
-    return [error.message, error.providerMessage].filter(Boolean).join(" Provider detail: ")
+    return [error.message, error.providerMessage]
+      .filter(Boolean)
+      .join(" Provider detail: ")
   }
 
-  return error instanceof Error ? error.message : "Unknown Gemini analysis failure."
+  return error instanceof Error
+    ? error.message
+    : "Unknown Gemini analysis failure."
 }
 
 function getGeminiModel() {
@@ -337,7 +466,10 @@ function getGeminiEndpoint(model: string) {
   return `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`
 }
 
-function logGeminiDiagnostic(message: string, details?: Record<string, unknown>) {
+function logGeminiDiagnostic(
+  message: string,
+  details?: Record<string, unknown>
+) {
   if (details) {
     console.info(`[Gemini] ${message}`, details)
     return
@@ -346,13 +478,16 @@ function logGeminiDiagnostic(message: string, details?: Record<string, unknown>)
   console.info(`[Gemini] ${message}`)
 }
 
-async function readGeminiPayload(response: Response, model: string): Promise<GeminiGenerateContentResponse> {
+async function readGeminiPayload(
+  response: Response,
+  model: string
+): Promise<GeminiGenerateContentResponse> {
   try {
     return (await response.json()) as GeminiGenerateContentResponse
   } catch {
     throw new GeminiAnalysisError(
       "invalid_response",
-      `Gemini returned a non-JSON response for model ${model}.`,
+      `Gemini returned a non-JSON response for model ${model}.`
     )
   }
 }
@@ -362,13 +497,16 @@ async function readGeminiPayload(response: Response, model: string): Promise<Gem
 // which handles a completed HTTP response that Gemini returned as an error.
 function classifyGeminiTransportError(error: unknown, model: string) {
   if (error instanceof DOMException && error.name === "AbortError") {
-    return new GeminiAnalysisError("timeout", `Gemini request timed out for model ${model}.`)
+    return new GeminiAnalysisError(
+      "timeout",
+      `Gemini request timed out for model ${model}.`
+    )
   }
 
   return new GeminiAnalysisError(
     "network",
     `Gemini request could not be completed for model ${model}.`,
-    error instanceof Error ? error.message : undefined,
+    error instanceof Error ? error.message : undefined
   )
 }
 
@@ -380,7 +518,7 @@ function classifyGeminiTransportError(error: unknown, model: string) {
 function classifyGeminiResponseError(
   response: Response,
   payload: GeminiGenerateContentResponse,
-  model: string,
+  model: string
 ) {
   const providerMessage = payload.error?.message
   const normalizedProviderMessage = providerMessage?.toLowerCase() ?? ""
@@ -389,7 +527,7 @@ function classifyGeminiResponseError(
     return new GeminiAnalysisError(
       "quota",
       `Gemini quota is unavailable for configured model ${model}.`,
-      providerMessage,
+      providerMessage
     )
   }
 
@@ -397,7 +535,7 @@ function classifyGeminiResponseError(
     return new GeminiAnalysisError(
       "rate_limit",
       `Gemini rate limit was reached for configured model ${model}.`,
-      providerMessage,
+      providerMessage
     )
   }
 
@@ -405,19 +543,23 @@ function classifyGeminiResponseError(
     return new GeminiAnalysisError(
       "auth",
       `Gemini authentication or project access failed for configured model ${model}.`,
-      providerMessage,
+      providerMessage
     )
   }
 
   return new GeminiAnalysisError(
     "unknown",
     `Gemini request failed with status ${response.status} for configured model ${model}.`,
-    providerMessage,
+    providerMessage
   )
 }
 
 function isQuotaMessage(value: string) {
-  return value.includes("quota") || value.includes("free_tier") || value.includes("resource_exhausted")
+  return (
+    value.includes("quota") ||
+    value.includes("free_tier") ||
+    value.includes("resource_exhausted")
+  )
 }
 
 // The prompt is where the "not a medical diagnostic tool" / coarse-bands
@@ -438,7 +580,10 @@ function buildCosmeticPrompt() {
   ].join("\n")
 }
 
-function parseGeminiJson(rawText: string, model: string): GeminiSkinAnalysisJson {
+function parseGeminiJson(
+  rawText: string,
+  model: string
+): GeminiSkinAnalysisJson {
   const cleaned = stripJsonFence(rawText)
 
   try {
@@ -455,20 +600,30 @@ function parseGeminiJson(rawText: string, model: string): GeminiSkinAnalysisJson
           return repairedParsed
         }
 
-        logGeminiDiagnostic("JSON repair produced valid JSON but an unexpected shape", { model })
+        logGeminiDiagnostic(
+          "JSON repair produced valid JSON but an unexpected shape",
+          { model }
+        )
       } catch {
         // Repaired text still doesn't parse — fall through to the original
         // parse error below, same as if no repair had been attempted.
       }
     }
 
-    const reason = firstError instanceof Error ? firstError.message : "Unknown JSON parse error."
+    const reason =
+      firstError instanceof Error
+        ? firstError.message
+        : "Unknown JSON parse error."
     logGeminiDiagnostic("JSON validation failed", {
       reason,
       model,
     })
 
-    throw new GeminiAnalysisError("invalid_response", `Gemini returned invalid JSON for model ${model}.`, reason)
+    throw new GeminiAnalysisError(
+      "invalid_response",
+      `Gemini returned invalid JSON for model ${model}.`,
+      reason
+    )
   }
 }
 
@@ -493,7 +648,9 @@ function repairMissingBraceBeforeArrayElement(value: string): string {
 // own (a repair could produce valid-but-wrong JSON, e.g. `{}`), so this
 // checks the same fields normalizeGeminiAnalysis actually depends on before
 // treating a repair as a real success rather than a lucky-looking accident.
-function isGeminiSkinAnalysisShape(value: unknown): value is GeminiSkinAnalysisJson {
+function isGeminiSkinAnalysisShape(
+  value: unknown
+): value is GeminiSkinAnalysisJson {
   if (typeof value !== "object" || value === null) return false
   const candidate = value as Record<string, unknown>
 
@@ -535,8 +692,13 @@ function stripJsonFence(value: string) {
 // trusted as-is) before it becomes the report shown to the user or stored.
 // `recommendations` is always empty because that's populated separately by
 // lib/recommendations/*, not by the model.
-function normalizeGeminiAnalysis(input: GeminiSkinAnalysisJson, model: string): ScanAnalysisReport {
-  const findings = Array.isArray(input.cosmeticFindings) ? input.cosmeticFindings : []
+function normalizeGeminiAnalysis(
+  input: GeminiSkinAnalysisJson,
+  model: string
+): ScanAnalysisReport {
+  const findings = Array.isArray(input.cosmeticFindings)
+    ? input.cosmeticFindings
+    : []
   const routineTips = Array.isArray(input.routineTips) ? input.routineTips : []
 
   return {
@@ -547,7 +709,11 @@ function normalizeGeminiAnalysis(input: GeminiSkinAnalysisJson, model: string): 
     cosmeticFindings: normalizeFindings(findings),
     recommendations: [],
     routineTips: routineTips.length
-      ? routineTips.slice(0, 5).map((tip) => sanitizeText(tip, "Keep routines gentle and consistent."))
+      ? routineTips
+          .slice(0, 5)
+          .map((tip) =>
+            sanitizeText(tip, "Keep routines gentle and consistent.")
+          )
       : [
           "Keep your routine gentle and consistent.",
           "Use daytime sun protection as a cosmetic wellness habit.",
@@ -564,13 +730,15 @@ function normalizeGeminiAnalysis(input: GeminiSkinAnalysisJson, model: string): 
   }
 }
 
-function normalizeFindings(findings: GeminiSkinAnalysisJson["cosmeticFindings"]): ScanAnalysisReport["cosmeticFindings"] {
+function normalizeFindings(
+  findings: GeminiSkinAnalysisJson["cosmeticFindings"]
+): ScanAnalysisReport["cosmeticFindings"] {
   const normalized = findings.slice(0, 6).map((finding) => ({
     label: sanitizeText(finding.label, "Cosmetic indicator"),
     band: normalizeBand(finding.band),
     observation: sanitizeText(
       finding.observation,
-      "This visible indicator was reviewed as cosmetic wellness guidance only.",
+      "This visible indicator was reviewed as cosmetic wellness guidance only."
     ),
   }))
 
@@ -580,12 +748,14 @@ function normalizeFindings(findings: GeminiSkinAnalysisJson["cosmeticFindings"])
     {
       label: "Image quality",
       band: "not_visible",
-      observation: "Gemini did not return a visible cosmetic finding for this area.",
+      observation:
+        "Gemini did not return a visible cosmetic finding for this area.",
     },
     {
       label: "Visible texture",
       band: "not_visible",
-      observation: "Repeat the scan in even lighting for clearer cosmetic guidance.",
+      observation:
+        "Repeat the scan in even lighting for clearer cosmetic guidance.",
     },
   ]
 }
@@ -595,17 +765,23 @@ function sanitizeText(value: unknown, fallback: string) {
 }
 
 function normalizeBand(value: unknown): GeminiBand {
-  return typeof value === "string" && ALLOWED_BANDS.includes(value as GeminiBand)
+  return typeof value === "string" &&
+    ALLOWED_BANDS.includes(value as GeminiBand)
     ? (value as GeminiBand)
     : "not_visible"
 }
 
-function normalizeFraming(value: unknown): ScanAnalysisReport["quality"]["framing"] {
-  if (value === "clear" || value === "usable" || value === "unclear") return value
+function normalizeFraming(
+  value: unknown
+): ScanAnalysisReport["quality"]["framing"] {
+  if (value === "clear" || value === "usable" || value === "unclear")
+    return value
   return "unclear"
 }
 
-function normalizeConfidence(value: unknown): ScanAnalysisReport["quality"]["confidence"] {
+function normalizeConfidence(
+  value: unknown
+): ScanAnalysisReport["quality"]["confidence"] {
   if (value === "low" || value === "medium" || value === "high") return value
   return "low"
 }

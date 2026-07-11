@@ -2,11 +2,19 @@
 // lib/auth/client.ts for the browser-side counterpart, and
 // lib/auth/session.ts for the thin server-component helper built on top).
 //
-// No explicit `baseURL`/`trustedOrigins` here: better-auth falls back to
-// reading BETTER_AUTH_URL from the environment as the sole trusted origin.
-// That env var must match whatever origin the app is actually served from
-// (http://localhost:3000 in local dev) or every request fails origin
-// validation with "Invalid origin" — see .env.local.
+// No explicit `baseURL` here: better-auth falls back to reading
+// BETTER_AUTH_URL from the environment, which is deliberately the one
+// canonical URL (https://aurora-5spm.vercel.app in production) — it's
+// what password-reset/verification links and any absolute-URL-building
+// use as "home," never whichever alias a request happened to arrive on.
+//
+// `trustedOrigins` below is additive on top of that: better-auth already
+// auto-trusts whatever origin BETTER_AUTH_URL resolves to, so this only
+// needs to cover this same Vercel project's *other* valid aliases (the
+// git-branch alias, the per-deployment unique URL, etc.) — scoped to this
+// project's own name rather than a blanket "*.vercel.app" so unrelated
+// Vercel-hosted apps can't pass this app's origin checks. See
+// better-auth.com/docs/guides/dynamic-base-url for the wildcard pattern.
 import { betterAuth } from "better-auth"
 import { prismaAdapter } from "better-auth/adapters/prisma"
 import { nextCookies } from "better-auth/next-js"
@@ -23,6 +31,7 @@ const appleClientSecret = process.env.APPLE_CLIENT_SECRET
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: "postgresql" }),
+  trustedOrigins: ["https://aurora-5spm-*.vercel.app"],
   user: {
     modelName: "User",
     additionalFields: {

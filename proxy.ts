@@ -25,7 +25,7 @@ const AUTH_ONLY_PATHS = ["/login", "/register"]
 // downstream needs to treat it as untrusted input.
 export const CURRENT_PATH_HEADER = "x-aura-pathname"
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const hasSession = Boolean(getSessionCookie(request))
 

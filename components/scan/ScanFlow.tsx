@@ -13,6 +13,7 @@ import {
   IconFileAnalytics,
   IconFlipHorizontal,
   IconLoader2,
+  IconMessageCircle,
   IconPhotoScan,
   IconRefresh,
   IconReportAnalytics,
@@ -30,7 +31,16 @@ import {
 // (intro -> capture -> review -> processing -> results) with its own local
 // state machine (`currentStep`) rather than separate routes per step, so
 // captured image / camera stream state doesn't have to survive a navigation.
+// A top-level `activeTab` sits above that: "Upload" and "Camera" are the two
+// capture methods (each drives the same shared capture -> review ->
+// processing -> results sequence, just showing one panel instead of the old
+// side-by-side choice), and "Advice" is the general skin-advice chat, shared
+// with /skin-advice. Switching between Upload and Camera mid-scan restarts
+// capture with the new method (see selectTab below); switching to/from
+// Advice never resets wizard state, only pauses an active camera stream.
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import { SkinAdviceChat } from "@/components/skin-advice/skin-advice-chat"
 
 type ScanStep = "intro" | "capture" | "review" | "processing" | "results"
 type ScanInputMethod = "camera" | "upload" | null
@@ -144,7 +154,11 @@ const captureTips = [
   "Image reviewed only after consent",
 ] as const
 
-const processingChecks = ["Image received", "Gemini review", "Cosmetic report"] as const
+const processingChecks = [
+  "Image received",
+  "Gemini review",
+  "Cosmetic report",
+] as const
 
 function StepIndicator({ currentStep }: { currentStep: ScanStep }) {
   const currentIndex = steps.findIndex((step) => step.id === currentStep)
@@ -200,7 +214,10 @@ function IntroStep() {
     <div className="grid gap-4">
       <div className="grid gap-4 sm:grid-cols-3">
         {introCards.map(({ label, icon: Icon }) => (
-          <div key={label} className="rounded-lg border border-border bg-card p-4">
+          <div
+            key={label}
+            className="rounded-lg border border-border bg-card p-4"
+          >
             <Icon className="size-6 text-primary" />
             <p className="mt-4 text-sm font-medium">{label}</p>
           </div>
@@ -242,7 +259,8 @@ function CameraPanel({
               <IconCamera className="mx-auto size-10 text-primary" />
               <p className="mt-4 text-sm font-medium">Camera preview is off</p>
               <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                Start the camera to capture a scan image. Your browser will ask for permission.
+                Start the camera to capture a scan image. Your browser will ask
+                for permission.
               </p>
             </div>
           </div>
@@ -257,11 +275,11 @@ function CameraPanel({
             it must not imply a real quality confirmation happened. */}
         <div className="pointer-events-none absolute inset-8 overflow-hidden rounded-full border border-primary/50">
           {isCameraActive ? (
-            <div className="animate-scan-sweep motion-reduce:hidden absolute inset-x-0 h-10 bg-gradient-to-b from-transparent via-primary/50 to-transparent blur-[1px]" />
+            <div className="absolute inset-x-0 h-10 animate-scan-sweep bg-gradient-to-b from-transparent via-primary/50 to-transparent blur-[1px] motion-reduce:hidden" />
           ) : null}
         </div>
         {isCameraActive ? (
-          <div className="pointer-events-none absolute left-3 top-3 rounded-full border border-border bg-background/90 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
+          <div className="pointer-events-none absolute top-3 left-3 rounded-full border border-border bg-background/90 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
             <span className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-primary" />
             Hold still — positioning...
           </div>
@@ -298,7 +316,8 @@ function UploadPanel({
           <IconUpload className="mx-auto size-10 text-primary" />
           <p className="mt-4 text-sm font-medium">Upload a clear face image</p>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">
-            JPG, PNG, or WEBP images work best. Images stay local in this demo flow.
+            JPG, PNG, or WEBP images work best. Images stay local in this demo
+            flow.
           </p>
           <input
             ref={fileInputRef}
@@ -323,6 +342,7 @@ function UploadPanel({
 }
 
 function CaptureStep({
+  method,
   videoRef,
   canvasRef,
   fileInputRef,
@@ -332,6 +352,7 @@ function CaptureStep({
   onCapture,
   onUpload,
 }: {
+  method: "upload" | "camera"
   videoRef: React.RefObject<HTMLVideoElement | null>
   canvasRef: React.RefObject<HTMLCanvasElement | null>
   fileInputRef: React.RefObject<HTMLInputElement | null>
@@ -343,7 +364,7 @@ function CaptureStep({
 }) {
   return (
     <div className="grid gap-5">
-      <div className="grid gap-5 lg:grid-cols-2">
+      {method === "camera" ? (
         <CameraPanel
           videoRef={videoRef}
           canvasRef={canvasRef}
@@ -352,11 +373,15 @@ function CaptureStep({
           onStartCamera={onStartCamera}
           onCapture={onCapture}
         />
+      ) : (
         <UploadPanel fileInputRef={fileInputRef} onUpload={onUpload} />
-      </div>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         {captureTips.map((item) => (
-          <div key={item} className="flex items-center gap-3 text-sm text-muted-foreground">
+          <div
+            key={item}
+            className="flex items-center gap-3 text-sm text-muted-foreground"
+          >
             <IconCheck className="size-4 text-primary" />
             {item}
           </div>
@@ -440,7 +465,7 @@ function ReviewStep({
           alt="Selected skin scan preview"
           fill
           unoptimized
-          className="select-none object-contain"
+          className="object-contain select-none"
           draggable={false}
           style={{
             transform: `translate(${imageEdit.offsetX}px, ${imageEdit.offsetY}px) scaleX(${imageEdit.flipX ? -1 : 1}) scale(${imageEdit.zoom}) rotate(${imageEdit.rotation}deg)`,
@@ -448,17 +473,18 @@ function ReviewStep({
         />
         <div className="pointer-events-none absolute inset-0 bg-background/35" />
         <div className="pointer-events-none absolute inset-[10%] rounded-full border-2 border-primary/70 shadow-[0_0_0_999px_hsl(var(--background)/0.35)]" />
-        <div className="pointer-events-none absolute left-1/2 top-[10%] h-[80%] w-px -translate-x-1/2 bg-primary/30" />
-        <div className="pointer-events-none absolute left-[10%] top-1/2 h-px w-[80%] -translate-y-1/2 bg-primary/30" />
-        <div className="absolute left-3 top-3 rounded-full border border-border bg-background/90 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
+        <div className="pointer-events-none absolute top-[10%] left-1/2 h-[80%] w-px -translate-x-1/2 bg-primary/30" />
+        <div className="pointer-events-none absolute top-1/2 left-[10%] h-px w-[80%] -translate-y-1/2 bg-primary/30" />
+        <div className="absolute top-3 left-3 rounded-full border border-border bg-background/90 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
           <IconArrowsMove className="mr-1 inline size-3" />
           Drag to position
         </div>
       </div>
       <div className="rounded-lg border border-border bg-muted p-4 text-sm text-muted-foreground">
-        Image source: {inputMethod === "camera" ? "Camera capture" : "Image upload"}. Position
-        your face inside the guide, then continue only if the image is clear and you consent to
-        cosmetic analysis.
+        Image source:{" "}
+        {inputMethod === "camera" ? "Camera capture" : "Image upload"}. Position
+        your face inside the guide, then continue only if the image is clear and
+        you consent to cosmetic analysis.
       </div>
       <div className="grid gap-4 rounded-xl border border-border bg-card p-4">
         <div className="grid gap-3 sm:grid-cols-2">
@@ -470,7 +496,9 @@ function ReviewStep({
               max="3"
               step="0.05"
               value={imageEdit.zoom}
-              onChange={(event) => updateEdit({ zoom: Number(event.target.value) })}
+              onChange={(event) =>
+                updateEdit({ zoom: Number(event.target.value) })
+              }
               className="w-full accent-primary"
             />
           </label>
@@ -482,7 +510,9 @@ function ReviewStep({
               max="180"
               step="1"
               value={imageEdit.offsetX}
-              onChange={(event) => updateEdit({ offsetX: Number(event.target.value) })}
+              onChange={(event) =>
+                updateEdit({ offsetX: Number(event.target.value) })
+              }
               className="w-full accent-primary"
             />
           </label>
@@ -494,7 +524,9 @@ function ReviewStep({
               max="220"
               step="1"
               value={imageEdit.offsetY}
-              onChange={(event) => updateEdit({ offsetY: Number(event.target.value) })}
+              onChange={(event) =>
+                updateEdit({ offsetY: Number(event.target.value) })
+              }
               className="w-full accent-primary"
             />
           </label>
@@ -506,45 +538,101 @@ function ReviewStep({
               max="180"
               step="1"
               value={imageEdit.rotation}
-              onChange={(event) => updateEdit({ rotation: Number(event.target.value) })}
+              onChange={(event) =>
+                updateEdit({ rotation: Number(event.target.value) })
+              }
               className="w-full accent-primary"
             />
           </label>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => updateEdit({ zoom: Math.max(1, imageEdit.zoom - 0.1) })}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              updateEdit({ zoom: Math.max(1, imageEdit.zoom - 0.1) })
+            }
+          >
             <IconZoomOut className="size-4" />
             Zoom Out
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => updateEdit({ zoom: Math.min(3, imageEdit.zoom + 0.1) })}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              updateEdit({ zoom: Math.min(3, imageEdit.zoom + 0.1) })
+            }
+          >
             <IconZoomIn className="size-4" />
             Zoom In
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => rotateImage(-90)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => rotateImage(-90)}
+          >
             <IconRotate className="size-4" />
             Rotate Left
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => rotateImage(90)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => rotateImage(90)}
+          >
             <IconRotateClockwise className="size-4" />
             Rotate Right
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => updateEdit({ flipX: !imageEdit.flipX })}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => updateEdit({ flipX: !imageEdit.flipX })}
+          >
             <IconFlipHorizontal className="size-4" />
             Flip
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => nudgeImage(0, -12)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => nudgeImage(0, -12)}
+          >
             Up
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => nudgeImage(0, 12)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => nudgeImage(0, 12)}
+          >
             Down
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => nudgeImage(-12, 0)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => nudgeImage(-12, 0)}
+          >
             Left
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => nudgeImage(12, 0)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => nudgeImage(12, 0)}
+          >
             Right
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={onResetEdit}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onResetEdit}
+          >
             <IconCrop className="size-4" />
             Reset
           </Button>
@@ -584,7 +672,10 @@ function ProcessingStep({
       </div>
       <div className="grid gap-3">
         {processingChecks.map((item) => (
-          <div key={item} className="flex items-center gap-3 text-sm text-muted-foreground">
+          <div
+            key={item}
+            className="flex items-center gap-3 text-sm text-muted-foreground"
+          >
             {isAnalyzing ? (
               <IconLoader2 className="size-4 animate-spin text-primary" />
             ) : (
@@ -617,16 +708,26 @@ function ResultsStep({ analysis }: { analysis: ScanAnalysis | null }) {
       <div className="rounded-lg border border-border bg-muted p-4">
         <p className="text-sm font-medium">{analysis.summary}</p>
         <p className="mt-2 text-xs text-muted-foreground">
-          Source: {analysis.source === "gemini" ? "Gemini AI analysis" : "Fallback guidance"} ·
-          Confidence: {analysis.quality.confidence}
+          Source:{" "}
+          {analysis.source === "gemini"
+            ? "Gemini AI analysis"
+            : "Fallback guidance"}{" "}
+          · Confidence: {analysis.quality.confidence}
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         {analysis.cosmeticFindings.map((finding) => (
-          <div key={finding.label} className="rounded-lg border border-border bg-card p-4">
+          <div
+            key={finding.label}
+            className="rounded-lg border border-border bg-card p-4"
+          >
             <p className="text-xs text-muted-foreground">{finding.label}</p>
-            <p className="mt-1 font-medium capitalize">{finding.band.replace("_", " ")}</p>
-            <p className="mt-2 text-xs leading-5 text-muted-foreground">{finding.observation}</p>
+            <p className="mt-1 font-medium capitalize">
+              {finding.band.replace("_", " ")}
+            </p>
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              {finding.observation}
+            </p>
           </div>
         ))}
       </div>
@@ -634,7 +735,10 @@ function ResultsStep({ analysis }: { analysis: ScanAnalysis | null }) {
         <p className="text-sm font-medium">Aurora recommendations</p>
         <div className="mt-3 grid gap-3">
           {analysis.recommendations.map((recommendation) => (
-            <div key={recommendation.title} className="flex gap-3 rounded-lg border border-border bg-muted p-3 text-sm">
+            <div
+              key={recommendation.title}
+              className="flex gap-3 rounded-lg border border-border bg-muted p-3 text-sm"
+            >
               <div className="relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-lg border border-border bg-card text-xs text-muted-foreground">
                 {recommendation.imagePath ? (
                   <Image
@@ -651,9 +755,13 @@ function ResultsStep({ analysis }: { analysis: ScanAnalysis | null }) {
               <div>
                 <p className="font-medium">{recommendation.title}</p>
                 {recommendation.category ? (
-                  <p className="mt-1 text-xs text-muted-foreground">{recommendation.category}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {recommendation.category}
+                  </p>
                 ) : null}
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">{recommendation.reason}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                  {recommendation.reason}
+                </p>
               </div>
             </div>
           ))}
@@ -697,10 +805,10 @@ function ScanPreview({
           <div className="absolute inset-x-20 top-16 h-44 rounded-full border border-border bg-background/60" />
         </>
       )}
-      <div className="absolute left-1/2 top-20 h-52 w-px -translate-x-1/2 bg-primary/30" />
-      <div className="absolute left-16 right-16 top-36 h-px bg-primary/30" />
-      <div className="absolute left-20 top-24 size-3 rounded-full bg-primary" />
-      <div className="absolute right-24 top-40 size-3 rounded-full bg-primary" />
+      <div className="absolute top-20 left-1/2 h-52 w-px -translate-x-1/2 bg-primary/30" />
+      <div className="absolute top-36 right-16 left-16 h-px bg-primary/30" />
+      <div className="absolute top-24 left-20 size-3 rounded-full bg-primary" />
+      <div className="absolute top-40 right-24 size-3 rounded-full bg-primary" />
       <div className="relative z-10 flex items-center justify-between">
         <span className="rounded-full bg-background px-3 py-1 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
           {steps.find((step) => step.id === currentStep)?.label}
@@ -732,15 +840,24 @@ function ScanPreview({
 }
 
 export function ScanFlow() {
+  const [activeTab, setActiveTab] = useState<"upload" | "camera" | "advice">(
+    "upload"
+  )
   const [currentStep, setCurrentStep] = useState<ScanStep>("intro")
   const [inputMethod, setInputMethod] = useState<ScanInputMethod>(null)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [imageEdit, setImageEdit] = useState<ImageEditState>(defaultImageEdit)
-  const [selectedFileName, setSelectedFileName] = useState("aurora-skin-scan.jpg")
+  const [selectedFileName, setSelectedFileName] = useState(
+    "aurora-skin-scan.jpg"
+  )
   const [cameraError, setCameraError] = useState<string | null>(null)
-  const [analysisResult, setAnalysisResult] = useState<ScanAnalysis | null>(null)
+  const [analysisResult, setAnalysisResult] = useState<ScanAnalysis | null>(
+    null
+  )
   const [analysisError, setAnalysisError] = useState<string | null>(null)
-  const [reportDownloadUrl, setReportDownloadUrl] = useState<string | null>(null)
+  const [reportDownloadUrl, setReportDownloadUrl] = useState<string | null>(
+    null
+  )
   // The persisted Report row's id — createScanReport (called from
   // /api/scan/analyze) always creates this before the response comes back,
   // so it's available as soon as analysis completes. Used to link to the
@@ -778,7 +895,9 @@ export function ScanFlow() {
     setCameraError(null)
 
     if (!window.isSecureContext) {
-      setCameraError("Camera access requires localhost or HTTPS. Open the scan page from a secure browser context.")
+      setCameraError(
+        "Camera access requires localhost or HTTPS. Open the scan page from a secure browser context."
+      )
       return
     }
 
@@ -814,7 +933,9 @@ export function ScanFlow() {
     if (!video || !canvas || !isCameraActive) return
 
     if (!video.videoWidth || !video.videoHeight) {
-      setCameraError("Camera preview is still loading. Please wait a moment, then capture again.")
+      setCameraError(
+        "Camera preview is still loading. Please wait a moment, then capture again."
+      )
       return
     }
 
@@ -919,6 +1040,37 @@ export function ScanFlow() {
     setCurrentStep("intro")
   }
 
+  // Switching Upload <-> Camera mid-scan is a method change: restart capture
+  // with the new method, discarding whatever was captured under the old one
+  // (mirrors retakeImage/removeImage's reset, minus going all the way back
+  // to intro since consent was already given). Switching to/from Advice is
+  // just a view swap — wizard progress is left untouched, only the camera
+  // stream is paused if it was running.
+  function selectTab(nextTab: "upload" | "camera" | "advice") {
+    if (nextTab === activeTab) return
+
+    if (activeTab === "camera") {
+      stopCamera()
+    }
+
+    const isMethodSwitch =
+      (nextTab === "upload" || nextTab === "camera") &&
+      (activeTab === "upload" || activeTab === "camera")
+
+    if (isMethodSwitch && currentStep !== "intro") {
+      setSelectedImage(null)
+      setInputMethod(null)
+      setImageEdit(defaultImageEdit)
+      setAnalysisResult(null)
+      setAnalysisError(null)
+      setReportDownloadUrl(null)
+      setReportId(null)
+      setCurrentStep("capture")
+    }
+
+    setActiveTab(nextTab)
+  }
+
   async function analyzeSelectedImage() {
     if (!selectedImage) return
 
@@ -933,7 +1085,10 @@ export function ScanFlow() {
       // Bakes the user's crop/zoom/rotate/flip adjustments from the Review
       // step into actual pixels before upload — the server only ever sees
       // the final edited image, never the original plus a set of transforms.
-      const editedImage = await createEditedImageDataUrl(selectedImage, imageEdit)
+      const editedImage = await createEditedImageDataUrl(
+        selectedImage,
+        imageEdit
+      )
       setSelectedImage(editedImage)
       const imageFile = await dataUrlToFile(editedImage, selectedFileName)
       const formData = new FormData()
@@ -953,12 +1108,16 @@ export function ScanFlow() {
       setAnalysisResult(payload.analysis)
       setReportDownloadUrl(payload.reportDownloadUrl ?? null)
       setReportId(payload.report?.id ?? null)
-      setAnalysisError(payload.fallback ? payload.error ?? "Fallback cosmetic report returned." : null)
+      setAnalysisError(
+        payload.fallback
+          ? (payload.error ?? "Fallback cosmetic report returned.")
+          : null
+      )
     } catch (error) {
       setAnalysisError(
         error instanceof Error
           ? error.message
-          : "Aurora could not analyze this image. Please try again.",
+          : "Aurora could not analyze this image. Please try again."
       )
     } finally {
       setIsAnalyzing(false)
@@ -967,122 +1126,207 @@ export function ScanFlow() {
 
   return (
     <div className="grid gap-8">
-      <StepIndicator currentStep={currentStep} />
+      <div className="flex gap-2 border-b border-border">
+        <TabButton
+          active={activeTab === "upload"}
+          onClick={() => selectTab("upload")}
+        >
+          <IconUpload className="size-4" />
+          Upload
+        </TabButton>
+        <TabButton
+          active={activeTab === "camera"}
+          onClick={() => selectTab("camera")}
+        >
+          <IconCamera className="size-4" />
+          Camera
+        </TabButton>
+        <TabButton
+          active={activeTab === "advice"}
+          onClick={() => selectTab("advice")}
+        >
+          <IconMessageCircle className="size-4" />
+          Advice
+        </TabButton>
+      </div>
 
-      <section className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <p className="mb-3 flex items-center gap-2 text-xs font-semibold tracking-widest text-primary uppercase">
-            <IconSparkles className="size-4" />
-            Aurora SkinSense
-          </p>
-          <h1 className="text-3xl font-semibold tracking-normal">{copy.title}</h1>
-          <p className="mt-4 text-sm leading-6 text-muted-foreground">{copy.description}</p>
+      {activeTab === "advice" ? (
+        <SkinAdviceChat />
+      ) : (
+        <>
+          <StepIndicator currentStep={currentStep} />
 
-          <div className="mt-8">
-            {currentStep === "intro" ? <IntroStep /> : null}
-            {currentStep === "capture" ? (
-              <CaptureStep
-                videoRef={videoRef}
-                canvasRef={canvasRef}
-                fileInputRef={fileInputRef}
-                cameraError={cameraError}
-                isCameraActive={isCameraActive}
-                onStartCamera={() => void startCamera()}
-                onCapture={captureImage}
-                onUpload={uploadImage}
-              />
-            ) : null}
-            {currentStep === "review" && selectedImage ? (
-              <ReviewStep
-                selectedImage={selectedImage}
-                inputMethod={inputMethod}
-                imageEdit={imageEdit}
-                onEditChange={setImageEdit}
-                onResetEdit={() => setImageEdit(defaultImageEdit)}
-                onRetake={retakeImage}
-                onRemove={removeImage}
-              />
-            ) : null}
-            {currentStep === "processing" ? (
-              <ProcessingStep analysisError={analysisError} isAnalyzing={isAnalyzing} />
-            ) : null}
-            {currentStep === "results" ? <ResultsStep analysis={analysisResult} /> : null}
-          </div>
+          <section className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+              <p className="mb-3 flex items-center gap-2 text-xs font-semibold tracking-widest text-primary uppercase">
+                <IconSparkles className="size-4" />
+                Aurora SkinSense
+              </p>
+              <h1 className="text-3xl font-semibold tracking-normal">
+                {copy.title}
+              </h1>
+              <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                {copy.description}
+              </p>
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            {currentStep !== "intro" ? (
-              <Button type="button" variant="outline" onClick={goBack} disabled={isAnalyzing}>
-                <IconChevronLeft className="size-4" />
-                Back
-              </Button>
-            ) : null}
-            {currentStep === "results" ? (
-              <>
-                <Button type="button" onClick={restart}>
-                  Start New Scan
-                </Button>
-                {reportId ? (
-                  <Button type="button" variant="outline" asChild>
-                    <Link href={`/reports/${reportId}`}>
-                      <IconReportAnalytics className="size-4" />
-                      View Full Report
-                    </Link>
+              <div className="mt-8">
+                {currentStep === "intro" ? <IntroStep /> : null}
+                {currentStep === "capture" ? (
+                  <CaptureStep
+                    method={activeTab}
+                    videoRef={videoRef}
+                    canvasRef={canvasRef}
+                    fileInputRef={fileInputRef}
+                    cameraError={cameraError}
+                    isCameraActive={isCameraActive}
+                    onStartCamera={() => void startCamera()}
+                    onCapture={captureImage}
+                    onUpload={uploadImage}
+                  />
+                ) : null}
+                {currentStep === "review" && selectedImage ? (
+                  <ReviewStep
+                    selectedImage={selectedImage}
+                    inputMethod={inputMethod}
+                    imageEdit={imageEdit}
+                    onEditChange={setImageEdit}
+                    onResetEdit={() => setImageEdit(defaultImageEdit)}
+                    onRetake={retakeImage}
+                    onRemove={removeImage}
+                  />
+                ) : null}
+                {currentStep === "processing" ? (
+                  <ProcessingStep
+                    analysisError={analysisError}
+                    isAnalyzing={isAnalyzing}
+                  />
+                ) : null}
+                {currentStep === "results" ? (
+                  <ResultsStep analysis={analysisResult} />
+                ) : null}
+              </div>
+
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                {currentStep !== "intro" ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={goBack}
+                    disabled={isAnalyzing}
+                  >
+                    <IconChevronLeft className="size-4" />
+                    Back
                   </Button>
                 ) : null}
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={!reportDownloadUrl}
-                  onClick={() => {
-                    if (reportDownloadUrl) window.open(reportDownloadUrl, "_blank", "noopener,noreferrer")
-                  }}
-                >
-                  <IconDownload className="size-4" />
-                  Download PDF
-                </Button>
-              </>
-            ) : currentStep === "capture" ? null : (
-              <Button
-                type="button"
-                onClick={() => void goNext()}
-                disabled={
-                  (currentStep === "review" && !selectedImage) ||
-                  (currentStep === "processing" && (isAnalyzing || !analysisResult))
-                }
-              >
-                {currentStep === "intro"
-                  ? "I Consent, Begin Scan"
-                  : currentStep === "processing"
-                    ? isAnalyzing
-                      ? "Analyzing..."
-                      : "View Results"
-                    : "Continue to Processing"}
-              </Button>
-            )}
-          </div>
-        </div>
+                {currentStep === "results" ? (
+                  <>
+                    <Button type="button" onClick={restart}>
+                      Start New Scan
+                    </Button>
+                    {reportId ? (
+                      <Button type="button" variant="outline" asChild>
+                        <Link href={`/reports/${reportId}`}>
+                          <IconReportAnalytics className="size-4" />
+                          View Full Report
+                        </Link>
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={!reportDownloadUrl}
+                      onClick={() => {
+                        if (reportDownloadUrl)
+                          window.open(
+                            reportDownloadUrl,
+                            "_blank",
+                            "noopener,noreferrer"
+                          )
+                      }}
+                    >
+                      <IconDownload className="size-4" />
+                      Download PDF
+                    </Button>
+                  </>
+                ) : currentStep === "capture" ? null : (
+                  <Button
+                    type="button"
+                    onClick={() => void goNext()}
+                    disabled={
+                      (currentStep === "review" && !selectedImage) ||
+                      (currentStep === "processing" &&
+                        (isAnalyzing || !analysisResult))
+                    }
+                  >
+                    {currentStep === "intro"
+                      ? "I Consent, Begin Scan"
+                      : currentStep === "processing"
+                        ? isAnalyzing
+                          ? "Analyzing..."
+                          : "View Results"
+                        : "Continue to Processing"}
+                  </Button>
+                )}
+              </div>
+            </div>
 
-        <div className="grid content-start gap-4">
-          <ScanPreview currentStep={currentStep} selectedImage={selectedImage} />
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="rounded-lg border border-border bg-card p-4">
-              <IconFileAnalytics className="size-6 text-primary" />
-              <p className="mt-3 text-sm font-medium">Cosmetic skin report</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Visible texture, tone, hydration appearance, and Aurora recommendations.
-              </p>
+            <div className="grid content-start gap-4">
+              <ScanPreview
+                currentStep={currentStep}
+                selectedImage={selectedImage}
+              />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-lg border border-border bg-card p-4">
+                  <IconFileAnalytics className="size-6 text-primary" />
+                  <p className="mt-3 text-sm font-medium">
+                    Cosmetic skin report
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    Visible texture, tone, hydration appearance, and Aurora
+                    recommendations.
+                  </p>
+                </div>
+                <div className="rounded-lg border border-border bg-card p-4">
+                  <IconReportAnalytics className="size-6 text-primary" />
+                  <p className="mt-3 text-sm font-medium">
+                    Privacy-first input
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    Camera and upload images remain in local browser state in
+                    this Phase 1 UI.
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="rounded-lg border border-border bg-card p-4">
-              <IconReportAnalytics className="size-6 text-primary" />
-              <p className="mt-3 text-sm font-medium">Privacy-first input</p>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                Camera and upload images remain in local browser state in this Phase 1 UI.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+          </section>
+        </>
+      )}
     </div>
+  )
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
+        active
+          ? "border-primary text-foreground"
+          : "border-transparent text-muted-foreground hover:text-foreground"
+      )}
+    >
+      {children}
+    </button>
   )
 }
 
@@ -1117,7 +1361,10 @@ async function createEditedImageDataUrl(dataUrl: string, edit: ImageEditState) {
   // Scales the source image down to fit inside the canvas before any user
   // zoom is applied, so `edit.zoom` is relative to "fit the frame", not to
   // the image's raw pixel size.
-  const baseScale = Math.min(width / image.naturalWidth, height / image.naturalHeight)
+  const baseScale = Math.min(
+    width / image.naturalWidth,
+    height / image.naturalHeight
+  )
   const drawWidth = image.naturalWidth * baseScale
   const drawHeight = image.naturalHeight * baseScale
 
@@ -1128,7 +1375,13 @@ async function createEditedImageDataUrl(dataUrl: string, edit: ImageEditState) {
   context.translate(width / 2 + edit.offsetX, height / 2 + edit.offsetY)
   context.rotate((edit.rotation * Math.PI) / 180)
   context.scale((edit.flipX ? -1 : 1) * edit.zoom, edit.zoom)
-  context.drawImage(image, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight)
+  context.drawImage(
+    image,
+    -drawWidth / 2,
+    -drawHeight / 2,
+    drawWidth,
+    drawHeight
+  )
 
   return canvas.toDataURL("image/jpeg", 0.92)
 }
@@ -1137,7 +1390,8 @@ function loadEditableImage(dataUrl: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new globalThis.Image()
     image.onload = () => resolve(image)
-    image.onerror = () => reject(new Error("Selected image could not be edited."))
+    image.onerror = () =>
+      reject(new Error("Selected image could not be edited."))
     image.src = dataUrl
   })
 }
@@ -1203,7 +1457,10 @@ function getCameraErrorMessage(error: unknown) {
     return "Your camera is already in use by another app or browser tab. Close it, then try again."
   }
 
-  if (error.name === "OverconstrainedError" || error.name === "ConstraintNotSatisfiedError") {
+  if (
+    error.name === "OverconstrainedError" ||
+    error.name === "ConstraintNotSatisfiedError"
+  ) {
     return "This camera does not support the preferred scan settings. Please try again or upload an image."
   }
 

@@ -1,22 +1,9 @@
-import { AdminDashboard } from "@/components/admin/admin-dashboard"
-import { getAdminAnalytics } from "@/lib/backend/admin-analytics"
-import { saveAuditLog } from "@/lib/backend/report-store"
-import { getAdminPrincipal } from "@/lib/auth/admin"
+import { redirect } from "next/navigation"
 
-export const dynamic = "force-dynamic"
-
-export default async function AdminPage() {
-  // Non-null: the parent (dashboard)/admin/layout.tsx already gated access,
-  // this just re-reads the principal for the audit log below.
-  const principal = (await getAdminPrincipal())!
-
-  await saveAuditLog({
-    actorId: principal.id,
-    actorRole: principal.role,
-    action: "Viewed admin dashboard",
-    targetType: "admin",
-    targetId: "dashboard",
-  })
-
-  return <AdminDashboard backendAnalytics={await getAdminAnalytics()} />
+// /admin used to be one page holding everything (metrics, scans/reports
+// table, user data indirectly via report rows). That content now lives at
+// /admin/analytics, split out alongside the new /admin/users and
+// /admin/scans sections — this bare route just forwards old links/bookmarks.
+export default function AdminIndexPage() {
+  redirect("/admin/analytics")
 }

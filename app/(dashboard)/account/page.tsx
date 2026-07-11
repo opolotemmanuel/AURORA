@@ -1,6 +1,6 @@
 // User-facing account settings — distinct from /settings, which is the
 // pre-existing admin product-catalog/enterprise page (see
-// components/layouts/dashboard-sidebar.tsx's ADMIN_ONLY_SECTION comment for
+// components/layouts/dashboard-sidebar.tsx's ADMINISTRATION_SECTION comment for
 // why these are two separate routes). Self-service only, scoped to the
 // signed-in user's own row via getSession(), same pattern as /profile.
 import { IconCloud, IconSettings, IconUserCircle } from "@tabler/icons-react"

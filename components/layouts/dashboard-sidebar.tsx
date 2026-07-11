@@ -7,12 +7,13 @@ import {
   IconFileAnalytics,
   IconLayoutDashboard,
   IconLeaf,
+  IconPhotoScan,
   IconReportAnalytics,
   IconSettings,
   IconShieldCheck,
-  IconShieldLock,
   IconSparkles,
   IconUserCircle,
+  IconUsers,
 } from "@tabler/icons-react"
 
 import { cn } from "@/lib/utils"
@@ -44,9 +45,9 @@ const NAV_SECTIONS: NavSection[] = [
     label: "Account",
     // Labeled "Settings" to match the product design, but routes to
     // /account — /settings is a separate, pre-existing admin-only page
-    // (product catalog / enterprise settings, see ADMIN_ONLY_SECTION below)
-    // and reusing that route here would re-create the exact bug it was
-    // split off to fix (see ADMIN_ONLY_SECTION's comment).
+    // (product catalog / enterprise settings, see ADMINISTRATION_SECTION
+    // below) and reusing that route here would re-create the exact bug it
+    // was split off to fix (see ADMINISTRATION_SECTION's comment).
     items: [{ href: "/account", label: "Settings", icon: IconSettings }],
   },
 ]
@@ -54,16 +55,23 @@ const NAV_SECTIONS: NavSection[] = [
 // `/settings` is the admin product-catalog/enterprise-settings page (see
 // app/(dashboard)/settings/page.tsx's requireAdminAccess("settings:manage")
 // gate) — not a user account-settings page — so it's admin-only nav, same
-// tier as Admin. Previously shown to every user, which meant every regular
-// USER saw a "Settings" link that only ever dead-ended in Access Denied.
-// Labeled "Enterprise Settings" here (rather than plain "Settings") so it
-// doesn't collide with the user-facing "Settings" link above for admins,
-// who see both.
-const ADMIN_ONLY_SECTION: NavSection = {
-  label: "Admin",
+// tier as the rest of this group. Previously shown to every user, which
+// meant every regular USER saw a "Settings" link that only ever dead-ended
+// in Access Denied. Labeled "Enterprise Settings" here (rather than plain
+// "Settings") so it doesn't collide with the user-facing "Settings" link
+// above for admins, who see both.
+//
+// /admin used to be a single link to one page holding analytics, a scan/
+// report table, and system status all at once — split into three admin/*
+// routes (Analytics/Users/Scans) so each is its own focused page, same
+// admin-gating (admin/layout.tsx's requireAdminAccess) either way.
+const ADMINISTRATION_SECTION: NavSection = {
+  label: "Administration",
   items: [
+    { href: "/admin/analytics", label: "Analytics", icon: IconChartBar },
+    { href: "/admin/users", label: "Users", icon: IconUsers },
+    { href: "/admin/scans", label: "Scans", icon: IconPhotoScan },
     { href: "/settings", label: "Enterprise Settings", icon: IconFileAnalytics },
-    { href: "/admin", label: "Admin", icon: IconShieldLock },
   ],
 }
 
@@ -74,7 +82,7 @@ const ADMIN_ONLY_SECTION: NavSection = {
 // route protection is still lib/auth/admin.ts's requireAdminAccess, this
 // just avoids showing a link they can't follow.
 export function DashboardSidebar({ pathname, isAdminTier }: { pathname: string; isAdminTier: boolean }) {
-  const sections = isAdminTier ? [...NAV_SECTIONS, ADMIN_ONLY_SECTION] : NAV_SECTIONS
+  const sections = isAdminTier ? [...NAV_SECTIONS, ADMINISTRATION_SECTION] : NAV_SECTIONS
   const { data: session } = authClient.useSession()
 
   return (

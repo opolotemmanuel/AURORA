@@ -74,13 +74,14 @@ model User {
   updatedAt     DateTime @updatedAt
   lastLoginAt   DateTime?
 
-  scans           Scan[]
-  reports         Report[]
-  downloads       ReportDownload[]
-  actedAuditLogs  AuditLog[]       @relation("AuditActor")
-  authAccounts    AuthAccount[]
-  authSessions    AuthSession[]
-  chatMessages    ReportChatMessage[]
+  scans              Scan[]
+  reports            Report[]
+  downloads          ReportDownload[]
+  actedAuditLogs     AuditLog[]       @relation("AuditActor")
+  authAccounts       AuthAccount[]
+  authSessions       AuthSession[]
+  chatMessages       ReportChatMessage[]
+  skinAdviceMessages SkinAdviceMessage[]
 
   @@index([role])
   @@index([emailVerified])
@@ -206,6 +207,23 @@ model ReportChatMessage {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([reportId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// General skin-advice chat — deliberately NOT tied to a report (unlike
+// ReportChatMessage above), since this assistant answers general skincare
+// questions whether or not the user has a scan yet. Just a userId, no
+// reportId, so no report to cascade from — only the user relation cascades.
+model SkinAdviceMessage {
+  id        String          @id @default(cuid())
+  userId    String
+  role      ChatMessageRole
+  content   String
+  createdAt DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([createdAt])
 }

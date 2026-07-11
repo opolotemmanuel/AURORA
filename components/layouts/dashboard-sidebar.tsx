@@ -1,31 +1,71 @@
+"use client"
+
+import Image from "next/image"
 import Link from "next/link"
 import {
+  IconChartBar,
+  IconFileAnalytics,
   IconLayoutDashboard,
   IconLeaf,
   IconReportAnalytics,
   IconSettings,
+  IconShieldCheck,
   IconShieldLock,
+  IconSparkles,
   IconUserCircle,
 } from "@tabler/icons-react"
 
 import { cn } from "@/lib/utils"
+import { authClient } from "@/lib/auth/client"
 
-// Shown to every signed-in user regardless of role.
-const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: IconLayoutDashboard },
-  { href: "/reports", label: "Reports", icon: IconReportAnalytics },
-  { href: "/profile", label: "Profile", icon: IconUserCircle },
-] as const
+type NavItem = { href: string; label: string; icon: typeof IconLayoutDashboard }
+type NavSection = { label: string; items: NavItem[] }
+
+// Shown to every signed-in user regardless of role. Grouped to match the
+// Overview / Your Data / Account structure from the product's sidebar design.
+const NAV_SECTIONS: NavSection[] = [
+  {
+    label: "Overview",
+    items: [
+      { href: "/dashboard", label: "Home", icon: IconLayoutDashboard },
+      { href: "/usage", label: "Usage", icon: IconChartBar },
+    ],
+  },
+  {
+    label: "Your Data",
+    items: [
+      { href: "/profile", label: "Profile", icon: IconUserCircle },
+      { href: "/reports", label: "Reports", icon: IconReportAnalytics },
+      { href: "/skin-advice", label: "Skin advice", icon: IconSparkles },
+      { href: "/privacy", label: "Privacy", icon: IconShieldCheck },
+    ],
+  },
+  {
+    label: "Account",
+    // Labeled "Settings" to match the product design, but routes to
+    // /account — /settings is a separate, pre-existing admin-only page
+    // (product catalog / enterprise settings, see ADMIN_ONLY_SECTION below)
+    // and reusing that route here would re-create the exact bug it was
+    // split off to fix (see ADMIN_ONLY_SECTION's comment).
+    items: [{ href: "/account", label: "Settings", icon: IconSettings }],
+  },
+]
 
 // `/settings` is the admin product-catalog/enterprise-settings page (see
 // app/(dashboard)/settings/page.tsx's requireAdminAccess("settings:manage")
 // gate) — not a user account-settings page — so it's admin-only nav, same
 // tier as Admin. Previously shown to every user, which meant every regular
 // USER saw a "Settings" link that only ever dead-ended in Access Denied.
-const ADMIN_ONLY_ITEMS = [
-  { href: "/settings", label: "Settings", icon: IconSettings },
-  { href: "/admin", label: "Admin", icon: IconShieldLock },
-] as const
+// Labeled "Enterprise Settings" here (rather than plain "Settings") so it
+// doesn't collide with the user-facing "Settings" link above for admins,
+// who see both.
+const ADMIN_ONLY_SECTION: NavSection = {
+  label: "Admin",
+  items: [
+    { href: "/settings", label: "Enterprise Settings", icon: IconFileAnalytics },
+    { href: "/admin", label: "Admin", icon: IconShieldLock },
+  ],
+}
 
 // `pathname` is passed in (rather than read here via usePathname) so this
 // stays a plain component the parent shell controls, matching-prefix logic
@@ -34,7 +74,8 @@ const ADMIN_ONLY_ITEMS = [
 // route protection is still lib/auth/admin.ts's requireAdminAccess, this
 // just avoids showing a link they can't follow.
 export function DashboardSidebar({ pathname, isAdminTier }: { pathname: string; isAdminTier: boolean }) {
-  const items = isAdminTier ? [...navItems, ...ADMIN_ONLY_ITEMS] : navItems
+  const sections = isAdminTier ? [...NAV_SECTIONS, ADMIN_ONLY_SECTION] : NAV_SECTIONS
+  const { data: session } = authClient.useSession()
 
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex w-56 shrink-0 flex-col border-r border-border bg-sidebar">
@@ -44,28 +85,60 @@ export function DashboardSidebar({ pathname, isAdminTier }: { pathname: string; 
           Aura
         </Link>
       </div>
-      <nav className="flex flex-col gap-1 p-4">
-        {items.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
-          const Icon = item.icon
 
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-              )}
-            >
-              <Icon className="size-4" />
-              {item.label}
-            </Link>
-          )
-        })}
+      <nav className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+        {sections.map((section) => (
+          <div key={section.label} className="space-y-1">
+            <p className="px-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+              {section.label}
+            </p>
+            {section.items.map((item) => {
+              const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
+              const Icon = item.icon
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                    isActive
+                      ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                  )}
+                >
+                  <Icon className="size-4" />
+                  {item.label}
+                </Link>
+              )
+            })}
+          </div>
+        ))}
       </nav>
+
+      {session ? (
+        <div className="flex items-center gap-3 border-t border-sidebar-border px-4 py-4">
+          {session.user.image ? (
+            <Image
+              src={session.user.image}
+              alt=""
+              width={32}
+              height={32}
+              className="size-8 shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
+              <IconUserCircle className="size-5 text-muted-foreground" />
+            </div>
+          )}
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium text-sidebar-foreground">
+              {session.user.name || "Aura user"}
+            </p>
+            <p className="truncate text-xs text-muted-foreground">{session.user.email}</p>
+          </div>
+        </div>
+      ) : null}
     </aside>
   )
 }

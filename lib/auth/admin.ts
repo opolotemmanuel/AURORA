@@ -8,6 +8,7 @@ export type AdminPermission =
   | "admin:read"
   | "analytics:read"
   | "users:read"
+  | "users:delete"
   | "settings:read"
   | "settings:manage"
   | "products:read"
@@ -37,9 +38,11 @@ export type AdminAccess =
 // intentionally identical today — kept as separate roles because they're
 // expected to diverge later (e.g. owner-only billing controls).
 const rolePermissions: Record<AdminRole, AdminPermission[]> = {
-  owner: ["admin:read", "analytics:read", "users:read", "settings:read", "settings:manage", "products:read", "products:manage"],
-  admin: ["admin:read", "analytics:read", "users:read", "settings:read", "settings:manage", "products:read", "products:manage"],
+  owner: ["admin:read", "analytics:read", "users:read", "users:delete", "settings:read", "settings:manage", "products:read", "products:manage"],
+  admin: ["admin:read", "analytics:read", "users:read", "users:delete", "settings:read", "settings:manage", "products:read", "products:manage"],
   operations: ["admin:read", "analytics:read", "products:read", "products:manage"],
+  // privacy and support can view the users table but not delete accounts —
+  // account deletion is deliberately restricted to the two full-admin tiers.
   privacy: ["admin:read", "analytics:read", "users:read", "settings:read"],
   support: ["admin:read", "analytics:read", "users:read", "products:read"],
 }

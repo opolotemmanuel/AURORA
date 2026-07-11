@@ -13,10 +13,14 @@ import {
   IconSend2,
   IconSparkles,
 } from "@tabler/icons-react"
+import ReactMarkdown from "react-markdown"
 
+import { ChatProductCard } from "@/components/recommendations/chat-product-card"
+import { CHAT_MARKDOWN_COMPONENTS } from "@/components/recommendations/chat-markdown"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
+import type { AuroraProduct } from "@/lib/recommendations/types"
 
 // Mirrors lib/ai/gemini-adapter.ts's SKIN_ADVICE_MAX_QUESTION_LENGTH — kept
 // local rather than importing that server-only module into client code, same
@@ -33,6 +37,7 @@ type ChatMessage = {
   id: string
   role: "user" | "assistant"
   content: string
+  products?: AuroraProduct[]
 }
 
 type Budget = { used: number; limit: number; remaining: number }
@@ -223,10 +228,22 @@ export function SkinAdviceChat() {
               className={
                 message.role === "user"
                   ? "ml-6 rounded-lg bg-primary px-4 py-2.5 text-sm text-primary-foreground"
-                  : "mr-6 rounded-lg border border-border bg-muted px-4 py-2.5 text-sm text-foreground"
+                  : "mr-6 space-y-3 rounded-lg border border-border bg-muted px-4 py-2.5 text-sm text-foreground"
               }
             >
-              {message.content}
+              {message.role === "assistant" ? (
+                <ReactMarkdown components={CHAT_MARKDOWN_COMPONENTS}>{message.content}</ReactMarkdown>
+              ) : (
+                message.content
+              )}
+
+              {message.products?.length ? (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {message.products.map((product) => (
+                    <ChatProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+              ) : null}
             </div>
           ))
         )}

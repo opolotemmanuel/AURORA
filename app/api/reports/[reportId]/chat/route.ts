@@ -9,8 +9,9 @@ import { NextResponse } from "next/server"
 
 import { getAdminPrincipal } from "@/lib/auth/admin"
 import { getSession } from "@/lib/auth/session"
-import { listReportChatMessages, saveReportChatMessage } from "@/lib/backend/chat-store"
+import { listReportChatMessages, saveReportChatMessage, type ChatMessageRecord } from "@/lib/backend/chat-store"
 import { findReport } from "@/lib/backend/report-store"
+import { listActiveRecommendationProducts } from "@/lib/backend/product-service"
 import type { StoredReport } from "@/lib/backend/types"
 import {
   askAboutReport,
@@ -18,6 +19,8 @@ import {
   ReportChatQuestionTooLongError,
   type ReportChatContext,
 } from "@/lib/ai/gemini-adapter"
+import { extractSuggestedProducts } from "@/lib/recommendations/chat-product-mentions"
+import type { AuroraProduct } from "@/lib/recommendations/types"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -47,8 +50,12 @@ export async function GET(_request: Request, context: RouteContext) {
     return NextResponse.json({ error: "Report not found." }, { status: auth.status })
   }
 
-  const messages = await listReportChatMessages(reportId)
-  return NextResponse.json({ messages })
+  const [messages, activeProducts] = await Promise.all([
+    listReportChatMessages(reportId),
+    listActiveRecommendationProducts(),
+  ])
+
+  return NextResponse.json({ messages: messages.map((message) => toClientMessage(message, activeProducts)) })
 }
 
 export async function POST(request: Request, context: RouteContext) {
@@ -73,7 +80,10 @@ export async function POST(request: Request, context: RouteContext) {
     )
   }
 
-  const history = await listReportChatMessages(reportId)
+  const [history, activeProducts] = await Promise.all([
+    listReportChatMessages(reportId),
+    listActiveRecommendationProducts(),
+  ])
 
   const userMessage = await saveReportChatMessage({
     reportId,
@@ -84,11 +94,15 @@ export async function POST(request: Request, context: RouteContext) {
 
   try {
     const answer = await askAboutReport(
-      buildChatContext(auth.report),
+      buildChatContext(auth.report, activeProducts),
       history.map((message) => ({ role: message.role, content: message.content })),
       question,
     )
 
+    // The full raw answer (including the "Suggested products" marker block)
+    // is what's persisted — toClientMessage below re-derives the display
+    // text + matched products from it on every read, so matching always
+    // reflects the currently-active catalog rather than a stale snapshot.
     const assistantMessage = await saveReportChatMessage({
       reportId,
       userId: auth.userId,
@@ -96,7 +110,10 @@ export async function POST(request: Request, context: RouteContext) {
       content: answer,
     })
 
-    return NextResponse.json({ userMessage, assistantMessage })
+    return NextResponse.json({
+      userMessage,
+      assistantMessage: toClientMessage(assistantMessage, activeProducts),
+    })
   } catch (error) {
     // The user's question is already saved (so it isn't lost on reload) —
     // only the assistant's turn failed, so report that distinctly rather
@@ -110,7 +127,7 @@ export async function POST(request: Request, context: RouteContext) {
   }
 }
 
-function buildChatContext(report: StoredReport): ReportChatContext {
+function buildChatContext(report: StoredReport, activeProducts: AuroraProduct[]): ReportChatContext {
   return {
     summary: report.analysis.summary,
     cosmeticFindings: report.analysis.cosmeticFindings.map((finding) => ({
@@ -123,5 +140,23 @@ function buildChatContext(report: StoredReport): ReportChatContext {
       category: recommendation.product.category,
       reason: recommendation.reasons.join(" "),
     })),
+    products: activeProducts.map((product) => ({
+      name: product.name,
+      category: product.category,
+      bestFor: product.bestFor,
+    })),
   }
+}
+
+// Re-derives display text + matched real products from a message's raw
+// stored content on every read (see extractSuggestedProducts) rather than
+// persisting a separate structured field — no schema change needed, and
+// matching always reflects whichever products are active right now.
+function toClientMessage(message: ChatMessageRecord, activeProducts: AuroraProduct[]) {
+  if (message.role !== "assistant") {
+    return { id: message.id, role: message.role, content: message.content }
+  }
+
+  const { displayContent, products } = extractSuggestedProducts(message.content, activeProducts)
+  return { id: message.id, role: message.role, content: displayContent, products }
 }

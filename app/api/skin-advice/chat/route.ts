@@ -8,16 +8,21 @@ import {
   askSkinAdviceQuestion,
   SKIN_ADVICE_MAX_QUESTION_LENGTH,
   SkinAdviceQuestionTooLongError,
+  type ChatCatalogProduct,
   type SkinAdviceContext,
 } from "@/lib/ai/gemini-adapter"
 import { listReportsForUser } from "@/lib/backend/report-store"
+import { listActiveRecommendationProducts } from "@/lib/backend/product-service"
 import {
   countSkinAdviceMessagesThisMonth,
   listSkinAdviceMessages,
   saveSkinAdviceMessage,
   SKIN_ADVICE_MONTHLY_MESSAGE_LIMIT,
+  type SkinAdviceMessageRecord,
 } from "@/lib/backend/skin-advice-store"
 import { getSession } from "@/lib/auth/session"
+import { extractSuggestedProducts } from "@/lib/recommendations/chat-product-mentions"
+import type { AuroraProduct } from "@/lib/recommendations/types"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -45,18 +50,39 @@ async function budgetFor(userId: string) {
   }
 }
 
+function toClientMessage(message: SkinAdviceMessageRecord, activeProducts: AuroraProduct[]) {
+  if (message.role !== "assistant") {
+    return { id: message.id, role: message.role, content: message.content }
+  }
+
+  const { displayContent, products } = extractSuggestedProducts(message.content, activeProducts)
+  return { id: message.id, role: message.role, content: displayContent, products }
+}
+
+function toCatalogContext(products: AuroraProduct[]): ChatCatalogProduct[] {
+  return products.map((product) => ({
+    name: product.name,
+    category: product.category,
+    bestFor: product.bestFor,
+  }))
+}
+
 export async function GET() {
   const session = await getSession()
   if (!session) {
     return NextResponse.json({ error: "Sign in required." }, { status: 401 })
   }
 
-  const [messages, budget] = await Promise.all([
+  const [messages, budget, activeProducts] = await Promise.all([
     listSkinAdviceMessages(session.user.id),
     budgetFor(session.user.id),
+    listActiveRecommendationProducts(),
   ])
 
-  return NextResponse.json({ messages, budget })
+  return NextResponse.json({
+    messages: messages.map((message) => toClientMessage(message, activeProducts)),
+    budget,
+  })
 }
 
 export async function POST(request: Request) {
@@ -83,9 +109,10 @@ export async function POST(request: Request) {
   }
 
   const userId = session.user.id
-  const [history, context] = await Promise.all([
+  const [history, context, activeProducts] = await Promise.all([
     listSkinAdviceMessages(userId),
     loadContext(userId),
+    listActiveRecommendationProducts(),
   ])
 
   const userMessage = await saveSkinAdviceMessage({
@@ -97,6 +124,7 @@ export async function POST(request: Request) {
   try {
     const answer = await askSkinAdviceQuestion(
       context,
+      toCatalogContext(activeProducts),
       history.map((message) => ({
         role: message.role,
         content: message.content,
@@ -111,7 +139,11 @@ export async function POST(request: Request) {
     })
     const budget = await budgetFor(userId)
 
-    return NextResponse.json({ userMessage, assistantMessage, budget })
+    return NextResponse.json({
+      userMessage,
+      assistantMessage: toClientMessage(assistantMessage, activeProducts),
+      budget,
+    })
   } catch (error) {
     // The user's question is already saved (so it isn't lost on reload) —
     // only the assistant's turn failed, so report that distinctly rather

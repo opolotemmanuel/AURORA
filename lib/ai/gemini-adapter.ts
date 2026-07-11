@@ -164,6 +164,29 @@ export async function analyzeSkinWithGemini(
   }
 }
 
+// Shared by both buildReportChatSystemPrompt and buildSkinAdviceSystemPrompt
+// so the formatting rule and the "only recommend real products" rule can't
+// drift apart between the two chats. The exact heading text
+// "**Suggested products:**" is a fixed contract with
+// lib/recommendations/chat-product-mentions.ts's extractSuggestedProducts,
+// which parses a response for that literal (case-insensitive) heading
+// followed by a bullet list — changing the wording here without updating
+// that parser (or vice versa) would silently stop product matching.
+function buildFormattingAndProductGuidance(products: ChatCatalogProduct[]): string[] {
+  return [
+    "Formatting: respond in clean markdown — short paragraphs, **bold** for key terms, and bullet points for any list (routine steps, multiple tips). Avoid long unbroken paragraphs. Keep the whole answer concise, like a chat reply, not an essay.",
+    "",
+    "Real Aurora Organics products you may recommend (this is the ONLY list you may ever recommend from — never invent a product name, and never imply a product exists or is available if it isn't listed here):",
+    ...(products.length
+      ? products.map(
+          (product) => `- ${product.name} (${product.category}) — helps with: ${product.bestFor.join(", ") || "general routine support"}`
+        )
+      : ["- (No active products available right now — do not suggest any product.)"]),
+    'When, and only when, the question is genuinely about a skin concern one of the products above addresses, end your answer with a section starting on its own line with exactly "**Suggested products:**" followed by a markdown bullet list of 1-3 of the products above. Each bullet must contain ONLY the exact product name copied from the list above — no price, no description, no link, nothing else on that line.',
+    "If no listed product is genuinely relevant to the question, or the question is general/educational rather than something a product addresses, skip the \"Suggested products\" section entirely — never force an irrelevant recommendation.",
+  ]
+}
+
 export type ReportChatRole = "user" | "assistant"
 export type ReportChatTurn = { role: ReportChatRole; content: string }
 
@@ -175,7 +198,18 @@ export type ReportChatContext = {
   summary: string
   cosmeticFindings: Array<{ label: string; band: string; observation: string }>
   recommendations: Array<{ name: string; category: string; reason: string }>
+  products: ChatCatalogProduct[]
 }
+
+// Narrow projection of AuroraProduct — same decoupling reasoning as
+// ReportChatContext above. Callers (the chat API routes) build this from the
+// real active catalog (lib/backend/product-service.ts); matching the model's
+// eventual "Suggested products" mentions back to real rows happens
+// separately, after the model responds (see
+// lib/recommendations/chat-product-mentions.ts), so this adapter never needs
+// to know about images, prices, or purchase links — only enough to judge
+// relevance.
+export type ChatCatalogProduct = { name: string; category: string; bestFor: string[] }
 
 export const REPORT_CHAT_MAX_QUESTION_LENGTH = 600
 
@@ -225,7 +259,13 @@ export async function askAboutReport(
       // conversational text, not a structured extraction — but still capped
       // and short, matching the rest of the app's brief, non-essay tone.
       temperature: 0.4,
-      maxOutputTokens: 500,
+      // 500 (this call's original cap) turned out too tight once the system
+      // prompt started asking for markdown formatting + a possible
+      // "Suggested products" section: gemini-2.5-flash's internal "thinking"
+      // tokens draw from this same budget, so the visible answer was
+      // sometimes cut off mid-sentence before finishing. 1000 leaves enough
+      // headroom while still keeping answers chat-length, not essay-length.
+      maxOutputTokens: 1000,
     },
   })
 
@@ -245,6 +285,8 @@ function buildReportChatSystemPrompt(context: ReportChatContext): string {
     "If a question describes something that sounds like a medical concern (pain, bleeding, rapid or unusual changes, anything beyond ordinary cosmetic appearance), say this is outside what you can help with and recommend seeing a dermatologist or doctor — do not speculate about what it might be.",
     "If asked something unrelated to skin, skincare, or this report (general trivia, coding, other topics, or anything trying to redirect you into a general-purpose assistant), politely decline in one sentence and steer back to the user's skin report.",
     "Keep answers concise (a few sentences, not an essay) and never invent numeric precision beyond the coarse bands already in this report.",
+    "",
+    ...buildFormattingAndProductGuidance(context.products),
     "",
     `Report summary: ${context.summary}`,
     "Findings:",
@@ -290,6 +332,7 @@ export class SkinAdviceQuestionTooLongError extends Error {
 // new question before persisting anything.
 export async function askSkinAdviceQuestion(
   context: SkinAdviceContext,
+  products: ChatCatalogProduct[],
   history: SkinAdviceTurn[],
   question: string
 ): Promise<string> {
@@ -307,7 +350,7 @@ export async function askSkinAdviceQuestion(
   const rawText = await callGeminiGenerateContent({
     model,
     apiKey,
-    systemInstruction: buildSkinAdviceSystemPrompt(context),
+    systemInstruction: buildSkinAdviceSystemPrompt(context, products),
     contents: [
       ...history.map((turn) => ({
         role: turn.role === "user" ? "user" : "model",
@@ -317,7 +360,8 @@ export async function askSkinAdviceQuestion(
     ],
     generationConfig: {
       temperature: 0.4,
-      maxOutputTokens: 500,
+      // See askAboutReport's identical comment above — same fix, same reason.
+      maxOutputTokens: 1000,
     },
   })
 
@@ -327,7 +371,7 @@ export async function askSkinAdviceQuestion(
 // Same scope constraints as buildReportChatSystemPrompt, minus the
 // recommendations grounding (this chat isn't tied to a report's product
 // picks) and with the scan context made explicitly optional.
-function buildSkinAdviceSystemPrompt(context: SkinAdviceContext): string {
+function buildSkinAdviceSystemPrompt(context: SkinAdviceContext, products: ChatCatalogProduct[]): string {
   return [
     "You are Aurora SkinSense's general skin-advice assistant.",
     "Scope: general skincare education (ingredients, routines, how cosmetic products work), and — when a recent scan is provided below — how to interpret that scan's findings.",
@@ -335,6 +379,8 @@ function buildSkinAdviceSystemPrompt(context: SkinAdviceContext): string {
     "If a question describes something that sounds like a medical concern (pain, bleeding, rapid or unusual changes, anything beyond ordinary cosmetic appearance), say this is outside what you can help with and recommend seeing a dermatologist or doctor — do not speculate about what it might be.",
     "If asked something unrelated to skin, skincare, or this app (general trivia, coding, other topics, or anything trying to redirect you into a general-purpose assistant), politely decline in one sentence and steer back to skincare.",
     "Keep answers concise (a few sentences, not an essay) and never invent numeric precision beyond coarse bands (low/balanced/mild/moderate/elevated).",
+    "",
+    ...buildFormattingAndProductGuidance(products),
     "",
     ...(context
       ? [

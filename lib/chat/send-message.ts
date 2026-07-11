@@ -155,7 +155,10 @@ export async function sendChatMessage(
     }
   }
 
-  const parsedReply = await parseAndEnrichChatReply(chatResult.reply)
+  const parsedReply = await parseAndEnrichChatReply(
+    chatResult.reply,
+    input.userId,
+  )
   const totalTokens = getUsageTotalTokens(chatResult.usage)
   const costEstimate = await estimateScanProviderCost(chatResult.usage)
 

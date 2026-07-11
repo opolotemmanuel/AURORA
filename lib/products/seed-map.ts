@@ -1,3 +1,5 @@
+import { parseInciList } from "@/lib/products/parse-inci"
+
 export type FallbackProduct = {
   name: string
   description: string
@@ -109,6 +111,7 @@ export function mapFallbackProduct(item: FallbackProduct) {
     !/not specified/i.test(item.ingredients_highlight)
       ? item.ingredients_highlight
       : undefined
+  const parsed = parseInciList(ingredients ?? null)
 
   return {
     sku: slug.toUpperCase().replace(/-/g, "_").slice(0, 64),
@@ -117,6 +120,7 @@ export function mapFallbackProduct(item: FallbackProduct) {
     description: buildDescription(item),
     category,
     ingredients,
+    ingredientList: parsed.isLikelyInciList ? parsed.items : [],
     targetConcerns: inferTargetConcerns(item.tags, item.description),
     suitableSkinTypes: [] as string[],
     climateTags: inferClimateTags(item.tags, item.description),

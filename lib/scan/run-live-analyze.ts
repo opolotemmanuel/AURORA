@@ -6,6 +6,7 @@ import {
 import { prisma } from "@/lib/db/client"
 import { getScanModelForTier, getUserScanTier } from "@/lib/models/queries"
 import { enrichRecommendationsWithImages } from "@/lib/products/enrich-recommendations"
+import { filterRecommendationsByAllergies } from "@/lib/products/filter-recommendations-by-allergies"
 import { requireProScanTier, ScanAccessError } from "@/lib/scan/access"
 import {
   logScanAnalysisError,
@@ -78,16 +79,21 @@ export async function runLiveAnalyzeScan(
 
   const costEstimate = await estimateScanProviderCost(analysis.usage)
 
-  const enrichedAssessment = {
-    ...analysis.assessment,
-    recommendations: await enrichRecommendationsWithImages(
-      analysis.assessment.recommendations,
-    ),
-  }
-
   const profile = await prisma.userProfile.findUnique({
     where: { userId: input.userId },
   })
+
+  const allergySafeRecommendations = await filterRecommendationsByAllergies(
+    analysis.assessment.recommendations,
+    profile?.allergies ?? null,
+  )
+
+  const enrichedAssessment = {
+    ...analysis.assessment,
+    recommendations: await enrichRecommendationsWithImages(
+      allergySafeRecommendations,
+    ),
+  }
 
   try {
     const saved = await persistScanResult({

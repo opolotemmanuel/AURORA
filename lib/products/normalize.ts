@@ -1,4 +1,9 @@
 import type { ProductFormInput, ProductInput } from "@/lib/products/schemas"
+import { parseInciList } from "@/lib/products/parse-inci"
+
+export type NormalizedProductInput = ProductInput & {
+  ingredientList: string[]
+}
 
 export function slugify(value: string): string {
   return value
@@ -31,7 +36,7 @@ type NormalizeOptions = {
 export function normalizeProductInput(
   input: ProductFormInput,
   options: NormalizeOptions = {},
-): ProductInput {
+): NormalizedProductInput {
   const slug =
     input.slug?.trim() ||
     options.existingSlug ||
@@ -42,13 +47,17 @@ export function normalizeProductInput(
     options.existingSku ||
     buildProductSku(input.name)
 
+  const ingredients = input.ingredients?.trim() ?? ""
+  const parsed = parseInciList(ingredients || null)
+
   return {
     sku,
     slug,
     name: input.name.trim(),
     description: input.description.trim(),
     category: input.category.trim(),
-    ingredients: input.ingredients?.trim() ?? "",
+    ingredients,
+    ingredientList: parsed.isLikelyInciList ? parsed.items : [],
     targetConcerns: input.targetConcerns,
     suitableSkinTypes: input.suitableSkinTypes,
     climateTags: input.climateTags,

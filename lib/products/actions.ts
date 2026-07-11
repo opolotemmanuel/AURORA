@@ -18,11 +18,14 @@ export async function listProductsAction() {
 export async function createProductAction(input: unknown) {
   const session = await requireAdmin()
   const form = productFormSchema.parse(input)
-  const data = productSchema.parse(normalizeProductInput(form))
+  const normalized = normalizeProductInput(form)
+  const data = productSchema.parse(normalized)
 
   const product = await prisma.product.create({
     data: {
       ...data,
+      ingredients: data.ingredients || null,
+      ingredientList: normalized.ingredientList,
       imageUrl: data.imageUrl || null,
       storeUrl: data.storeUrl || null,
       createdById: session.user.id,
@@ -47,17 +50,18 @@ export async function updateProductAction(id: string, input: unknown) {
     throw new Error("Product not found")
   }
 
-  const data = productSchema.parse(
-    normalizeProductInput(form, {
-      existingSku: existing.sku,
-      existingSlug: existing.slug,
-    }),
-  )
+  const normalized = normalizeProductInput(form, {
+    existingSku: existing.sku,
+    existingSlug: existing.slug,
+  })
+  const data = productSchema.parse(normalized)
 
   const product = await prisma.product.update({
     where: { id },
     data: {
       ...data,
+      ingredients: data.ingredients || null,
+      ingredientList: normalized.ingredientList,
       imageUrl: data.imageUrl || null,
       storeUrl: data.storeUrl || null,
     },

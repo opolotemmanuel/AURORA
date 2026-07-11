@@ -7,6 +7,7 @@ export type CatalogProductContext = {
   description: string
   category: string
   ingredients: string | null
+  ingredientList: string[]
   targetConcerns: string[]
   suitableSkinTypes: string[]
   climateTags: string[]

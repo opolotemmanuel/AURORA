@@ -7,6 +7,7 @@ import {
   CATALOG_CACHE_REVALIDATE_SECONDS,
   CATALOG_CONTEXT_TAG,
 } from "@/lib/ai/context/cache-tags"
+import { resolveIngredientList } from "@/lib/products/parse-inci"
 import { resolveStoreUrl } from "@/lib/products/store-url"
 
 export { CATALOG_CONTEXT_TAG } from "@/lib/ai/context/cache-tags"
@@ -21,6 +22,7 @@ async function fetchCatalogContext(): Promise<CatalogProductContext[]> {
       description: true,
       category: true,
       ingredients: true,
+      ingredientList: true,
       targetConcerns: true,
       suitableSkinTypes: true,
       climateTags: true,
@@ -34,6 +36,10 @@ async function fetchCatalogContext(): Promise<CatalogProductContext[]> {
     description: product.description,
     category: product.category,
     ingredients: product.ingredients,
+    ingredientList: resolveIngredientList(
+      product.ingredientList,
+      product.ingredients,
+    ),
     targetConcerns: product.targetConcerns,
     suitableSkinTypes: product.suitableSkinTypes,
     climateTags: product.climateTags,

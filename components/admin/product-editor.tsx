@@ -20,6 +20,7 @@ import {
   deleteProductAction,
   updateProductAction,
 } from "@/lib/products/actions"
+import { parseInciList } from "@/lib/products/parse-inci"
 import type { ProductFormInput } from "@/lib/products/schemas"
 import { resolveStoreUrl } from "@/lib/products/store-url"
 import { cn } from "@/lib/utils"
@@ -125,6 +126,7 @@ export function ProductEditorForm({
     product ? mapProductToForm(product) : EMPTY_FORM,
   )
   const isEditing = Boolean(product)
+  const ingredientPreview = parseInciList(form.ingredients ?? "")
   const previewStoreUrl =
     isEditing && product
       ? resolveStoreUrl({
@@ -254,6 +256,13 @@ export function ProductEditorForm({
                   rows={3}
                   placeholder="Optional — helps explain why it fits certain concerns"
                 />
+                {form.ingredients?.trim() ? (
+                  <p className="text-muted-foreground text-xs">
+                    {ingredientPreview.isLikelyInciList
+                      ? `Parsed: ${ingredientPreview.items.length} INCI ingredient${ingredientPreview.items.length === 1 ? "" : "s"}`
+                      : "Not a valid INCI list — saved as key-ingredient notes only"}
+                  </p>
+                ) : null}
               </div>
             </section>
           </TabsContent>

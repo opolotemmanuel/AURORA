@@ -50,6 +50,7 @@ async function main() {
           description: data.description,
           category: data.category,
           ingredients: data.ingredients ?? null,
+          ingredientList: data.ingredientList,
           targetConcerns: data.targetConcerns,
           imageUrl: data.imageUrl ?? null,
           storeUrl: data.storeUrl ?? null,

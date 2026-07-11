@@ -398,6 +398,7 @@ model Product {
   description       String
   category          String
   ingredients       String?
+  ingredientList    String[]      @default([])
   targetConcerns    String[]      @default([])
   suitableSkinTypes String[]      @default([])
   climateTags       String[]      @default([])

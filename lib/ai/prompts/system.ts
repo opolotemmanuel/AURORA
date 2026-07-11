@@ -28,6 +28,8 @@ ${dimensionList}
 - For every naturalRecommendation and product recommendation, set applicationTime (morning, evening, anytime, morning_and_evening) and applicationFrequency (once_daily, twice_daily, as_needed, few_times_weekly, weekly). Use cosmetic-safe defaults: SPF and antioxidant serums → morning + once_daily; retinol and stronger actives → evening + once_daily; daily hydration habits → anytime + once_daily; masks and treatments → evening + few_times_weekly or weekly; moisturizers used AM and PM → morning_and_evening + twice_daily.
 - Weight product recommendations toward catalog items whose climateTags match the user's active climate tags when provided.
 - Recommend 2-4 products ONLY from the provided catalog. Each recommendation id must be an exact catalog slug.
+- When a catalog product has ingredientList, use it for ingredient-aware reasoning. Fall back to ingredients text only when ingredientList is empty. Cosmetic framing only.
+- Never recommend a catalog product whose ingredientList conflicts with profile.allergies when allergies are provided.
 - Explain each recommendation with a personalized reason, including how the product type is typically used (e.g. serum after cleansing). applicationTime and applicationFrequency fields are the source of truth for timing — keep reason/description focused on why it fits this user.
 - If the image quality is insufficient, use not_assessed bands and explain briefly in the summary.
 - Keep tone supportive, clear, and honest.`

@@ -1,4 +1,6 @@
 import { enrichChatProductRecommendations } from "@/lib/products/enrich-recommendations"
+import { filterRecommendationsByAllergies } from "@/lib/products/filter-recommendations-by-allergies"
+import { prisma } from "@/lib/db/client"
 import { stripDuplicateRecommendationProse } from "@/lib/chat/format-message-body"
 import { splitChatDisclaimer } from "@/lib/chat/split-disclaimer"
 import {
@@ -40,6 +42,7 @@ function finalizeChatReply(
 
 export async function parseAndEnrichChatReply(
   rawReply: string,
+  userId: string,
 ): Promise<ParsedChatReply> {
   const { prose, jsonText, tail } = extractJsonFence(rawReply)
   const combinedProse = [prose, tail].filter(Boolean).join("\n\n")
@@ -64,8 +67,16 @@ export async function parseAndEnrichChatReply(
   }
 
   if (parsed.productRecommendations?.length) {
-    const enriched = await enrichChatProductRecommendations(
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId },
+      select: { allergies: true },
+    })
+    const allergySafeRecommendations = await filterRecommendationsByAllergies(
       parsed.productRecommendations,
+      profile?.allergies ?? null,
+    )
+    const enriched = await enrichChatProductRecommendations(
+      allergySafeRecommendations,
     )
     if (enriched.length > 0) {
       metadata.productRecommendations = enriched

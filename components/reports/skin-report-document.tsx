@@ -7,7 +7,7 @@ import { ReportDisclaimer } from "@/components/reports/report-disclaimer"
 import { ReportDoshaBlock } from "@/components/reports/report-dosha-block"
 import { ReportProductList } from "@/components/reports/report-product-list"
 import { ReportSection } from "@/components/reports/report-section"
-import { REPORT_SECTION_TITLES } from "@/lib/scan/constants"
+import { RECOMMENDATION_SECTIONS, REPORT_SECTION_TITLES } from "@/lib/scan/constants"
 import type { ScanClimateContext, SkinAssessment } from "@/lib/scan/types"
 import { cn } from "@/lib/utils"
 
@@ -55,7 +55,7 @@ export function SkinReportDocument({
       {assessment.naturalRecommendations.length > 0 ? (
         <ReportSection title={REPORT_SECTION_TITLES.everydayCare}>
           <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-            Simple habits and gentle routines to support your skin.
+            {RECOMMENDATION_SECTIONS.everydayCare.description}
           </p>
           <ul className="space-y-2">
             {assessment.naturalRecommendations.map((item) => (
@@ -82,6 +82,9 @@ export function SkinReportDocument({
       ) : null}
 
       <ReportSection title={REPORT_SECTION_TITLES.products}>
+        <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+          {RECOMMENDATION_SECTIONS.recommendedProducts.description}
+        </p>
         <ReportProductList products={assessment.recommendations} />
       </ReportSection>
 

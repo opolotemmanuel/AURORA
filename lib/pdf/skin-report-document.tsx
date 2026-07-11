@@ -14,6 +14,7 @@ import { reportStyles } from "@/lib/pdf/report-styles"
 import { getBandPdfColor } from "@/lib/scan/band-styles"
 import {
   CONSULTATION_BOOKING_URL,
+  RECOMMENDATION_SECTIONS,
   REPORT_SECTION_TITLES,
   SKIN_DISCLAIMER,
 } from "@/lib/scan/constants"
@@ -292,7 +293,7 @@ export function SkinReportDocument({
         {assessment.naturalRecommendations.length > 0 ? (
           <ReportSection title={REPORT_SECTION_TITLES.everydayCare}>
             <Text style={[reportStyles.body, { marginBottom: 8 }]}>
-              Simple habits and gentle routines to support your skin.
+              {RECOMMENDATION_SECTIONS.everydayCare.description}
             </Text>
             {assessment.naturalRecommendations.map((item) => {
               const scheduleLabel = formatApplicationSchedule(
@@ -324,6 +325,9 @@ export function SkinReportDocument({
         <ReportPageFooter />
 
         <ReportSection title={REPORT_SECTION_TITLES.products} first>
+          <Text style={[reportStyles.body, { marginBottom: 8 }]}>
+            {RECOMMENDATION_SECTIONS.recommendedProducts.description}
+          </Text>
           <View style={reportStyles.twoColumnGrid}>
             {assessment.recommendations.map((item) => {
               const imageSrc = item.imageUrl?.trim()

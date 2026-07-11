@@ -1,4 +1,6 @@
+import { RecommendationSectionHeader } from "@/components/recommendations/recommendation-section-header"
 import { ReportApplicationSchedule } from "@/components/reports/report-application-schedule"
+import { RECOMMENDATION_SECTIONS } from "@/lib/scan/constants"
 import type { NaturalRecommendation } from "@/lib/scan/types"
 import { cn } from "@/lib/utils"
 
@@ -17,7 +19,10 @@ export function ChatNaturalRecommendations({
 
   return (
     <div className={cn("min-w-0 space-y-2 border-t border-border/60 pt-3", className)}>
-      <p className="text-xs font-medium text-foreground">Everyday care</p>
+      <RecommendationSectionHeader
+        title={RECOMMENDATION_SECTIONS.everydayCare.title}
+        description={RECOMMENDATION_SECTIONS.everydayCare.description}
+      />
       <ul className="space-y-2">
         {items.map((item) => (
           <li key={item.id} className="flex gap-2 text-sm">

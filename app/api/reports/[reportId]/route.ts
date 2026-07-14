@@ -37,6 +37,6 @@ export async function GET(_: Request, context: ReportRouteContext) {
     success: true,
     report,
     scan: await findScan(report.scanId),
-    reportDownloadUrl: `/api/reports/${report.id}/print`,
+    reportDownloadUrl: `/api/reports/${report.id}/download`,
   })
 }

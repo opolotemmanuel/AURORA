@@ -3,6 +3,7 @@
 // (see AGENTS.md's route-group table).
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { TooltipProvider } from "@/components/ui/tooltip"
 
 export default function RootLayout({
   children,
@@ -15,7 +16,9 @@ export default function RootLayout({
     // would otherwise trigger a hydration mismatch warning here.
     <html lang="en" suppressHydrationWarning className="font-sans antialiased">
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <TooltipProvider>{children}</TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

@@ -86,6 +86,17 @@ export async function createScanReport(input: {
     userId: input.userId,
     analysis: {
       ...input.analysis,
+      // Tags each finding with its concern key (same FINDING_CONCERN_MAP
+      // used for scoring above) before persistence — report-store.ts writes
+      // this straight to ReportFinding.concern. Previously left unset here,
+      // so that column was always null; lib/reports/report-view-model.ts
+      // re-derives the same mapping at read time so this wasn't visibly
+      // broken, but a null column that's supposed to hold this is worth
+      // fixing while touching this exact vocabulary.
+      cosmeticFindings: input.analysis.cosmeticFindings.map((finding) => ({
+        ...finding,
+        concern: FINDING_CONCERN_MAP[finding.label.toLowerCase()],
+      })),
       recommendations: recommendations.map((match) => ({
         title: match.product.name,
         reason: match.reasons.join(" "),
@@ -124,21 +135,33 @@ export async function createScanReport(input: {
   return bundle
 }
 
-// Starts from neutral/default bands, then overlays whatever the analysis
-// actually found — so a finding the model didn't report (or reported with
-// an unrecognized label/band) just falls back to a safe neutral value
-// instead of skewing recommendations.
+// Only sets a concern when the analysis actually reported one — a finding
+// the model didn't report (or reported with an unrecognized label/band)
+// stays unset, so recommendation-engine.ts's `if (!band) continue` skips it
+// entirely (true zero weight). This used to pre-seed every concern with a
+// hardcoded "balanced"/"mild" band before overlaying real findings, on the
+// theory that those were "safe neutral values" — they weren't:
+// BAND_WEIGHT["balanced"] is 6 and BAND_WEIGHT["mild"] is 18, not 0, so an
+// unreported concern was silently scored as if it were a real mild/balanced
+// finding. Gemini doesn't consistently return a "Radiance" finding, so
+// `radiance` defaulted to "mild" (+18) on most scans — and because the
+// catalog's three highest-priority products (radiant-plump-serum,
+// gold-serum, radiant-plump-moisturizer-with-glutathione) all target
+// radiance, they picked up that same +18 almost every time regardless of
+// the actual scan, on top of already having the highest base priority in
+// the whole catalog. That combination made them win the top-3 ranking in
+// effectively every case — confirmed by hand-replaying real historical
+// scans (see git history / PR discussion for the specific report ids and
+// scores): a "balanced/balanced/not_visible/balanced" scan and a
+// "not_visible/not_visible/not_visible/not_visible" (unreadable image) scan
+// both scored these same three products to the same top-3 ranking, purely
+// from the shared default bonus and priority, with zero real signal
+// difference reaching the scorer.
 function buildRecommendationInput(
   analysis: ScanAnalysisReport,
   climate?: ClimateSnapshot | null,
 ): CosmeticAnalysisInput {
   const input: CosmeticAnalysisInput = {
-    hydration: "balanced",
-    texture: "balanced",
-    rednessAppearance: "balanced",
-    pigmentationAppearance: "balanced",
-    radiance: "mild",
-    daytimeProtection: "mild",
     routinePreference: "standard",
     ...deriveClimateSignals(climate),
   }
@@ -160,7 +183,12 @@ function buildRecommendationInput(
 // fit either bucket. Returns {} (both fields undefined) when there's no
 // snapshot — buildRecommendationInput's spread then leaves climate/uvIndex
 // unset entirely, so recommendation-engine.ts's climate-based scoring
-// simply doesn't fire, same as before this feature existed.
+// simply doesn't fire, same as before this feature existed. Location is now
+// required to reach this call at all (see app/api/scan/analyze/route.ts's
+// parseScanCoordinates), so `climate` being null here means Open-Meteo
+// itself failed (network/timeout/unexpected shape) — this graceful branch
+// still exists and still matters for that case, it's just no longer
+// reachable via "user skipped location."
 function deriveClimateSignals(
   climate?: ClimateSnapshot | null,
 ): Pick<CosmeticAnalysisInput, "climate" | "uvIndex"> {

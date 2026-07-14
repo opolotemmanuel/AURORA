@@ -1,8 +1,9 @@
-// Best-effort pixel-dimension sniffing straight from the file's magic bytes
-// — no image-processing library is installed (or approved) for this, and a
-// technical-details "Image Resolution" field doesn't warrant adding one.
-// Returns null on anything unexpected rather than throwing, since this is
-// side metadata for a report and must never break the scan upload itself.
+// Best-effort pixel-dimension sniffing straight from the file's magic bytes.
+// sharp (added for lib/backend/image-lighting.ts) could do this too, but a
+// technical-details "Image Resolution" field doesn't warrant decoding the
+// full image just for its header dimensions. Returns null on anything
+// unexpected rather than throwing, since this is side metadata for a report
+// and must never break the scan upload itself.
 export function readImageDimensions(
   buffer: Buffer,
   mimeType: string,

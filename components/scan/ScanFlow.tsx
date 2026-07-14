@@ -10,8 +10,8 @@ import {
   IconChevronLeft,
   IconCrop,
   IconDownload,
-  IconFileAnalytics,
   IconFlipHorizontal,
+  IconInfoCircle,
   IconLoader2,
   IconMapPin,
   IconMessageCircle,
@@ -28,10 +28,15 @@ import {
   IconZoomOut,
 } from "@tabler/icons-react"
 
-// The entire scan flow as one client component: a linear five-step wizard
-// (intro -> capture -> review -> processing -> results) with its own local
-// state machine (`currentStep`) rather than separate routes per step, so
-// captured image / camera stream state doesn't have to survive a navigation.
+// The entire scan flow as one client component: a linear four-step wizard
+// (capture -> review -> processing -> results) with its own local state
+// machine (`currentStep`) rather than separate routes per step, so captured
+// image / camera stream state doesn't have to survive a navigation. The
+// former standalone "intro" step is merged into "capture" as a two-column
+// layout (consent left, capture controls right — see the capture-step
+// render below and the consentGiven gate) rather than its own page, since
+// consent and capture are both required before anything else can happen and
+// splitting them across a page boundary was pure friction.
 // A top-level `activeTab` sits above that: "Upload" and "Camera" are the two
 // capture methods (each drives the same shared capture -> review ->
 // processing -> results sequence, just showing one panel instead of the old
@@ -40,10 +45,17 @@ import {
 // capture with the new method (see selectTab below); switching to/from
 // Advice never resets wizard state, only pauses an active camera stream.
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
+import { classifyLuminance, type LightingBand } from "@/lib/scan/lighting"
 import { SkinAdviceChat } from "@/components/skin-advice/skin-advice-chat"
 
-type ScanStep = "intro" | "capture" | "review" | "processing" | "results"
+type ScanStep = "capture" | "review" | "processing" | "results"
 type ScanInputMethod = "camera" | "upload" | null
 type ScanAnalysis = {
   summary: string
@@ -69,17 +81,22 @@ type ScanAnalysis = {
   model: string
 }
 
-// Mirrors lib/climate/adapter.ts's ClimateSnapshot — only ever present in a
-// response when the user granted location and Open-Meteo succeeded; null
-// (declined/unavailable/failed) means recommendations used scan data only,
-// and the UI must not imply otherwise (see the Results-step indicator).
+// Mirrors lib/climate/adapter.ts's ClimateSnapshot — location is required to
+// reach the results step at all now (see LocationPrompt), so a null climate
+// here only ever means Open-Meteo itself failed (network/timeout/unexpected
+// shape), not "user skipped location." The UI still must not imply climate
+// was used when it wasn't (see the Results-step indicator).
 type ClimateInfo = {
   temperatureC: number
   humidityPercent: number
   uvIndex: number
 }
 
-type LocationStatus = "idle" | "requesting" | "granted" | "denied" | "unavailable"
+// "unsupported" is a distinct, non-retryable dead end (no
+// navigator.geolocation, or not a secure context) from "denied" (user
+// declined, or a transient PositionError) — see requestLocation and
+// LocationPrompt below.
+type LocationStatus = "idle" | "requesting" | "granted" | "denied" | "unsupported"
 
 type AnalyzeScanResponse = {
   success: boolean
@@ -120,23 +137,17 @@ const defaultImageEdit: ImageEditState = {
 }
 
 const steps: Array<{ id: ScanStep; label: string }> = [
-  { id: "intro", label: "Intro" },
-  { id: "capture", label: "Capture" },
+  { id: "capture", label: "Consent & Capture" },
   { id: "review", label: "Review" },
   { id: "processing", label: "Processing" },
   { id: "results", label: "Results" },
 ]
 
 const stepCopy: Record<ScanStep, { title: string; description: string }> = {
-  intro: {
+  capture: {
     title: "Start your free cosmetic skin scan",
     description:
-      "Aurora SkinSense keeps this flow privacy-first: consent comes before capture, and the scan is framed as cosmetic wellness guidance only.",
-  },
-  capture: {
-    title: "Capture or upload a clear face image",
-    description:
-      "Use your camera or upload an existing image. Keep your face centered with even lighting for the clearest cosmetic skin review.",
+      "Aurora SkinSense keeps this flow privacy-first: review the notice and give consent, then use your camera or upload an existing image. Keep your face centered with even lighting for the clearest cosmetic skin review.",
   },
   review: {
     title: "Review your selected image",
@@ -155,12 +166,6 @@ const stepCopy: Record<ScanStep, { title: string; description: string }> = {
   },
 }
 
-const introCards = [
-  { label: "Consent before scan", icon: IconShieldCheck },
-  { label: "Camera or upload", icon: IconCamera },
-  { label: "Report, not diagnosis", icon: IconFileAnalytics },
-] as const
-
 const captureTips = [
   "Face centered in frame",
   "Even lighting preferred",
@@ -178,37 +183,24 @@ function StepIndicator({ currentStep }: { currentStep: ScanStep }) {
   const currentIndex = steps.findIndex((step) => step.id === currentStep)
 
   return (
-    <div className="grid gap-3 sm:grid-cols-5">
-      {steps.map((step, index) => {
-        const isActive = step.id === currentStep
-        const isComplete = index < currentIndex
-
-        return (
+    <div className="grid gap-2">
+      <div className="flex items-center justify-between text-xs font-medium text-muted-foreground">
+        <span>
+          Step {currentIndex + 1} of {steps.length}
+        </span>
+        <span className="text-foreground">{steps[currentIndex]?.label}</span>
+      </div>
+      <div className="flex gap-1.5">
+        {steps.map((step, index) => (
           <div
             key={step.id}
-            className="flex items-center gap-3 rounded-lg border border-border bg-card p-3"
-          >
-            <span
-              className={
-                isActive || isComplete
-                  ? "flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground"
-                  : "flex size-7 items-center justify-center rounded-full bg-muted text-muted-foreground"
-              }
-            >
-              {isComplete ? <IconCheck className="size-4" /> : index + 1}
-            </span>
-            <span
-              className={
-                isActive
-                  ? "text-sm font-semibold text-foreground"
-                  : "text-sm text-muted-foreground"
-              }
-            >
-              {step.label}
-            </span>
-          </div>
-        )
-      })}
+            className={cn(
+              "h-1.5 flex-1 rounded-full",
+              index <= currentIndex ? "bg-primary" : "bg-muted"
+            )}
+          />
+        ))}
+      </div>
     </div>
   )
 }
@@ -223,12 +215,17 @@ function PrivacyNotice() {
   )
 }
 
-// Explicit, opt-in location consent for climate-aware recommendations —
-// same "clear prompt/button, never silent" standard as intro-step scan
-// consent (AGENTS.md's "explicit consent before first scan" non-negotiable,
-// applied here too). Shown at the capture step, alongside where camera
-// permission is requested, not buried later in the flow. Declining or the
-// browser blocking it just means no climate boost — never blocks the scan.
+// Required, not optional: product decision reversed the earlier
+// graceful-fallback design (was: decline/unavailable just meant no climate
+// boost, scan proceeded regardless — see git history on this component and
+// on app/api/scan/analyze/route.ts's old getScanClimate for that prior
+// behavior, kept discoverable in case this is reversed again). Shown at the
+// capture step, alongside where camera permission is requested and the
+// scan consent checkbox lives, same "clear prompt/button, never silent"
+// standard as that consent checkbox (AGENTS.md's "explicit consent before
+// first scan" non-negotiable). The
+// capture action itself stays disabled until status is "granted" (see
+// CameraPanel/UploadPanel) — this component is the explanation for why.
 function LocationPrompt({
   status,
   onRequestLocation,
@@ -236,21 +233,38 @@ function LocationPrompt({
   status: LocationStatus
   onRequestLocation: () => void
 }) {
+  // Idle/granted stay a compact single line — the full explanation only
+  // earns its space when there's actually something wrong to act on
+  // (denied/unsupported), per the "don't always show the paragraph" rule.
+  const isProblem = status === "denied" || status === "unsupported"
+
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted p-4 text-sm">
+    <div
+      className={cn(
+        "flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted text-sm",
+        isProblem ? "p-4" : "p-3"
+      )}
+    >
       <div className="flex items-center gap-2 text-muted-foreground">
         <IconMapPin className="size-4 shrink-0 text-primary" />
         {status === "granted" ? (
-          <span>Location shared — recommendations will factor in local climate.</span>
+          <span className="text-xs">Location shared</span>
         ) : status === "denied" ? (
-          <span>Location declined — recommendations will use your scan only.</span>
-        ) : status === "unavailable" ? (
-          <span>Location isn&apos;t available in this browser — recommendations will use your scan only.</span>
+          <span>
+            Location is required to continue, and wasn&apos;t shared this time. Please allow
+            location access, then try again.
+          </span>
+        ) : status === "unsupported" ? (
+          <span>
+            Scanning isn&apos;t available in this browser or connection right now — location
+            access needs a supported browser and a secure (HTTPS, or localhost) connection.
+            Try a different browser, or open this page over HTTPS.
+          </span>
         ) : (
-          <span>Optionally share your location for climate-aware product recommendations.</span>
+          <span className="text-xs">Location required to continue</span>
         )}
       </div>
-      {status === "idle" || status === "requesting" ? (
+      {status === "idle" || status === "requesting" || status === "denied" ? (
         <Button
           type="button"
           variant="outline"
@@ -258,28 +272,13 @@ function LocationPrompt({
           disabled={status === "requesting"}
           onClick={onRequestLocation}
         >
-          {status === "requesting" ? "Requesting..." : "Use my location"}
+          {status === "requesting"
+            ? "Requesting..."
+            : status === "denied"
+              ? "Try Again"
+              : "Share Location"}
         </Button>
       ) : null}
-    </div>
-  )
-}
-
-function IntroStep() {
-  return (
-    <div className="grid gap-4">
-      <div className="grid gap-4 sm:grid-cols-3">
-        {introCards.map(({ label, icon: Icon }) => (
-          <div
-            key={label}
-            className="rounded-lg border border-border bg-card p-4"
-          >
-            <Icon className="size-6 text-primary" />
-            <p className="mt-4 text-sm font-medium">{label}</p>
-          </div>
-        ))}
-      </div>
-      <PrivacyNotice />
     </div>
   )
 }
@@ -289,6 +288,9 @@ function CameraPanel({
   canvasRef,
   cameraError,
   isCameraActive,
+  consentGiven,
+  locationGranted,
+  lightingBand,
   onStartCamera,
   onCapture,
 }: {
@@ -296,9 +298,14 @@ function CameraPanel({
   canvasRef: React.RefObject<HTMLCanvasElement | null>
   cameraError: string | null
   isCameraActive: boolean
+  consentGiven: boolean
+  locationGranted: boolean
+  lightingBand: LightingBand | "idle"
   onStartCamera: () => void
   onCapture: () => void
 }) {
+  const isLightingGood = lightingBand === "good"
+
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="relative aspect-[4/3] overflow-hidden rounded-lg border border-border bg-muted">
@@ -324,20 +331,32 @@ function CameraPanel({
         {/* `overflow-hidden` + `rounded-full` on this wrapper clips the
             sweep div below to the oval face-guide shape, so the light band
             only appears to travel within the face outline rather than
-            across the whole rectangular video. Purely a CSS visual effect —
-            not a real lighting/face-quality check (none exists yet; see
-            AGENTS.md's Planned Stack for the future MediaPipe/TF.js gate).
-            "Hold still" is deliberately neutral wording for the same reason:
-            it must not imply a real quality confirmation happened. */}
+            across the whole rectangular video. The sweep runs while
+            lightingBand isn't "good" (a real client-side brightness reading
+            — see the sampling effect in ScanFlow — not a cosmetic-only
+            animation), and stops once lighting is actually good. */}
         <div className="pointer-events-none absolute inset-8 overflow-hidden rounded-full border border-primary/50">
-          {isCameraActive ? (
+          {isCameraActive && !isLightingGood ? (
             <div className="absolute inset-x-0 h-10 animate-scan-sweep bg-gradient-to-b from-transparent via-primary/50 to-transparent blur-[1px] motion-reduce:hidden" />
           ) : null}
         </div>
         {isCameraActive ? (
-          <div className="pointer-events-none absolute top-3 left-3 rounded-full border border-border bg-background/90 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
-            <span className="mr-1.5 inline-block size-1.5 animate-pulse rounded-full bg-primary" />
-            Hold still — positioning...
+          <div className="pointer-events-none absolute top-3 left-3 flex items-center gap-1.5 rounded-full border border-border bg-background/90 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
+            {isLightingGood ? (
+              <>
+                <IconCheck className="size-3.5 text-primary" />
+                Lighting good
+              </>
+            ) : (
+              <>
+                <span className="inline-block size-1.5 animate-pulse rounded-full bg-primary" />
+                {lightingBand === "too_dark"
+                  ? "Lighting too low — move to a brighter area"
+                  : lightingBand === "too_bright"
+                    ? "Too bright — reduce direct light or glare"
+                    : "Checking lighting..."}
+              </>
+            )}
           </div>
         ) : null}
       </div>
@@ -350,21 +369,47 @@ function CameraPanel({
           <IconCamera className="size-4" />
           {isCameraActive ? "Restart Camera" : "Use Camera"}
         </Button>
-        <Button type="button" onClick={onCapture} disabled={!isCameraActive}>
+        <Button
+          type="button"
+          onClick={onCapture}
+          disabled={
+            !isCameraActive || !consentGiven || !locationGranted || !isLightingGood
+          }
+        >
           Capture Image
         </Button>
       </div>
+      {!consentGiven ? (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Check the consent box to enable capture.
+        </p>
+      ) : !locationGranted ? (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Share your location above to enable capture — it&apos;s required to complete a
+          scan.
+        </p>
+      ) : isCameraActive && !isLightingGood ? (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Waiting for good lighting before capture is enabled.
+        </p>
+      ) : null}
     </div>
   )
 }
 
 function UploadPanel({
   fileInputRef,
+  consentGiven,
+  locationGranted,
   onUpload,
 }: {
   fileInputRef: React.RefObject<HTMLInputElement | null>
+  consentGiven: boolean
+  locationGranted: boolean
   onUpload: (event: React.ChangeEvent<HTMLInputElement>) => void
 }) {
+  const canUpload = consentGiven && locationGranted
+
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="grid min-h-64 place-items-center rounded-lg border border-dashed border-border bg-muted p-6 text-center">
@@ -380,17 +425,29 @@ function UploadPanel({
             type="file"
             accept="image/*"
             className="hidden"
+            disabled={!canUpload}
             onChange={onUpload}
           />
           <Button
             type="button"
             variant="outline"
             className="mt-5"
+            disabled={!canUpload}
             onClick={() => fileInputRef.current?.click()}
           >
             <IconUpload className="size-4" />
             Choose Image
           </Button>
+          {!consentGiven ? (
+            <p className="mt-3 text-xs text-muted-foreground">
+              Check the consent box to enable upload.
+            </p>
+          ) : !locationGranted ? (
+            <p className="mt-3 text-xs text-muted-foreground">
+              Share your location above to enable upload — it&apos;s required to complete a
+              scan.
+            </p>
+          ) : null}
         </div>
       </div>
     </div>
@@ -404,6 +461,9 @@ function CaptureStep({
   fileInputRef,
   cameraError,
   isCameraActive,
+  consentGiven,
+  locationGranted,
+  lightingBand,
   onStartCamera,
   onCapture,
   onUpload,
@@ -414,6 +474,9 @@ function CaptureStep({
   fileInputRef: React.RefObject<HTMLInputElement | null>
   cameraError: string | null
   isCameraActive: boolean
+  consentGiven: boolean
+  locationGranted: boolean
+  lightingBand: LightingBand | "idle"
   onStartCamera: () => void
   onCapture: () => void
   onUpload: (event: React.ChangeEvent<HTMLInputElement>) => void
@@ -426,23 +489,38 @@ function CaptureStep({
           canvasRef={canvasRef}
           cameraError={cameraError}
           isCameraActive={isCameraActive}
+          consentGiven={consentGiven}
+          locationGranted={locationGranted}
+          lightingBand={lightingBand}
           onStartCamera={onStartCamera}
           onCapture={onCapture}
         />
       ) : (
-        <UploadPanel fileInputRef={fileInputRef} onUpload={onUpload} />
+        <UploadPanel
+          fileInputRef={fileInputRef}
+          consentGiven={consentGiven}
+          locationGranted={locationGranted}
+          onUpload={onUpload}
+        />
       )}
-      <div className="grid gap-3 sm:grid-cols-2">
-        {captureTips.map((item) => (
-          <div
-            key={item}
-            className="flex items-center gap-3 text-sm text-muted-foreground"
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="flex items-center gap-1.5 self-start text-xs text-muted-foreground hover:text-foreground"
           >
-            <IconCheck className="size-4 text-primary" />
-            {item}
-          </div>
-        ))}
-      </div>
+            <IconInfoCircle className="size-3.5" />
+            Tips for a clear scan
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" align="start">
+          <ul className="grid gap-1">
+            {captureTips.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </TooltipContent>
+      </Tooltip>
     </div>
   )
 }
@@ -468,13 +546,6 @@ function ReviewStep({
 
   function updateEdit(partialEdit: Partial<ImageEditState>) {
     onEditChange({ ...imageEdit, ...partialEdit })
-  }
-
-  function nudgeImage(deltaX: number, deltaY: number) {
-    updateEdit({
-      offsetX: imageEdit.offsetX + deltaX,
-      offsetY: imageEdit.offsetY + deltaY,
-    })
   }
 
   function rotateImage(amount: number) {
@@ -543,64 +614,20 @@ function ReviewStep({
         you consent to cosmetic analysis.
       </div>
       <div className="grid gap-4 rounded-xl border border-border bg-card p-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="grid gap-2 text-sm font-medium">
-            Zoom
-            <input
-              type="range"
-              min="1"
-              max="3"
-              step="0.05"
-              value={imageEdit.zoom}
-              onChange={(event) =>
-                updateEdit({ zoom: Number(event.target.value) })
-              }
-              className="w-full accent-primary"
-            />
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            Horizontal position
-            <input
-              type="range"
-              min="-180"
-              max="180"
-              step="1"
-              value={imageEdit.offsetX}
-              onChange={(event) =>
-                updateEdit({ offsetX: Number(event.target.value) })
-              }
-              className="w-full accent-primary"
-            />
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            Vertical position
-            <input
-              type="range"
-              min="-220"
-              max="220"
-              step="1"
-              value={imageEdit.offsetY}
-              onChange={(event) =>
-                updateEdit({ offsetY: Number(event.target.value) })
-              }
-              className="w-full accent-primary"
-            />
-          </label>
-          <label className="grid gap-2 text-sm font-medium">
-            Rotation
-            <input
-              type="range"
-              min="-180"
-              max="180"
-              step="1"
-              value={imageEdit.rotation}
-              onChange={(event) =>
-                updateEdit({ rotation: Number(event.target.value) })
-              }
-              className="w-full accent-primary"
-            />
-          </label>
-        </div>
+        <label className="grid gap-2 text-sm font-medium">
+          Zoom
+          <input
+            type="range"
+            min="1"
+            max="3"
+            step="0.05"
+            value={imageEdit.zoom}
+            onChange={(event) =>
+              updateEdit({ zoom: Number(event.target.value) })
+            }
+            className="w-full accent-primary"
+          />
+        </label>
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"
@@ -650,38 +677,6 @@ function ReviewStep({
           >
             <IconFlipHorizontal className="size-4" />
             Flip
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => nudgeImage(0, -12)}
-          >
-            Up
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => nudgeImage(0, 12)}
-          >
-            Down
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => nudgeImage(-12, 0)}
-          >
-            Left
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => nudgeImage(12, 0)}
-          >
-            Right
           </Button>
           <Button
             type="button"
@@ -912,7 +907,7 @@ export function ScanFlow() {
   const [activeTab, setActiveTab] = useState<"upload" | "camera" | "advice">(
     "upload"
   )
-  const [currentStep, setCurrentStep] = useState<ScanStep>("intro")
+  const [currentStep, setCurrentStep] = useState<ScanStep>("capture")
   const [inputMethod, setInputMethod] = useState<ScanInputMethod>(null)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [imageEdit, setImageEdit] = useState<ImageEditState>(defaultImageEdit)
@@ -927,6 +922,13 @@ export function ScanFlow() {
   const [reportDownloadUrl, setReportDownloadUrl] = useState<string | null>(
     null
   )
+  // Real, explicit, unchecked-by-default consent (AGENTS.md's "explicit
+  // consent before first scan" non-negotiable) — gates capture/upload the
+  // same way locationStatus and lightingBand do (see CameraPanel/
+  // UploadPanel). Client-side only, same as before the checkbox existed:
+  // there was never a consent flag sent to the server, unlike location and
+  // lighting which both have a real server-side enforcement point.
+  const [consentGiven, setConsentGiven] = useState(false)
   // Transient only — coords live in component state for this session and
   // are only ever sent as part of the one /api/scan/analyze request that
   // uses them; they're never written to localStorage/cookies/the database
@@ -940,11 +942,20 @@ export function ScanFlow() {
   // The persisted Report row's id — createScanReport (called from
   // /api/scan/analyze) always creates this before the response comes back,
   // so it's available as soon as analysis completes. Used to link to the
-  // real report page (/reports/[reportId]), which has chat/PDF download —
-  // distinct from reportDownloadUrl above, which points at the print route.
+  // real report page (/reports/[reportId]), which has chat/PDF download.
   const [reportId, setReportId] = useState<string | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isCameraActive, setIsCameraActive] = useState(false)
+  // The real lighting-quality gate for the live camera feed — "idle" means
+  // no camera stream (or no sample taken yet). Sampled from the same video
+  // element that feeds the capture canvas below (see the sampling effect
+  // further down), never uploaded or sent anywhere; purely a client-side UX
+  // gate on the Capture button (server-side enforcement of the same bands
+  // happens separately against the final uploaded file — see
+  // lib/backend/image-lighting.ts).
+  const [lightingBand, setLightingBand] = useState<LightingBand | "idle">(
+    "idle"
+  )
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -969,6 +980,41 @@ export function ScanFlow() {
       stopCameraStream()
     }
   }, [])
+
+  // Periodic brightness sampling while the camera is live: draws the current
+  // frame onto a small offscreen canvas (downsampled to 32x32 — an
+  // approximate reading is all that's needed) and averages luminance
+  // (0.299R+0.587G+0.114B per pixel). 400ms is frequent enough to feel live
+  // without noticeably taxing the preview.
+  useEffect(() => {
+    if (!isCameraActive) {
+      setLightingBand("idle")
+      return
+    }
+
+    const sampleCanvas = document.createElement("canvas")
+    sampleCanvas.width = 32
+    sampleCanvas.height = 32
+    const context = sampleCanvas.getContext("2d", { willReadFrequently: true })
+    if (!context) return
+
+    const intervalId = window.setInterval(() => {
+      const video = videoRef.current
+      if (!video || !video.videoWidth || !video.videoHeight) return
+
+      context.drawImage(video, 0, 0, 32, 32)
+      const { data } = context.getImageData(0, 0, 32, 32)
+
+      let total = 0
+      const pixelCount = data.length / 4
+      for (let i = 0; i < data.length; i += 4) {
+        total += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
+      }
+      setLightingBand(classifyLuminance(total / pixelCount))
+    }, 400)
+
+    return () => window.clearInterval(intervalId)
+  }, [isCameraActive])
 
   async function startCamera() {
     setCameraError(null)
@@ -1002,13 +1048,18 @@ export function ScanFlow() {
     }
   }
 
-  // Explicit opt-in only — never called automatically. getCurrentPosition's
-  // own browser permission prompt is the actual consent gate; this button
-  // is what triggers it, same as "Use Camera" triggers the camera
-  // permission prompt.
+  // Explicit opt-in trigger only — never called automatically.
+  // getCurrentPosition's own browser permission prompt is the actual
+  // consent gate; this button is what triggers it, same as "Use Camera"
+  // triggers the camera permission prompt. "unsupported" is checked first
+  // and separately from a denied/failed request: geolocation requires a
+  // secure context (HTTPS, or localhost) and browser support, and neither
+  // of those will ever change on retry within the same browser/connection —
+  // so that case gets its own honest, non-retryable message instead of a
+  // "Try again" that can never succeed (see LocationPrompt).
   function requestLocation() {
-    if (!navigator.geolocation) {
-      setLocationStatus("unavailable")
+    if (!window.isSecureContext || !navigator.geolocation) {
+      setLocationStatus("unsupported")
       return
     }
 
@@ -1036,7 +1087,22 @@ export function ScanFlow() {
     const video = videoRef.current
     const canvas = canvasRef.current
 
-    if (!video || !canvas || !isCameraActive) return
+    // The Capture Image button is already disabled unless consentGiven,
+    // locationStatus is "granted", and lightingBand is "good" (see
+    // CameraPanel) — this check is defense in depth only. Location is
+    // enforced server-side too (see app/api/scan/analyze/route.ts's
+    // parseScanCoordinates); lighting is now enforced server-side as well
+    // (see lib/backend/image-lighting.ts). Consent has no server-side
+    // counterpart — see consentGiven's declaration above.
+    if (
+      !video ||
+      !canvas ||
+      !isCameraActive ||
+      !consentGiven ||
+      locationStatus !== "granted" ||
+      lightingBand !== "good"
+    )
+      return
 
     if (!video.videoWidth || !video.videoHeight) {
       setCameraError(
@@ -1069,7 +1135,12 @@ export function ScanFlow() {
 
   function uploadImage(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
-    if (!file) return
+    // The Choose Image button/input are already disabled unless
+    // consentGiven and locationStatus is "granted" (see UploadPanel) — this
+    // check is defense in depth only, since the real (server-enforceable)
+    // gate is location, checked server-side too (see
+    // app/api/scan/analyze/route.ts).
+    if (!file || !consentGiven || locationStatus !== "granted") return
 
     if (!file.type.startsWith("image/")) {
       setCameraError("Please choose an image file.")
@@ -1121,17 +1192,16 @@ export function ScanFlow() {
   }
 
   function goBack() {
-    if (currentStep === "capture") {
-      stopCamera()
-      setCurrentStep("intro")
-    }
+    // No "capture" branch: capture (merged with consent) is the first step
+    // now, so there's nowhere to go back to from it — the Back button is
+    // hidden for this step (see the nav render below) rather than this
+    // function needing a no-op case.
     if (currentStep === "review") setCurrentStep("capture")
     if (currentStep === "processing") setCurrentStep("review")
     if (currentStep === "results") setCurrentStep("processing")
   }
 
   async function goNext() {
-    if (currentStep === "intro") setCurrentStep("capture")
     if (currentStep === "review" && selectedImage) await analyzeSelectedImage()
     if (currentStep === "processing") setCurrentStep("results")
   }
@@ -1148,13 +1218,16 @@ export function ScanFlow() {
     setReportDownloadUrl(null)
     setReportId(null)
     setClimateUsed(null)
-    setCurrentStep("intro")
+    // Consent must be given again for each new scan, not silently carried
+    // over from the last one — genuine per-scan consent, not a one-time
+    // session flag.
+    setConsentGiven(false)
+    setCurrentStep("capture")
   }
 
   // Switching Upload <-> Camera mid-scan is a method change: restart capture
   // with the new method, discarding whatever was captured under the old one
-  // (mirrors retakeImage/removeImage's reset, minus going all the way back
-  // to intro since consent was already given). Switching to/from Advice is
+  // (mirrors retakeImage/removeImage's reset). Switching to/from Advice is
   // just a view swap — wizard progress is left untouched, only the camera
   // stream is paused if it was running.
   function selectTab(nextTab: "upload" | "camera" | "advice") {
@@ -1168,7 +1241,7 @@ export function ScanFlow() {
       (nextTab === "upload" || nextTab === "camera") &&
       (activeTab === "upload" || activeTab === "camera")
 
-    if (isMethodSwitch && currentStep !== "intro") {
+    if (isMethodSwitch) {
       setSelectedImage(null)
       setInputMethod(null)
       setImageEdit(defaultImageEdit)
@@ -1207,9 +1280,11 @@ export function ScanFlow() {
       const formData = new FormData()
       formData.append("image", imageFile)
       formData.append("source", inputMethod ?? "unknown")
-      // Only present if the user explicitly granted location via
-      // LocationPrompt/requestLocation — omitted entirely otherwise, which
-      // is exactly what tells the server to skip climate lookup.
+      // coords should always be set here: capture itself is gated on
+      // locationStatus === "granted" (see CameraPanel/UploadPanel), so this
+      // is expected to always be true now. The `if` stays as defense in
+      // depth — the server is the actual gate and rejects a missing/invalid
+      // lat or lon with a 400 (see app/api/scan/analyze/route.ts).
       if (coords) {
         formData.append("lat", String(coords.lat))
         formData.append("lon", String(coords.lon))
@@ -1277,38 +1352,95 @@ export function ScanFlow() {
         <>
           <StepIndicator currentStep={currentStep} />
 
-          <section className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
+          <section
+            className={cn(
+              "grid gap-8",
+              // Capture step's CameraPanel/UploadPanel is already a single
+              // self-contained preview (real video feed, face-guide
+              // overlay, and lighting state all merged into one frame — see
+              // CameraPanel) — the sidebar's decorative ScanPreview below
+              // would just be a second, redundant preview area next to it,
+              // so it's dropped entirely for this step and the main column
+              // takes the full width instead of leaving an empty gap.
+              currentStep !== "capture" && "lg:grid-cols-[1.1fr_0.9fr]"
+            )}
+          >
             <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-              <p className="mb-3 flex items-center gap-2 text-xs font-semibold tracking-widest text-primary uppercase">
-                <IconSparkles className="size-4" />
-                Aurora SkinSense
-              </p>
-              <h1 className="text-3xl font-semibold tracking-normal">
-                {copy.title}
-              </h1>
-              <p className="mt-4 text-sm leading-6 text-muted-foreground">
-                {copy.description}
-              </p>
+              {currentStep !== "capture" ? (
+                <>
+                  <p className="mb-3 flex items-center gap-2 text-xs font-semibold tracking-widest text-primary uppercase">
+                    <IconSparkles className="size-4" />
+                    Aurora SkinSense
+                  </p>
+                  <h1 className="text-3xl font-semibold tracking-normal">
+                    {copy.title}
+                  </h1>
+                  <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                    {copy.description}
+                  </p>
+                </>
+              ) : null}
 
-              <div className="mt-8">
-                {currentStep === "intro" ? <IntroStep /> : null}
+              <div className={currentStep !== "capture" ? "mt-8" : undefined}>
                 {currentStep === "capture" ? (
-                  <div className="grid gap-5">
-                    <LocationPrompt
-                      status={locationStatus}
-                      onRequestLocation={requestLocation}
-                    />
-                    <CaptureStep
-                      method={activeTab}
-                      videoRef={videoRef}
-                      canvasRef={canvasRef}
-                      fileInputRef={fileInputRef}
-                      cameraError={cameraError}
-                      isCameraActive={isCameraActive}
-                      onStartCamera={() => void startCamera()}
-                      onCapture={captureImage}
-                      onUpload={uploadImage}
-                    />
+                  // Former standalone "intro" (consent) step merged with
+                  // "capture" as a two-column layout — left is the intro
+                  // copy + privacy notice + consent checkbox, right is the
+                  // capture controls, unchanged from before this merge. On
+                  // narrow viewports the grid collapses to one column
+                  // (consent above, capture below) via the `lg:` prefix.
+                  <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:gap-10">
+                    <div className="grid content-start gap-5">
+                      <div>
+                        <p className="mb-3 flex items-center gap-2 text-xs font-semibold tracking-widest text-primary uppercase">
+                          <IconSparkles className="size-4" />
+                          Aurora SkinSense
+                        </p>
+                        <h1 className="font-heading text-3xl font-semibold tracking-normal">
+                          {copy.title}
+                        </h1>
+                        <p className="mt-4 text-sm leading-6 text-muted-foreground">
+                          {copy.description}
+                        </p>
+                      </div>
+                      <PrivacyNotice />
+                      <label className="flex items-start gap-3 rounded-lg border border-border bg-card p-4 text-sm">
+                        <Checkbox
+                          checked={consentGiven}
+                          onCheckedChange={(checked) =>
+                            setConsentGiven(checked === true)
+                          }
+                          className="mt-0.5"
+                        />
+                        <span className="leading-6 text-foreground">
+                          I understand and agree to proceed with a cosmetic
+                          skin scan. My image is reviewed only after I
+                          capture or upload it, and this is cosmetic
+                          wellness guidance only — not a medical diagnosis.
+                        </span>
+                      </label>
+                    </div>
+
+                    <div className="grid content-start gap-5 lg:border-l lg:border-border lg:pl-10">
+                      <LocationPrompt
+                        status={locationStatus}
+                        onRequestLocation={requestLocation}
+                      />
+                      <CaptureStep
+                        method={activeTab}
+                        videoRef={videoRef}
+                        canvasRef={canvasRef}
+                        fileInputRef={fileInputRef}
+                        cameraError={cameraError}
+                        isCameraActive={isCameraActive}
+                        consentGiven={consentGiven}
+                        locationGranted={locationStatus === "granted"}
+                        lightingBand={lightingBand}
+                        onStartCamera={() => void startCamera()}
+                        onCapture={captureImage}
+                        onUpload={uploadImage}
+                      />
+                    </div>
                   </div>
                 ) : null}
                 {currentStep === "review" && selectedImage ? (
@@ -1334,7 +1466,7 @@ export function ScanFlow() {
               </div>
 
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                {currentStep !== "intro" ? (
+                {currentStep !== "capture" ? (
                   <Button
                     type="button"
                     variant="outline"
@@ -1385,46 +1517,24 @@ export function ScanFlow() {
                         (isAnalyzing || !analysisResult))
                     }
                   >
-                    {currentStep === "intro"
-                      ? "I Consent, Begin Scan"
-                      : currentStep === "processing"
-                        ? isAnalyzing
-                          ? "Analyzing..."
-                          : "View Results"
-                        : "Continue to Processing"}
+                    {currentStep === "processing"
+                      ? isAnalyzing
+                        ? "Analyzing..."
+                        : "View Results"
+                      : "Continue to Processing"}
                   </Button>
                 )}
               </div>
             </div>
 
-            <div className="grid content-start gap-4">
-              <ScanPreview
-                currentStep={currentStep}
-                selectedImage={selectedImage}
-              />
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-lg border border-border bg-card p-4">
-                  <IconFileAnalytics className="size-6 text-primary" />
-                  <p className="mt-3 text-sm font-medium">
-                    Cosmetic skin report
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    Visible texture, tone, hydration appearance, and Aurora
-                    recommendations.
-                  </p>
-                </div>
-                <div className="rounded-lg border border-border bg-card p-4">
-                  <IconReportAnalytics className="size-6 text-primary" />
-                  <p className="mt-3 text-sm font-medium">
-                    Privacy-first input
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    Camera and upload images remain in local browser state in
-                    this Phase 1 UI.
-                  </p>
-                </div>
+            {currentStep !== "capture" ? (
+              <div className="grid content-start gap-4">
+                <ScanPreview
+                  currentStep={currentStep}
+                  selectedImage={selectedImage}
+                />
               </div>
-            </div>
+            ) : null}
           </section>
         </>
       )}

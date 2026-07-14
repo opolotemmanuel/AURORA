@@ -3,6 +3,15 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+// Card is `flex flex-col`, so CardHeader/CardContent/CardFooter are flex
+// items — flex items default to `min-width: auto`, meaning they refuse to
+// shrink below their content's intrinsic width. A wide child (a table with
+// whitespace-nowrap cells, most commonly) then forces the whole Card, and
+// the page around it, wider on narrow viewports even though the table
+// itself has its own overflow-x-auto — that inner scroll container can't do
+// its job if the flex item hosting it never shrinks to the viewport in the
+// first place. `min-w-0` on each slot lets them actually shrink and defers
+// overflow handling to whatever's inside (e.g. Table's own scroll wrapper).
 function Card({
   className,
   size = "default",
@@ -26,7 +35,7 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-header"
       className={cn(
-        "group/card-header @container/card-header grid auto-rows-min items-start gap-1.5 rounded-none px-(--card-spacing) has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:pb-(--card-spacing)",
+        "group/card-header @container/card-header grid min-w-0 auto-rows-min items-start gap-1.5 rounded-none px-(--card-spacing) has-data-[slot=card-action]:grid-cols-[1fr_auto] has-data-[slot=card-description]:grid-rows-[auto_auto] [.border-b]:pb-(--card-spacing)",
         className
       )}
       {...props}
@@ -74,7 +83,7 @@ function CardContent({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-content"
-      className={cn("px-(--card-spacing)", className)}
+      className={cn("min-w-0 px-(--card-spacing)", className)}
       {...props}
     />
   )
@@ -85,7 +94,7 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-footer"
       className={cn(
-        "flex items-center px-(--card-spacing) [.border-t]:pt-(--card-spacing)",
+        "flex min-w-0 items-center px-(--card-spacing) [.border-t]:pt-(--card-spacing)",
         className
       )}
       {...props}

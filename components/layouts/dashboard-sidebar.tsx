@@ -4,7 +4,9 @@ import Image from "next/image"
 import Link from "next/link"
 import {
   IconChartBar,
+  IconChartLine,
   IconFileAnalytics,
+  IconFlower,
   IconLayoutDashboard,
   IconLeaf,
   IconPhotoScan,
@@ -37,7 +39,9 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { href: "/profile", label: "Profile", icon: IconUserCircle },
       { href: "/reports", label: "Reports", icon: IconReportAnalytics },
+      { href: "/skin-history", label: "Skin History", icon: IconChartLine },
       { href: "/skin-advice", label: "Skin advice", icon: IconSparkles },
+      { href: "/dosha-assessment", label: "Dosha Assessment", icon: IconFlower },
       { href: "/privacy", label: "Privacy", icon: IconShieldCheck },
     ],
   },

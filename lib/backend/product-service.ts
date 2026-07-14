@@ -167,6 +167,7 @@ function mapProduct(product: {
   bestFor: Prisma.JsonValue
   avoidIf: Prisma.JsonValue | null
   keyIngredients: Prisma.JsonValue | null
+  doshaTags?: Prisma.JsonValue | null
   officialUrl: string | null
   priority: number
   active: boolean
@@ -183,6 +184,7 @@ function mapProduct(product: {
     bestFor: getConcernArray(product.bestFor),
     avoidIf: product.avoidIf ? getConcernArray(product.avoidIf) : undefined,
     keyIngredients: product.keyIngredients ? getStringArray(product.keyIngredients) : undefined,
+    doshaTags: product.doshaTags ? getStringArray(product.doshaTags) : undefined,
     officialUrl: product.officialUrl ?? undefined,
     priority: product.priority,
     active: product.active,

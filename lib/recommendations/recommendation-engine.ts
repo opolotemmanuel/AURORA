@@ -154,6 +154,23 @@ function scoreProduct(
     score += 8
   }
 
+  // Dosha bonus — same additive, never-overriding pattern as the climate
+  // bonuses above, and smaller than a concern-band match (14-38) so a
+  // dosha-based nudge can never outrank what the cosmetic scan actually
+  // found. Only applies when the user has a saved DoshaProfile
+  // (analysis.dosha is undefined otherwise); a secondary-dosha match is
+  // weighted at half the primary's bonus, mirroring how a secondary dosha
+  // itself is a lighter signal than the primary one.
+  if (analysis.dosha && product.doshaTags?.length) {
+    if (product.doshaTags.includes(analysis.dosha.primary)) {
+      score += 12
+      reasons.push(`Traditionally associated with your ${capitalize(analysis.dosha.primary)} dosha.`)
+    } else if (analysis.dosha.secondary && product.doshaTags.includes(analysis.dosha.secondary)) {
+      score += 6
+      reasons.push(`Traditionally associated with your ${capitalize(analysis.dosha.secondary)} dosha.`)
+    }
+  }
+
   if (reasons.length === 0) {
     reasons.push("Supports a balanced Aurora cosmetic routine.")
   }
@@ -195,4 +212,8 @@ function getMatchStrength(index: number): RecommendationMatch["matchStrength"] {
 
 function formatBand(band: CosmeticBand) {
   return band.replace("_", " ")
+}
+
+function capitalize(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1)
 }

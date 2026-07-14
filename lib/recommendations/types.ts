@@ -37,6 +37,14 @@ export type CosmeticAnalysisInput = {
   // failed) — existing matching is unaffected when this is absent.
   uvIndex?: number
   routinePreference?: "minimal" | "standard" | "complete"
+  // Optional traditional Ayurvedic dosha result (from lib/dosha/, via
+  // lib/backend/scan-service.ts) — a plain "vata"/"pitta"/"kapha" string
+  // rather than importing lib/dosha's own Dosha type, so this module stays
+  // decoupled from that feature's internals (per AGENTS.md: features
+  // shouldn't import each other's internals). Undefined whenever the user
+  // has no saved DoshaProfile — existing concern/climate matching is
+  // completely unaffected either way, same as climate being absent.
+  dosha?: { primary: string; secondary?: string }
 }
 
 export type CosmeticFindingInput = {
@@ -79,6 +87,10 @@ export type AuroraProduct = {
   bestFor: SkinConcern[]
   avoidIf?: SkinConcern[]
   keyIngredients?: string[]
+  // Traditional Ayurvedic dosha relevance ("vata"/"pitta"/"kapha") — see
+  // Product.doshaTags's schema comment. Additive input to the dosha bonus
+  // in recommendation-engine.ts; empty/absent just means no bonus applies.
+  doshaTags?: string[]
   officialUrl?: string
   priority: number
   active?: boolean

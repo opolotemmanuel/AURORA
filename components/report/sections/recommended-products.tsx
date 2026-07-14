@@ -11,6 +11,8 @@ import { IconExternalLink } from "@tabler/icons-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { resolveIngredients } from "@/lib/products/ingredients"
 import type { ReportViewModel } from "@/lib/reports/report-view-model"
 
 const MATCH_LABEL: Record<string, string> = {
@@ -68,12 +70,7 @@ export function RecommendedProducts({ vm }: { vm: ReportViewModel }) {
                   </p>
                 ) : null}
 
-                {match.product.keyIngredients?.length ? (
-                  <p className="text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">Key ingredients: </span>
-                    {match.product.keyIngredients.join(", ")}
-                  </p>
-                ) : null}
+                <IngredientChips keyIngredients={match.product.keyIngredients} />
 
                 <p className="text-xs text-muted-foreground">
                   <span className="font-medium text-foreground">Recommended usage: </span>
@@ -103,4 +100,35 @@ export function RecommendedProducts({ vm }: { vm: ReportViewModel }) {
 
 function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+// Hover/tap a chip for the ingredient's cosmetic role — see
+// lib/products/ingredients.ts's disclaimer-consistent, non-medical
+// descriptions. Renders nothing when the product has no recognized
+// ingredient (most products in this catalog don't — see AGENTS.md's "no
+// fabrication" rule extended here), same graceful-omission pattern as the
+// "Why it was selected" block above it.
+function IngredientChips({ keyIngredients }: { keyIngredients: string[] | undefined }) {
+  const ingredients = resolveIngredients(keyIngredients)
+  if (ingredients.length === 0) return null
+
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs font-medium text-foreground">Key ingredients</p>
+      <div className="flex flex-wrap gap-1.5">
+        {ingredients.map((ingredient) => (
+          <Tooltip key={ingredient.name}>
+            <TooltipTrigger asChild>
+              <Badge variant="outline" className="cursor-default px-2 py-1 normal-case">
+                {ingredient.name}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-56 text-wrap">
+              {ingredient.description}
+            </TooltipContent>
+          </Tooltip>
+        ))}
+      </div>
+    </div>
+  )
 }

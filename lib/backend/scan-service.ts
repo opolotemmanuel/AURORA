@@ -18,6 +18,7 @@ import type {
   StoredReportBundle,
 } from "@/lib/backend/types"
 import type { ClimateSnapshot } from "@/lib/climate/adapter"
+import { getDoshaProfile, type StoredDoshaProfile } from "@/lib/dosha/dosha-store"
 import {
   RECOMMENDATION_DISCLAIMER,
   recommendAuroraProducts,
@@ -61,9 +62,15 @@ export async function createScanReport(input: {
   const now = new Date().toISOString()
   const scanId = createId("scan")
   const reportId = createId("report")
+  // Optional and additive, same as climate: a signed-in user with no saved
+  // DoshaProfile (the common case — the questionnaire is opt-in) simply
+  // gets `dosha: undefined` below, so recommendation-engine.ts's dosha
+  // bonus doesn't fire and scoring is identical to before this feature
+  // existed. Anonymous scans (no userId) never look this up at all.
+  const doshaProfile = input.userId ? await getDoshaProfile(input.userId) : null
   // Recommendations are computed here (not by the AI adapter) so the
   // product catalog can change independently of what the model returns.
-  const recommendationInput = buildRecommendationInput(input.analysis, input.climate)
+  const recommendationInput = buildRecommendationInput(input.analysis, input.climate, doshaProfile)
   const products = await listActiveRecommendationProducts()
   const recommendations = recommendAuroraProducts(recommendationInput, 3, products)
   const status: ScanStatus = input.analysis.source === "fallback" ? "fallback" : "analyzed"
@@ -160,10 +167,12 @@ export async function createScanReport(input: {
 function buildRecommendationInput(
   analysis: ScanAnalysisReport,
   climate?: ClimateSnapshot | null,
+  doshaProfile?: StoredDoshaProfile | null,
 ): CosmeticAnalysisInput {
   const input: CosmeticAnalysisInput = {
     routinePreference: "standard",
     ...deriveClimateSignals(climate),
+    ...deriveDoshaSignal(doshaProfile),
   }
 
   for (const finding of analysis.cosmeticFindings) {
@@ -173,6 +182,22 @@ function buildRecommendationInput(
   }
 
   return input
+}
+
+// Mirrors deriveClimateSignals below: turns the stored DoshaProfile shape
+// into the recommendation engine's plain-string `dosha` signal. No profile
+// (the common case) means this key stays unset entirely, so
+// recommendation-engine.ts's dosha bonus simply doesn't fire — identical to
+// how an absent climate snapshot leaves climate-based scoring inert.
+function deriveDoshaSignal(doshaProfile?: StoredDoshaProfile | null): Pick<CosmeticAnalysisInput, "dosha"> {
+  if (!doshaProfile) return {}
+
+  return {
+    dosha: {
+      primary: doshaProfile.primaryDosha,
+      secondary: doshaProfile.secondaryDosha ?? undefined,
+    },
+  }
 }
 
 // Turns a raw ClimateSnapshot into the recommendation engine's coarse

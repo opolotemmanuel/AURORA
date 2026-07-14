@@ -63,25 +63,32 @@ enum ChatMessageRole {
   ASSISTANT
 }
 
+enum DoshaType {
+  VATA
+  PITTA
+  KAPHA
+}
+
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
+  id            String    @id @default(cuid())
+  email         String    @unique
   name          String?
-  emailVerified Boolean  @default(false)
+  emailVerified Boolean   @default(false)
   image         String?
-  role          UserRole @default(USER)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  role          UserRole  @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   lastLoginAt   DateTime?
 
   scans              Scan[]
   reports            Report[]
   downloads          ReportDownload[]
-  actedAuditLogs     AuditLog[]       @relation("AuditActor")
+  actedAuditLogs     AuditLog[]          @relation("AuditActor")
   authAccounts       AuthAccount[]
   authSessions       AuthSession[]
   chatMessages       ReportChatMessage[]
   skinAdviceMessages SkinAdviceMessage[]
+  doshaProfile       DoshaProfile?
 
   @@index([role])
   @@index([emailVerified])
@@ -126,12 +133,12 @@ model AuthAccount {
 }
 
 model AuthVerification {
-  id         String    @id @default(cuid())
+  id         String   @id @default(cuid())
   identifier String
   value      String
   expiresAt  DateTime
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   @@index([identifier])
   @@index([expiresAt])
@@ -178,8 +185,8 @@ model Report {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  scan            Scan              @relation(fields: [scanId], references: [id], onDelete: Cascade)
-  user            User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  scan            Scan                @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  user            User?               @relation(fields: [userId], references: [id], onDelete: SetNull)
   findings        ReportFinding[]
   recommendations Recommendation[]
   downloads       ReportDownload[]
@@ -228,6 +235,29 @@ model SkinAdviceMessage {
   @@index([createdAt])
 }
 
+// One row per user, updated (not duplicated) on retake — see
+// lib/dosha/dosha-store.ts's upsert. Deliberately separate from
+// primaryDosha/secondaryDosha rather than one combined enum (e.g.
+// "VATA_PITTA"): keeping them as two nullable-secondary CosmeticBand-style
+// fields makes matching against Product.doshaTags at recommendation-scoring
+// time a simple membership check instead of parsing a combined value, and
+// avoids a 9-variant enum for every dual/tridoshic combination.
+// `breakdown` holds the full percentage split (Vata/Pitta/Kapha rarely
+// resolve to one clean 100% type) for display — see lib/dosha/scoring.ts.
+model DoshaProfile {
+  id             String     @id @default(cuid())
+  userId         String     @unique
+  primaryDosha   DoshaType
+  secondaryDosha DoshaType?
+  breakdown      Json
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([primaryDosha])
+}
+
 model ReportFinding {
   id          String   @id @default(cuid())
   reportId    String
@@ -256,6 +286,13 @@ model Product {
   bestFor          Json
   avoidIf          Json?
   keyIngredients   Json?
+  // Traditional Ayurvedic dosha relevance ("vata"/"pitta"/"kapha"), same
+  // Json-list convention as bestFor/avoidIf/keyIngredients above rather than
+  // a native String[] — additive input to recommendation-engine.ts's dosha
+  // bonus (lib/dosha/), never required: absent/empty means no dosha-based
+  // scoring bonus for this product, existing concern/climate scoring is
+  // unaffected either way.
+  doshaTags        Json?
   officialUrl      String?
   priority         Int
   active           Boolean     @default(true)
@@ -312,14 +349,14 @@ model ReportDownload {
 }
 
 model AuditLog {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   actorId    String?
   actorRole  UserRole?
   action     String
   targetType String
   targetId   String
   metadata   Json?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
   actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
 
@@ -329,15 +366,15 @@ model AuditLog {
 }
 
 model AiProviderEvent {
-  id        String           @id @default(cuid())
-  provider  String
-  model     String
-  status    AiProviderStatus
-  scanId    String?
-  reportId  String?
-  reason    String?
+  id         String           @id @default(cuid())
+  provider   String
+  model      String
+  status     AiProviderStatus
+  scanId     String?
+  reportId   String?
+  reason     String?
   durationMs Int?
-  createdAt DateTime         @default(now())
+  createdAt  DateTime         @default(now())
 
   report Report? @relation(fields: [reportId], references: [id], onDelete: SetNull)
 

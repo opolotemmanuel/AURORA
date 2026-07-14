@@ -592,7 +592,7 @@ function ReviewStep({
           alt="Selected skin scan preview"
           fill
           unoptimized
-          className="object-contain select-none"
+          className="object-cover select-none"
           draggable={false}
           style={{
             transform: `translate(${imageEdit.offsetX}px, ${imageEdit.offsetY}px) scaleX(${imageEdit.flipX ? -1 : 1}) scale(${imageEdit.zoom}) rotate(${imageEdit.rotation}deg)`,
@@ -1595,16 +1595,36 @@ async function createEditedImageDataUrl(dataUrl: string, edit: ImageEditState) {
   const context = canvas.getContext("2d")
   if (!context) return dataUrl
 
-  // Scales the source image down to fit inside the canvas before any user
-  // zoom is applied, so `edit.zoom` is relative to "fit the frame", not to
-  // the image's raw pixel size.
-  const baseScale = Math.min(
+  // Scales the source image to COVER the canvas (fills the frame
+  // completely, cropping any excess) before any user zoom is applied, so
+  // `edit.zoom` is relative to "fill the frame", not to the image's raw
+  // pixel size. Matches the ReviewStep preview's `object-cover` above —
+  // must stay in sync, or what the user sees while positioning/zooming
+  // won't match what actually gets baked and uploaded.
+  //
+  // Previously this used Math.min ("fit inside", leaving the untouched
+  // canvas background visible in any gap) — for any source aspect ratio
+  // other than exactly 4:5 (i.e. almost every real camera/webcam capture),
+  // that left a large solid-white border baked into the final image, which
+  // was skewing the lighting check's average-luminance reading well past
+  // "too bright" regardless of the actual photo's exposure — confirmed on
+  // a real capture where the false white border alone added +61 to the
+  // reported average (204 measured vs. 143 for the real photo content).
+  // Math.max ("cover") means the drawn image always fully covers the
+  // canvas, so this class of false-positive white padding can no longer
+  // happen for the default (unrotated) case.
+  const baseScale = Math.max(
     width / image.naturalWidth,
     height / image.naturalHeight
   )
   const drawWidth = image.naturalWidth * baseScale
   const drawHeight = image.naturalHeight * baseScale
 
+  // Still needed as a fallback: a 90°/270° user rotation on a
+  // width-or-height-constrained cover-fit image can expose small corner
+  // gaps at the canvas edges (a manual, opt-in edit, unlike the default
+  // case above) — white keeps that rare remainder consistent with the
+  // rest of the app's plain background rather than leaving it transparent.
   context.fillStyle = "white"
   context.fillRect(0, 0, width, height)
   context.imageSmoothingEnabled = true

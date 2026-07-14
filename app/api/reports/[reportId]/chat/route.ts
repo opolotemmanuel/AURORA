@@ -144,6 +144,7 @@ function buildChatContext(report: StoredReport, activeProducts: AuroraProduct[])
       name: product.name,
       category: product.category,
       bestFor: product.bestFor,
+      keyIngredients: product.keyIngredients,
     })),
   }
 }

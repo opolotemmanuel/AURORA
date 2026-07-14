@@ -64,6 +64,7 @@ function toCatalogContext(products: AuroraProduct[]): ChatCatalogProduct[] {
     name: product.name,
     category: product.category,
     bestFor: product.bestFor,
+    keyIngredients: product.keyIngredients,
   }))
 }
 

@@ -178,10 +178,22 @@ function buildFormattingAndProductGuidance(products: ChatCatalogProduct[]): stri
     "",
     "Real Aurora Organics products you may recommend (this is the ONLY list you may ever recommend from — never invent a product name, and never imply a product exists or is available if it isn't listed here):",
     ...(products.length
-      ? products.map(
-          (product) => `- ${product.name} (${product.category}) — helps with: ${product.bestFor.join(", ") || "general routine support"}`
-        )
+      ? products.map((product) => {
+          const ingredientsNote = product.keyIngredients?.length
+            ? ` — key ingredients: ${product.keyIngredients.join(", ")}`
+            : ""
+          return `- ${product.name} (${product.category}) — helps with: ${product.bestFor.join(", ") || "general routine support"}${ingredientsNote}`
+        })
       : ["- (No active products available right now — do not suggest any product.)"]),
+    // Same "never invent" discipline as the product list itself, extended one
+    // level deeper: an ingredient listed above is real (from Aurora's own
+    // product data), but only mention it — and only describe its role in
+    // general, non-medical cosmetic terms (e.g. "commonly used to help with
+    // X") — when a product's own listed ingredients are genuinely relevant to
+    // what the user asked. Never invent an ingredient a product doesn't have
+    // listed above, and never claim a product contains an ingredient it
+    // isn't listed with here, even if it sounds plausible.
+    "Each product above may list its key ingredients. You may mention a listed ingredient and its general, well-known cosmetic role when it's genuinely relevant to the question — but only ingredients actually listed for that product, never a plausible-sounding one you're inferring, and never a medical claim (no \"treats,\" \"cures,\" or clinical statistics) about what it does.",
     'When, and only when, the question is genuinely about a skin concern one of the products above addresses, end your answer with a section starting on its own line with exactly "**Suggested products:**" followed by a markdown bullet list of 1-3 of the products above. Each bullet must contain ONLY the exact product name copied from the list above — no price, no description, no link, nothing else on that line.',
     "If no listed product is genuinely relevant to the question, or the question is general/educational rather than something a product addresses, skip the \"Suggested products\" section entirely — never force an irrelevant recommendation.",
   ]
@@ -209,7 +221,16 @@ export type ReportChatContext = {
 // lib/recommendations/chat-product-mentions.ts), so this adapter never needs
 // to know about images, prices, or purchase links — only enough to judge
 // relevance.
-export type ChatCatalogProduct = { name: string; category: string; bestFor: string[] }
+export type ChatCatalogProduct = {
+  name: string
+  category: string
+  bestFor: string[]
+  // Real named actives from Product.keyIngredients (lib/products/
+  // ingredients.ts) — undefined/empty for the products that don't have any
+  // recognized ingredient in the catalog, same graceful-omission pattern as
+  // everywhere else this app handles sparse data.
+  keyIngredients?: string[]
+}
 
 export const REPORT_CHAT_MAX_QUESTION_LENGTH = 600
 

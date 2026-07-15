@@ -312,7 +312,22 @@ function ActionsMenu({ reportId }: { reportId: string }) {
       <div className="absolute right-0 z-20 mt-2 w-52 rounded-lg border border-border bg-popover p-1 text-sm text-popover-foreground shadow-lg">
         <MenuLink href={`/reports/${reportId}`} label="View Report" />
         <MenuLink href={`/api/reports/${reportId}/print`} label="Print" />
-        <MenuLink href={`/api/reports/${reportId}/download`} label="Download PDF" />
+        {/* Plain <a>, not <Link> — this route streams a real PDF file with
+            Content-Disposition: attachment (see the download route
+            handler). next/link's Link intercepts same-origin clicks for
+            client-side soft navigation (and prefetches on hover/viewport by
+            default), so the browser never sees it as a genuine top-level
+            navigation and never applies the attachment header — the PDF
+            bytes just render inline instead of downloading. A native
+            anchor forces a real browser navigation, which honors the
+            header correctly and doesn't risk prefetch firing this
+            expensive (headless-Chrome-rendered, DB-logged) route early. */}
+        <a
+          href={`/api/reports/${reportId}/download`}
+          className="block rounded-md px-3 py-2 hover:bg-accent hover:text-accent-foreground"
+        >
+          Download PDF
+        </a>
         <MenuLink href={`/api/reports/${reportId}`} label="View Recommendations" />
         {/* MenuButton always renders `disabled` — these are roadmap
             placeholders (see the "detail" text), not broken actions. */}

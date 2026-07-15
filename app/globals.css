@@ -20,6 +20,7 @@
     --accent: oklch(0.96 0.002 17.2);
     --accent-foreground: oklch(0.214 0.009 43.1);
     --destructive: oklch(0.577 0.245 27.325);
+    --success: oklch(0.6 0.15 145);
     --border: oklch(0.922 0.005 34.3);
     --input: oklch(0.922 0.005 34.3);
     --ring: oklch(0.714 0.014 41.2);
@@ -55,6 +56,7 @@
     --accent: oklch(0.268 0.011 36.5);
     --accent-foreground: oklch(0.986 0.002 67.8);
     --destructive: oklch(0.704 0.191 22.216);
+    --success: oklch(0.72 0.17 145);
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
     --ring: oklch(0.547 0.021 43.1);
@@ -95,6 +97,14 @@
     --color-input: var(--input);
     --color-border: var(--border);
     --color-destructive: var(--destructive);
+    /* Small, deliberate addition for the scan quality checklist's
+       pass/warn/fail status dots (components/scan/ScanQualityPanel.tsx) —
+       the first place in this app needing a true 3-way status color, since
+       everywhere else re-purposes primary/destructive/muted for a 2-way
+       good/attention distinction. --color-warning aliases the existing
+       chart-1 gold rather than introducing a second new raw value. */
+    --color-success: var(--success);
+    --color-warning: var(--chart-1);
     --color-accent-foreground: var(--accent-foreground);
     --color-accent: var(--accent);
     --color-muted-foreground: var(--muted-foreground);

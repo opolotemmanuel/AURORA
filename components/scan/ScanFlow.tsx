@@ -52,7 +52,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import { classifyLuminance, type LightingBand } from "@/lib/scan/lighting"
+import { useScanQuality, type LandmarkerStatus, type VideoDimensions } from "@/lib/scan/quality/use-scan-quality"
+import type { QualitySnapshot } from "@/lib/scan/quality/types"
+import type { FaceBoundingBox } from "@/lib/scan/quality/checks"
+import { ScanQualityPanel } from "@/components/scan/ScanQualityPanel"
+import { FacePositionOverlay } from "@/components/scan/FacePositionOverlay"
 import { SkinAdviceChat } from "@/components/skin-advice/skin-advice-chat"
 
 type ScanStep = "capture" | "review" | "processing" | "results"
@@ -290,7 +294,10 @@ function CameraPanel({
   isCameraActive,
   consentGiven,
   locationGranted,
-  lightingBand,
+  qualitySnapshot,
+  landmarkerStatus,
+  faceBox,
+  videoDimensions,
   onStartCamera,
   onCapture,
 }: {
@@ -300,15 +307,24 @@ function CameraPanel({
   isCameraActive: boolean
   consentGiven: boolean
   locationGranted: boolean
-  lightingBand: LightingBand | "idle"
+  qualitySnapshot: QualitySnapshot | null
+  landmarkerStatus: LandmarkerStatus
+  faceBox: FaceBoundingBox | null
+  videoDimensions: VideoDimensions | null
   onStartCamera: () => void
   onCapture: () => void
 }) {
-  const isLightingGood = lightingBand === "good"
+  const readyToCapture = qualitySnapshot?.readyToCapture ?? false
+  const facePositionStatus = qualitySnapshot?.results.find((result) => result.id === "facePosition")?.status ?? "fail"
 
   return (
     <div className="rounded-xl border border-border bg-card p-4">
-      <div className="relative aspect-[4/3] overflow-hidden rounded-lg border border-border bg-muted">
+      <div
+        className={cn(
+          "relative aspect-[4/3] overflow-hidden rounded-lg border bg-muted transition-colors",
+          readyToCapture ? "border-success" : "border-border"
+        )}
+      >
         <video
           ref={videoRef}
           autoPlay
@@ -328,39 +344,48 @@ function CameraPanel({
             </div>
           </div>
         ) : null}
-        {/* `overflow-hidden` + `rounded-full` on this wrapper clips the
-            sweep div below to the oval face-guide shape, so the light band
-            only appears to travel within the face outline rather than
-            across the whole rectangular video. The sweep runs while
-            lightingBand isn't "good" (a real client-side brightness reading
-            — see the sampling effect in ScanFlow — not a cosmetic-only
-            animation), and stops once lighting is actually good. */}
-        <div className="pointer-events-none absolute inset-8 overflow-hidden rounded-full border border-primary/50">
-          {isCameraActive && !isLightingGood ? (
+        {/* `overflow-hidden` + `rounded-full` on this wrapper clips the sweep
+            div below to roughly the face-guide area, so it only appears to
+            travel within the guide rather than across the whole rectangular
+            video. The sweep runs while the live quality checklist isn't
+            ready to capture yet (a real client-side reading — see
+            lib/scan/quality/use-scan-quality.ts — not a cosmetic-only
+            animation), and stops once every check actually passes. The
+            guide shape itself (border) is now drawn by FacePositionOverlay
+            below, in the same coordinate space evaluateFacePosition scores
+            against, rather than a separately hand-placed inset here. */}
+        <div className="pointer-events-none absolute inset-8 overflow-hidden rounded-full">
+          {isCameraActive && !readyToCapture ? (
             <div className="absolute inset-x-0 h-10 animate-scan-sweep bg-gradient-to-b from-transparent via-primary/50 to-transparent blur-[1px] motion-reduce:hidden" />
           ) : null}
         </div>
         {isCameraActive ? (
+          <FacePositionOverlay faceBox={faceBox} videoDimensions={videoDimensions} status={facePositionStatus} />
+        ) : null}
+        {isCameraActive ? (
           <div className="pointer-events-none absolute top-3 left-3 flex items-center gap-1.5 rounded-full border border-border bg-background/90 px-3 py-1 text-xs font-medium text-muted-foreground backdrop-blur">
-            {isLightingGood ? (
+            {readyToCapture ? (
               <>
-                <IconCheck className="size-3.5 text-primary" />
-                Lighting good
+                <IconCheck className="size-3.5 text-success" />
+                Ready to capture
               </>
             ) : (
               <>
                 <span className="inline-block size-1.5 animate-pulse rounded-full bg-primary" />
-                {lightingBand === "too_dark"
-                  ? "Lighting too low — move to a brighter area"
-                  : lightingBand === "too_bright"
-                    ? "Too bright — reduce direct light or glare"
-                    : "Checking lighting..."}
+                {landmarkerStatus === "loading" && !qualitySnapshot
+                  ? "Loading face detection…"
+                  : `${qualitySnapshot?.score ?? 0}% · ${qualitySnapshot?.scoreBand ?? "Poor"}`}
               </>
             )}
           </div>
         ) : null}
       </div>
       <canvas ref={canvasRef} className="hidden" />
+      {isCameraActive ? (
+        <div className="mt-3">
+          <ScanQualityPanel snapshot={qualitySnapshot} landmarkerStatus={landmarkerStatus} />
+        </div>
+      ) : null}
       {cameraError ? (
         <p className="mt-3 text-sm text-destructive">{cameraError}</p>
       ) : null}
@@ -372,11 +397,10 @@ function CameraPanel({
         <Button
           type="button"
           onClick={onCapture}
-          disabled={
-            !isCameraActive || !consentGiven || !locationGranted || !isLightingGood
-          }
+          disabled={!isCameraActive || !consentGiven || !locationGranted || !readyToCapture}
+          className={cn(readyToCapture && "ring-2 ring-success ring-offset-2 ring-offset-background")}
         >
-          Capture Image
+          {isCameraActive && !readyToCapture ? "Improve image quality" : "Capture Image"}
         </Button>
       </div>
       {!consentGiven ? (
@@ -388,9 +412,9 @@ function CameraPanel({
           Share your location above to enable capture — it&apos;s required to complete a
           scan.
         </p>
-      ) : isCameraActive && !isLightingGood ? (
+      ) : isCameraActive && !readyToCapture ? (
         <p className="mt-3 text-xs text-muted-foreground">
-          Waiting for good lighting before capture is enabled.
+          Waiting for image quality checks to pass before capture is enabled.
         </p>
       ) : null}
     </div>
@@ -463,7 +487,10 @@ function CaptureStep({
   isCameraActive,
   consentGiven,
   locationGranted,
-  lightingBand,
+  qualitySnapshot,
+  landmarkerStatus,
+  faceBox,
+  videoDimensions,
   onStartCamera,
   onCapture,
   onUpload,
@@ -476,7 +503,10 @@ function CaptureStep({
   isCameraActive: boolean
   consentGiven: boolean
   locationGranted: boolean
-  lightingBand: LightingBand | "idle"
+  qualitySnapshot: QualitySnapshot | null
+  landmarkerStatus: LandmarkerStatus
+  faceBox: FaceBoundingBox | null
+  videoDimensions: VideoDimensions | null
   onStartCamera: () => void
   onCapture: () => void
   onUpload: (event: React.ChangeEvent<HTMLInputElement>) => void
@@ -491,7 +521,10 @@ function CaptureStep({
           isCameraActive={isCameraActive}
           consentGiven={consentGiven}
           locationGranted={locationGranted}
-          lightingBand={lightingBand}
+          qualitySnapshot={qualitySnapshot}
+          landmarkerStatus={landmarkerStatus}
+          faceBox={faceBox}
+          videoDimensions={videoDimensions}
           onStartCamera={onStartCamera}
           onCapture={onCapture}
         />
@@ -924,8 +957,8 @@ export function ScanFlow() {
   )
   // Real, explicit, unchecked-by-default consent (AGENTS.md's "explicit
   // consent before first scan" non-negotiable) — gates capture/upload the
-  // same way locationStatus and lightingBand do (see CameraPanel/
-  // UploadPanel). Client-side only, same as before the checkbox existed:
+  // same way locationStatus and the live quality checklist do (see
+  // CameraPanel/UploadPanel). Client-side only, same as before the checkbox existed:
   // there was never a consent flag sent to the server, unlike location and
   // lighting which both have a real server-side enforcement point.
   const [consentGiven, setConsentGiven] = useState(false)
@@ -946,16 +979,6 @@ export function ScanFlow() {
   const [reportId, setReportId] = useState<string | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isCameraActive, setIsCameraActive] = useState(false)
-  // The real lighting-quality gate for the live camera feed — "idle" means
-  // no camera stream (or no sample taken yet). Sampled from the same video
-  // element that feeds the capture canvas below (see the sampling effect
-  // further down), never uploaded or sent anywhere; purely a client-side UX
-  // gate on the Capture button (server-side enforcement of the same bands
-  // happens separately against the final uploaded file — see
-  // lib/backend/image-lighting.ts).
-  const [lightingBand, setLightingBand] = useState<LightingBand | "idle">(
-    "idle"
-  )
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -981,40 +1004,18 @@ export function ScanFlow() {
     }
   }, [])
 
-  // Periodic brightness sampling while the camera is live: draws the current
-  // frame onto a small offscreen canvas (downsampled to 32x32 — an
-  // approximate reading is all that's needed) and averages luminance
-  // (0.299R+0.587G+0.114B per pixel). 400ms is frequent enough to feel live
-  // without noticeably taxing the preview.
-  useEffect(() => {
-    if (!isCameraActive) {
-      setLightingBand("idle")
-      return
-    }
-
-    const sampleCanvas = document.createElement("canvas")
-    sampleCanvas.width = 32
-    sampleCanvas.height = 32
-    const context = sampleCanvas.getContext("2d", { willReadFrequently: true })
-    if (!context) return
-
-    const intervalId = window.setInterval(() => {
-      const video = videoRef.current
-      if (!video || !video.videoWidth || !video.videoHeight) return
-
-      context.drawImage(video, 0, 0, 32, 32)
-      const { data } = context.getImageData(0, 0, 32, 32)
-
-      let total = 0
-      const pixelCount = data.length / 4
-      for (let i = 0; i < data.length; i += 4) {
-        total += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]
-      }
-      setLightingBand(classifyLuminance(total / pixelCount))
-    }, 400)
-
-    return () => window.clearInterval(intervalId)
-  }, [isCameraActive])
+  // Live pre-capture quality checklist (face detection/position, lighting,
+  // sharpness, stability, resolution, eyes — hard gates; rotation,
+  // occlusion, expression, background, skin visibility — soft warnings).
+  // Only "active" while the camera stream is actually live AND the Camera
+  // tab is the one showing — this is also what triggers the face-landmark
+  // model's lazy load (see lib/scan/quality/face-landmarker.ts), so simply
+  // switching to the Upload or Advice tab, or finishing a capture, tears it
+  // down again rather than keeping a heavy model resident for no reason.
+  const { snapshot: qualitySnapshot, landmarkerStatus, faceBox, videoDimensions } = useScanQuality(
+    videoRef,
+    isCameraActive && activeTab === "camera"
+  )
 
   async function startCamera() {
     setCameraError(null)
@@ -1088,19 +1089,21 @@ export function ScanFlow() {
     const canvas = canvasRef.current
 
     // The Capture Image button is already disabled unless consentGiven,
-    // locationStatus is "granted", and lightingBand is "good" (see
-    // CameraPanel) — this check is defense in depth only. Location is
-    // enforced server-side too (see app/api/scan/analyze/route.ts's
-    // parseScanCoordinates); lighting is now enforced server-side as well
-    // (see lib/backend/image-lighting.ts). Consent has no server-side
-    // counterpart — see consentGiven's declaration above.
+    // locationStatus is "granted", and the live quality checklist reports
+    // readyToCapture (see CameraPanel) — this check is defense in depth
+    // only. Location is enforced server-side too (see
+    // app/api/scan/analyze/route.ts's parseScanCoordinates); lighting
+    // (one of the checklist's hard gates) is enforced server-side as well
+    // (see lib/backend/image-lighting.ts). Consent and the rest of the
+    // client-only checklist checks have no server-side counterpart — same
+    // as consentGiven's declaration above already notes for consent.
     if (
       !video ||
       !canvas ||
       !isCameraActive ||
       !consentGiven ||
       locationStatus !== "granted" ||
-      lightingBand !== "good"
+      !qualitySnapshot?.readyToCapture
     )
       return
 
@@ -1435,7 +1438,10 @@ export function ScanFlow() {
                         isCameraActive={isCameraActive}
                         consentGiven={consentGiven}
                         locationGranted={locationStatus === "granted"}
-                        lightingBand={lightingBand}
+                        qualitySnapshot={qualitySnapshot}
+                        landmarkerStatus={landmarkerStatus}
+                        faceBox={faceBox}
+                        videoDimensions={videoDimensions}
                         onStartCamera={() => void startCamera()}
                         onCapture={captureImage}
                         onUpload={uploadImage}
@@ -1495,12 +1501,18 @@ export function ScanFlow() {
                       variant="outline"
                       disabled={!reportDownloadUrl}
                       onClick={() => {
-                        if (reportDownloadUrl)
-                          window.open(
-                            reportDownloadUrl,
-                            "_blank",
-                            "noopener,noreferrer"
-                          )
+                        if (!reportDownloadUrl) return
+                        // A real navigation (not window.open, which flashes
+                        // an extra blank tab), so the browser applies the
+                        // download route's Content-Disposition: attachment
+                        // header as intended — `download` left empty lets
+                        // the header's own filename win.
+                        const link = document.createElement("a")
+                        link.href = reportDownloadUrl
+                        link.download = ""
+                        document.body.appendChild(link)
+                        link.click()
+                        link.remove()
                       }}
                     >
                       <IconDownload className="size-4" />

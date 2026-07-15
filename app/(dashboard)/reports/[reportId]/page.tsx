@@ -3,7 +3,9 @@
 // loadReportViewModel adds the ownership/admin authorization check (see its
 // doc comment for why that's centralized there).
 import { notFound } from "next/navigation"
+import { IconDownload } from "@tabler/icons-react"
 
+import { Button } from "@/components/ui/button"
 import { ReportChatPanel } from "@/components/report/report-chat-panel"
 import { ReportSectionsList } from "@/components/report/report-sections-list"
 import { loadReportViewModel } from "@/lib/reports/load-report-view-model"
@@ -29,6 +31,23 @@ export default async function ReportDetailPage({ params }: ReportPageProps) {
         </div>
       ) : null}
       <ReportSectionsList vm={vm} />
+      {/* Closing action, deliberately outside ReportSectionsList (same
+          reason as the chat panel above — this is interactive-only chrome
+          shared with nothing, and a "download this PDF" button has no
+          business appearing inside the PDF it downloads). Plain <a>, not
+          next/link's <Link>: this route streams a real PDF with
+          Content-Disposition: attachment, and Link's client-side soft
+          navigation (plus hover/viewport prefetch) would defeat that
+          header entirely — the exact bug just fixed on the reports table,
+          see components/report/reports-table.tsx. */}
+      <div className="flex justify-center border-t border-border pt-8">
+        <Button asChild variant="outline">
+          <a href={`/api/reports/${vm.reportId}/download`}>
+            <IconDownload className="size-4" />
+            Download PDF Report
+          </a>
+        </Button>
+      </div>
     </div>
   )
 }

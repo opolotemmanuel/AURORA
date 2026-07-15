@@ -525,7 +525,7 @@ export function getGeminiDiagnosticMessage(error: unknown) {
     : "Unknown Gemini analysis failure."
 }
 
-function getGeminiModel() {
+export function getGeminiModel() {
   return process.env.GEMINI_MODEL?.trim() || DEFAULT_GEMINI_MODEL
 }
 

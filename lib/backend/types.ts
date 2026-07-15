@@ -1,6 +1,7 @@
 // Shared domain types for the scan/report/admin backend. Kept separate from
 // any one service file since scan-service, report-store, admin-analytics,
 // etc. all need the same shapes.
+import type { ClimateSnapshot } from "@/lib/climate/adapter"
 import type { RecommendationMatch } from "@/lib/recommendations/types"
 
 export type ScanSource = "camera" | "upload" | "unknown"
@@ -82,6 +83,11 @@ export type StoredReport = {
   analysis: ScanAnalysisReport
   recommendations: RecommendationMatch[]
   fallbackReason?: string
+  // The weather READING captured once at scan time (see prisma/schema.prisma's
+  // ClimateReading) — never coordinates, never a place name. Absent when the
+  // scan's Open-Meteo call failed or never ran, same "optional and additive"
+  // shape as the rest of the climate pipeline (lib/backend/scan-service.ts).
+  climate?: ClimateSnapshot
   createdAt: string
   updatedAt: string
 }
@@ -100,6 +106,8 @@ export type ReportDownload = {
 export type AuditLogEntry = {
   id: string
   actorId?: string
+  actorName?: string
+  actorEmail?: string
   actorRole?: AdminRole
   action: string
   targetType: "scan" | "report" | "download" | "admin"

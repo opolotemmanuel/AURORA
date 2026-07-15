@@ -28,6 +28,12 @@ export async function countAdminTierUsers() {
   return prisma.user.count({ where: { role: { in: [...ADMIN_TIER_ROLES] } } })
 }
 
+// Backs the Overview tab's "total users" figure — every account regardless
+// of role, unlike countAdminTierUsers above.
+export async function countUsers() {
+  return prisma.user.count()
+}
+
 export type DeleteUserResult =
   | { success: true; deletedUser: { id: string; name?: string; email: string; role: UserRole } }
   | { success: false; error: string }

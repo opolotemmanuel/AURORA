@@ -115,6 +115,18 @@ export async function saveReportBundle(bundle: StoredReportBundle) {
               productSnapshot: recommendation.product,
             })),
           },
+          // Readings only — see prisma/schema.prisma's ClimateReading doc
+          // comment. Only created when a snapshot actually exists (Open-Meteo
+          // succeeded for this scan); absent stays absent, no placeholder row.
+          climateReading: bundle.report.climate
+            ? {
+                create: {
+                  temperatureC: bundle.report.climate.temperatureC,
+                  humidityPercent: bundle.report.climate.humidityPercent,
+                  uvIndex: bundle.report.climate.uvIndex,
+                },
+              }
+            : undefined,
         },
       },
     },
@@ -138,6 +150,7 @@ export async function listReports() {
     include: {
       findings: { orderBy: { sortOrder: "asc" } },
       recommendations: { orderBy: { rank: "asc" } },
+      climateReading: true,
     },
   })
 
@@ -242,6 +255,7 @@ export async function listReportsForUser(userId: string, limit = 6) {
     include: {
       findings: { orderBy: { sortOrder: "asc" } },
       recommendations: { orderBy: { rank: "asc" } },
+      climateReading: true,
     },
   })
 
@@ -291,9 +305,21 @@ export async function saveAuditLog(entry: Omit<AuditLogEntry, "id" | "createdAt"
 export async function listAuditLogs() {
   const auditLogs = await prisma.auditLog.findMany({
     orderBy: { createdAt: "desc" },
+    take: 500,
+    include: { actor: { select: { name: true, email: true } } },
   })
 
   return auditLogs.map(mapAuditLog)
+}
+
+// Backs the Overview tab's "today's scans" figure — real-time count, not a
+// cached/derived value, using the same local-midnight boundary convention
+// as lib/backend/skin-advice-store.ts's countSkinAdviceMessagesThisMonth.
+export async function countScansToday() {
+  const startOfToday = new Date()
+  startOfToday.setHours(0, 0, 0, 0)
+
+  return prisma.scan.count({ where: { createdAt: { gte: startOfToday } } })
 }
 
 export async function saveAiProviderEvent(event: Omit<AiProviderEvent, "id" | "createdAt">) {
@@ -344,6 +370,7 @@ function getReportWithRelations(reportId: string) {
     include: {
       findings: { orderBy: { sortOrder: "asc" } },
       recommendations: { orderBy: { rank: "asc" } },
+      climateReading: true,
     },
   })
 }
@@ -527,6 +554,13 @@ function mapReport(report: NonNullable<ReportWithRelations>): StoredReport {
     },
     recommendations,
     fallbackReason: report.fallbackReason ?? undefined,
+    climate: report.climateReading
+      ? {
+          temperatureC: report.climateReading.temperatureC,
+          humidityPercent: report.climateReading.humidityPercent,
+          uvIndex: report.climateReading.uvIndex,
+        }
+      : undefined,
     createdAt: report.createdAt.toISOString(),
     updatedAt: report.updatedAt.toISOString(),
   }
@@ -596,10 +630,13 @@ function mapAuditLog(auditLog: {
   targetType: string
   targetId: string
   createdAt: Date
+  actor?: { name: string | null; email: string } | null
 }): AuditLogEntry {
   return {
     id: auditLog.id,
     actorId: auditLog.actorId ?? undefined,
+    actorName: auditLog.actor?.name ?? undefined,
+    actorEmail: auditLog.actor?.email ?? undefined,
     actorRole: auditLog.actorRole ? fromPrismaUserRole(auditLog.actorRole) : undefined,
     action: auditLog.action,
     targetType: auditLog.targetType === "scan" || auditLog.targetType === "report" || auditLog.targetType === "download" ? auditLog.targetType : "admin",

@@ -5,6 +5,7 @@
 // there is exactly one place that decides what a report "means" visually.
 import { FINDING_CONCERN_MAP } from "@/lib/backend/scan-service"
 import type { AiProviderEvent, ReportFinding, StoredReport, StoredScan } from "@/lib/backend/types"
+import { interpretClimate } from "@/lib/climate/interpret"
 import {
   getBandVisual,
   getConfidenceVisual,
@@ -14,6 +15,7 @@ import {
   type BadgeVariant,
   type PriorityTier,
 } from "@/lib/reports/band-visuals"
+import { computeComfortScore, getComfortBand, type ComfortBand } from "@/lib/reports/comfort-score"
 import type { RecommendationMatch } from "@/lib/recommendations/types"
 
 const REPORT_TEMPLATE_VERSION = "v1.0"
@@ -87,6 +89,17 @@ export type ReportViewModel = {
     points: Array<{ dateLabel: string; fillRatio: number; tierLabel: string; isCurrent: boolean }>
     improved: boolean
   } | null
+  // Null whenever no ClimateReading exists for this report (predates this
+  // feature, or the scan's Open-Meteo call failed) — the Climate Conditions
+  // section (components/report/sections/climate-conditions.tsx) simply
+  // doesn't render in that case, no broken/empty state.
+  climate: {
+    temperatureC: number
+    humidityPercent: number
+    uvIndex: number
+    interpretiveSentences: string[]
+    comfortBand: ComfortBand
+  } | null
 }
 
 export function buildReportViewModel(input: {
@@ -138,6 +151,22 @@ export function buildReportViewModel(input: {
       reportVersion: REPORT_TEMPLATE_VERSION,
     },
     progressTracking: buildProgressTracking(report, priorReports),
+    climate: buildClimate(report),
+  }
+}
+
+function buildClimate(report: StoredReport): ReportViewModel["climate"] {
+  if (!report.climate) return null
+
+  const findings = report.analysis.cosmeticFindings
+  const score = computeComfortScore(report.climate, findings)
+
+  return {
+    temperatureC: report.climate.temperatureC,
+    humidityPercent: report.climate.humidityPercent,
+    uvIndex: report.climate.uvIndex,
+    interpretiveSentences: interpretClimate(report.climate),
+    comfortBand: getComfortBand(score),
   }
 }
 

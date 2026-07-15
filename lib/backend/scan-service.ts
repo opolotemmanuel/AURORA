@@ -114,6 +114,12 @@ export async function createScanReport(input: {
     },
     recommendations,
     fallbackReason: input.fallbackReason,
+    // Persisted as the one-time ClimateReading row (readings only, never the
+    // coordinates that produced them — see prisma/schema.prisma). `undefined`
+    // when Open-Meteo failed or returned nothing, matching the existing
+    // "absent means inert" pattern the rest of this function already uses
+    // for climate (see deriveClimateSignals above).
+    climate: input.climate ?? undefined,
     createdAt: now,
     updatedAt: now,
   }

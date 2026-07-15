@@ -192,10 +192,31 @@ model Report {
   downloads       ReportDownload[]
   aiEvents        AiProviderEvent[]
   chatMessages    ReportChatMessage[]
+  climateReading  ClimateReading?
 
   @@index([userId])
   @@index([source])
   @@index([createdAt])
+}
+
+// One weather READING per report, captured once at scan time — same shape
+// as lib/climate/adapter.ts's ClimateSnapshot, tied to one already-
+// consented, already-completed scan (like ReportFinding/routineTips), not
+// ongoing location tracking. Deliberately stores only what the weather WAS,
+// never WHERE: no latitude/longitude/city/place-name field exists here or
+// anywhere else in this schema, and none should be added — the app's
+// per-scan geolocation coordinates are intentionally transient (see
+// app/api/scan/analyze/route.ts's parseScanCoordinates) and this model must
+// not become a backdoor for persisting them.
+model ClimateReading {
+  id              String   @id @default(cuid())
+  reportId        String   @unique
+  temperatureC    Float
+  humidityPercent Float
+  uvIndex         Float
+  createdAt       DateTime @default(now())
+
+  report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
 }
 
 // Follow-up chat about one report (see lib/ai/gemini-adapter.ts's

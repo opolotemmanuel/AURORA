@@ -6,6 +6,7 @@
 import type { ComponentType } from "react"
 
 import { AnalysisVisualization } from "@/components/report/sections/analysis-visualization"
+import { ClimateConditions } from "@/components/report/sections/climate-conditions"
 import { ConfidenceDonut } from "@/components/report/sections/confidence-donut"
 import { CoverHeader } from "@/components/report/sections/cover-header"
 import { Disclaimer } from "@/components/report/sections/disclaimer"
@@ -76,6 +77,13 @@ export const REPORT_SECTIONS: ReportSectionDefinition[] = [
     title: "Recommended AURA Products",
     component: RecommendedProducts,
     isEnabled: () => true,
+    fullWidth: true,
+  },
+  {
+    id: "climate-conditions",
+    title: "Climate Conditions",
+    component: ClimateConditions,
+    isEnabled: (vm) => vm.climate !== null,
     fullWidth: true,
   },
   {

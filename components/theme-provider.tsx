@@ -3,6 +3,19 @@
 // Wraps next-themes with this app's defaults (class-based dark mode,
 // system preference) and adds a global "d" keyboard shortcut to toggle
 // theme — wired in once here at the root layout rather than per-page.
+//
+// KNOWN DEV-ONLY WARNING: "Encountered a script tag while rendering React
+// component." React 19 warns on any <script> element it must construct
+// client-side without a recognized `type` (data-block) attribute.
+// next-themes injects its pre-hydration flash-prevention script this way
+// (no `type` set) — a known React 19 incompatibility, unfixed upstream
+// (next-themes unmaintained since March 2025; see
+// https://github.com/pacocoursey/next-themes/issues/387 and
+// https://github.com/shadcn-ui/ui/issues/10104). No functional impact: the
+// script still runs correctly from the server-rendered HTML before
+// hydration — theme flash prevention and switching both work normally in
+// dev and production. Safe to ignore; do not "fix" by removing
+// suppressHydrationWarning (app/layout.tsx) or altering the provider setup.
 import * as React from "react"
 import { ThemeProvider as NextThemesProvider, useTheme } from "next-themes"
 

@@ -3,6 +3,7 @@
 // components/layouts/dashboard-sidebar.tsx's ADMINISTRATION_SECTION comment for
 // why these are two separate routes). Self-service only, scoped to the
 // signed-in user's own row via getSession(), same pattern as /profile.
+import Link from "next/link"
 import { redirect } from "next/navigation"
 import { IconCloud, IconSettings, IconUserCircle } from "@tabler/icons-react"
 
@@ -10,9 +11,20 @@ import { ManageYourDataCard } from "@/components/account/manage-your-data-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getSession } from "@/lib/auth/session"
-import { findReportOwner } from "@/lib/backend/report-store"
+import { findReportOwner, listReportsForUser } from "@/lib/backend/report-store"
 
 export const dynamic = "force-dynamic"
+
+// Climate is deliberately transient — one weather READING per report, tied
+// to that scan, never an ongoing saved location (see prisma/schema.prisma's
+// ClimateReading doc comment). This tab has no "current" climate to show
+// outside an active scan, so it looks backward for the most recent report
+// that happened to have one — not just the single latest report overall,
+// since a fetch failure on the newest scan shouldn't hide real climate data
+// from an earlier one. 20 is a generous-but-bounded window: enough to find
+// a climate-enabled report for any reasonably active user without an
+// unbounded query.
+const CLIMATE_LOOKBACK_REPORT_COUNT = 20
 
 export default async function AccountSettingsPage() {
   const session = await getSession()
@@ -25,6 +37,8 @@ export default async function AccountSettingsPage() {
   }
 
   const profile = await findReportOwner(session.user.id)
+  const recentReports = await listReportsForUser(session.user.id, CLIMATE_LOOKBACK_REPORT_COUNT)
+  const latestClimateReport = recentReports.find((report) => report.climate) ?? null
 
   return (
     <div className="max-w-2xl space-y-8">
@@ -67,16 +81,46 @@ export default async function AccountSettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Climate-based recommendations</CardTitle>
-              <CardDescription>Coming soon</CardDescription>
+              <CardDescription>How local weather shapes your scan results</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-3 rounded-lg border border-border bg-muted p-4">
-                <IconCloud className="size-5 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  Climate-based recommendations are coming soon — this is a planned Phase 2 feature and isn&apos;t
-                  built yet.
-                </p>
-              </div>
+            <CardContent className="space-y-4">
+              <p className="text-sm leading-6 text-muted-foreground">
+                Each time you take a scan, Aura asks for your location for that scan only — it&apos;s never saved as
+                an ongoing preference. It&apos;s used once to fetch live local weather (temperature, humidity, UV
+                index), which factors into that scan&apos;s product recommendations and its Comfort Score. Only the
+                resulting weather reading is kept, tied to that one report — your location itself is never stored.
+              </p>
+              {latestClimateReport?.climate ? (
+                <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted p-4">
+                  <div className="flex items-center gap-3">
+                    <IconCloud className="size-5 shrink-0 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        Your last scan factored in {Math.round(latestClimateReport.climate.temperatureC)}°C,{" "}
+                        {Math.round(latestClimateReport.climate.humidityPercent)}% humidity, UV index{" "}
+                        {Math.round(latestClimateReport.climate.uvIndex)}
+                      </p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {formatDate(latestClimateReport.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                  <Link
+                    href={`/reports/${latestClimateReport.id}`}
+                    className="shrink-0 text-sm font-medium text-primary hover:underline"
+                  >
+                    View full report
+                  </Link>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 rounded-lg border border-border bg-muted p-4">
+                  <IconCloud className="size-5 shrink-0 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    No climate data yet — take a scan and share your location to see how local weather shapes your
+                    results.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -87,6 +131,10 @@ export default async function AccountSettingsPage() {
       </Tabs>
     </div>
   )
+}
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" })
 }
 
 function ProfileRow({

@@ -6,6 +6,27 @@
 const OPEN_METEO_FORECAST_ENDPOINT = "https://api.open-meteo.com/v1/forecast"
 const CLIMATE_FETCH_TIMEOUT_MS = 5000
 
+// Short-TTL, in-memory weather cache — keyed ONLY on the rounded coordinate
+// pair, never on userId/session, so it's shared across any user near that
+// location rather than tracking an individual. Rounding to 1 decimal place
+// (~11km) means nearby scans within the TTL window reuse one Open-Meteo call
+// instead of each making their own. Plain module-level Map (no new
+// package): resets on server restart/redeploy, which is an acceptable
+// first-pass limitation — this is a performance optimization, not a
+// correctness or privacy requirement, since nothing here is keyed to a
+// person and losing the cache just means the next request re-fetches.
+const CLIMATE_CACHE_TTL_MS = 15 * 60 * 1000
+const COORDINATE_ROUNDING_DECIMALS = 1
+
+const climateCache = new Map<string, { snapshot: ClimateSnapshot; expiresAt: number }>()
+
+function roundedCoordinateKey(latitude: number, longitude: number): string {
+  const factor = 10 ** COORDINATE_ROUNDING_DECIMALS
+  const roundedLat = Math.round(latitude * factor) / factor
+  const roundedLon = Math.round(longitude * factor) / factor
+  return `${roundedLat},${roundedLon}`
+}
+
 // A small, purpose-built shape for skin/climate-based recommendation logic
 // — not the raw Open-Meteo response. Temperature and humidity drive
 // dry/humid/cold/hot classification; UV index drives sun-protection
@@ -34,6 +55,12 @@ export async function getClimateSnapshot(
   latitude: number,
   longitude: number
 ): Promise<ClimateSnapshot | null> {
+  const cacheKey = roundedCoordinateKey(latitude, longitude)
+  const cached = climateCache.get(cacheKey)
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.snapshot
+  }
+
   const url = new URL(OPEN_METEO_FORECAST_ENDPOINT)
   url.searchParams.set("latitude", String(latitude))
   url.searchParams.set("longitude", String(longitude))
@@ -70,11 +97,13 @@ export async function getClimateSnapshot(
       return null
     }
 
-    return {
+    const snapshot: ClimateSnapshot = {
       temperatureC: current.temperature_2m,
       humidityPercent: current.relative_humidity_2m,
       uvIndex: current.uv_index,
     }
+    climateCache.set(cacheKey, { snapshot, expiresAt: Date.now() + CLIMATE_CACHE_TTL_MS })
+    return snapshot
   } catch (error) {
     console.info(
       "[Climate] Open-Meteo request failed",

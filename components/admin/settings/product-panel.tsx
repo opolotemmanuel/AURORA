@@ -2,10 +2,11 @@
 // as part of the tabbed console restructure. Same real PostgreSQL product
 // records and same server actions as before (create/update/activate/
 // deactivate/delete-or-archive); the table now also surfaces key
-// ingredients, cosmetic benefits, dosha tags, and created date — all real
-// Product fields that existed already but weren't shown in the table.
-// Deliberately no brand/skin type/price columns: those fields don't exist
-// on the Product model.
+// ingredients, cosmetic benefits, and created date — all real Product
+// fields that existed already but weren't shown in the table. Deliberately
+// no brand/skin type/price columns: those fields don't exist on the
+// Product model. Card layout (header card / summary card / table card)
+// mirrors the established pattern in components/report/reports-table.tsx.
 import Image from "next/image"
 
 import type {
@@ -16,10 +17,12 @@ import type {
   updateProductAction,
 } from "@/app/(dashboard)/settings/product-actions"
 import type { listProducts } from "@/lib/backend/product-service"
+import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   Table,
   TableBody,
@@ -41,10 +44,12 @@ type ProductActionHandlers = {
 }
 
 export function ProductPanel({ products, actions }: { products: ProductRow[]; actions: ProductActionHandlers }) {
+  const activeCount = products.filter((product) => product.active).length
+
   return (
-    <Card>
-      <CardHeader className="flex-row items-start justify-between gap-3 space-y-0 border-b border-border pb-(--card-spacing)">
-        <div>
+    <div className="space-y-5">
+      <Card>
+        <CardHeader>
           <p className="flex items-center gap-2 text-xs font-semibold tracking-widest text-primary uppercase">
             <IconBuildingStore className="size-4" />
             Product Management
@@ -54,17 +59,24 @@ export function ProductPanel({ products, actions }: { products: ProductRow[]; ac
             Real PostgreSQL product records used by the recommendation engine. If no active products exist,
             recommendations will return an honest empty result instead of hard-coded live data.
           </CardDescription>
-        </div>
-        <div className="shrink-0 rounded-lg border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
-          {products.filter((product) => product.active).length} active / {products.length} total
-        </div>
-      </CardHeader>
+        </CardHeader>
+        <CardContent>
+          <ProductForm title="Add Product" action={actions.create} submitLabel="Add product" />
+        </CardContent>
+      </Card>
 
-      <CardContent className="grid gap-6">
-        <ProductForm title="Add Product" action={actions.create} submitLabel="Add product" />
-        <ProductTable products={products} actions={actions} />
-      </CardContent>
-    </Card>
+      <Card size="sm">
+        <CardContent className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">{activeCount}</span>
+          <span>Active</span>
+          <span>·</span>
+          <span className="font-medium text-foreground">{products.length}</span>
+          <span>Total Products</span>
+        </CardContent>
+      </Card>
+
+      <ProductTable products={products} actions={actions} />
+    </div>
   )
 }
 
@@ -86,76 +98,97 @@ function ProductForm({
         <h3 className="text-sm font-semibold">{title}</h3>
       </div>
       {product ? <input type="hidden" name="id" value={product.databaseId} /> : null}
-      <div className="grid gap-3">
-        <Field label="Name" name="name" defaultValue={product?.name} required />
-        <Field label="Slug" name="slug" defaultValue={product?.id} placeholder="auto-generated from name if empty" />
-        <Field label="Category" name="category" defaultValue={product?.category} required />
-        <label className="grid gap-1 text-sm">
-          <span className="font-medium">Routine step</span>
-          <select
-            name="routineStep"
-            defaultValue={product?.routineStep ?? "treat"}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-          >
-            <option value="cleanse">Cleanse</option>
-            <option value="treat">Treat</option>
-            <option value="moisturize">Moisturize</option>
-            <option value="protect">Protect</option>
-          </select>
-        </label>
-        <label className="grid gap-1 text-sm">
-          <span className="font-medium">Short description</span>
-          <textarea
-            name="shortDescription"
-            defaultValue={product?.shortDescription}
-            required
-            rows={3}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-          />
-        </label>
-        <Field
-          label="Product image path"
-          name="imagePath"
-          defaultValue={product?.imagePath}
-          placeholder="/products/aurora-glow-serum.png"
-        />
-        <Field
-          label="Cosmetic benefits"
-          name="cosmeticBenefits"
-          defaultValue={product?.cosmeticBenefits.join(", ")}
-          placeholder="Hydration appearance, Radiance support"
-          required
-        />
-        <Field
-          label="Best for concerns"
-          name="bestFor"
-          defaultValue={product?.bestFor.join(", ")}
-          placeholder="hydration, radiance, texture"
-          required
-        />
-        <Field
-          label="Avoid if concerns"
-          name="avoidIf"
-          defaultValue={product?.avoidIf?.join(", ")}
-          placeholder="oilBalance"
-        />
-        <Field
-          label="Key ingredients"
-          name="keyIngredients"
-          defaultValue={product?.keyIngredients?.join(", ")}
-          placeholder="Niacinamide, Hyaluronic acid"
-        />
-        <Field
-          label="Official Aurora product URL"
-          name="officialUrl"
-          defaultValue={product?.officialUrl}
-          placeholder="https://aurora.example.com/products/glow-serum"
-        />
-        <Field label="Priority" name="priority" type="number" defaultValue={String(product?.priority ?? 50)} required />
-        <label className="flex items-center gap-2 text-sm">
-          <Checkbox name="active" defaultChecked={product?.active ?? true} />
-          Active in recommendation engine
-        </label>
+      <div className="space-y-6">
+        <div>
+          <h4 className="mb-3 font-heading text-sm font-semibold">Basic Info</h4>
+          <div className="grid gap-x-6 gap-y-4 md:grid-cols-2">
+            <Field label="Name" name="name" defaultValue={product?.name} required />
+            <Field label="Slug" name="slug" defaultValue={product?.id} placeholder="auto-generated from name if empty" />
+            <Field label="Category" name="category" defaultValue={product?.category} required />
+            <label className="grid gap-1 text-sm">
+              <span className="font-medium">Routine step</span>
+              <select
+                name="routineStep"
+                defaultValue={product?.routineStep ?? "treat"}
+                className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+              >
+                <option value="cleanse">Cleanse</option>
+                <option value="treat">Treat</option>
+                <option value="moisturize">Moisturize</option>
+                <option value="protect">Protect</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div className="border-t border-border pt-6">
+          <h4 className="mb-3 font-heading text-sm font-semibold">Description & Media</h4>
+          <div className="grid gap-x-6 gap-y-4 md:grid-cols-2">
+            <label className="grid gap-1 text-sm md:col-span-2">
+              <span className="font-medium">Short description</span>
+              <textarea
+                name="shortDescription"
+                defaultValue={product?.shortDescription}
+                required
+                rows={3}
+                className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+              />
+            </label>
+            <Field
+              label="Product image path"
+              name="imagePath"
+              defaultValue={product?.imagePath}
+              placeholder="/products/aurora-glow-serum.png"
+              className="md:col-span-2"
+            />
+            <Field
+              label="Official Aurora product URL"
+              name="officialUrl"
+              defaultValue={product?.officialUrl}
+              placeholder="https://aurora.example.com/products/glow-serum"
+              className="md:col-span-2"
+            />
+          </div>
+        </div>
+
+        <div className="border-t border-border pt-6">
+          <h4 className="mb-3 font-heading text-sm font-semibold">Recommendation Data</h4>
+          <div className="grid gap-x-6 gap-y-4 md:grid-cols-2">
+            <Field
+              label="Cosmetic benefits"
+              name="cosmeticBenefits"
+              defaultValue={product?.cosmeticBenefits.join(", ")}
+              placeholder="Hydration appearance, Radiance support"
+              required
+              className="md:col-span-2"
+            />
+            <Field
+              label="Best for concerns"
+              name="bestFor"
+              defaultValue={product?.bestFor.join(", ")}
+              placeholder="hydration, radiance, texture"
+              required
+            />
+            <Field
+              label="Avoid if concerns"
+              name="avoidIf"
+              defaultValue={product?.avoidIf?.join(", ")}
+              placeholder="oilBalance"
+            />
+            <Field
+              label="Key ingredients"
+              name="keyIngredients"
+              defaultValue={product?.keyIngredients?.join(", ")}
+              placeholder="Niacinamide, Hyaluronic acid"
+              className="md:col-span-2"
+            />
+            <Field label="Priority" name="priority" type="number" defaultValue={String(product?.priority ?? 50)} required />
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox name="active" defaultChecked={product?.active ?? true} />
+              Active in recommendation engine
+            </label>
+          </div>
+        </div>
       </div>
       <Button type="submit" className="mt-4">
         {submitLabel}
@@ -167,17 +200,19 @@ function ProductForm({
 function ProductTable({ products, actions }: { products: ProductRow[]; actions: ProductActionHandlers }) {
   if (!products.length) {
     return (
-      <div className="rounded-lg border border-border bg-muted p-4 text-sm text-muted-foreground">
-        No Aurora products exist in PostgreSQL yet. Add the first product to enable live recommendations.
-      </div>
+      <Card>
+        <CardContent className="text-sm text-muted-foreground">
+          No Aurora products exist in PostgreSQL yet. Add the first product to enable live recommendations.
+        </CardContent>
+      </Card>
     )
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-muted">
+    <Card className="overflow-hidden py-0">
       <div className="hidden overflow-x-auto lg:block">
-        <Table className="min-w-[1400px]">
-          <TableHeader className="sticky top-0 z-10 bg-card">
+        <Table className="min-w-[1300px]">
+          <TableHeader className="sticky top-0 z-10 bg-muted">
             <TableRow>
               <TableHead><Checkbox aria-label="Select all products" /></TableHead>
               <TableHead>Product</TableHead>
@@ -195,7 +230,7 @@ function ProductTable({ products, actions }: { products: ProductRow[]; actions: 
           </TableHeader>
           <TableBody>
             {products.map((product) => (
-              <TableRow key={product.databaseId} className="bg-background">
+              <TableRow key={product.databaseId}>
                 <TableCell><Checkbox aria-label={`Select ${product.name}`} /></TableCell>
                 <TableCell className="whitespace-normal">
                   <div className="flex min-w-72 gap-3">
@@ -255,7 +290,7 @@ function ProductTable({ products, actions }: { products: ProductRow[]; actions: 
           </article>
         ))}
       </div>
-    </div>
+    </Card>
   )
 }
 
@@ -294,6 +329,7 @@ function Field({
   placeholder,
   required,
   type = "text",
+  className,
 }: {
   label: string
   name: string
@@ -301,9 +337,10 @@ function Field({
   placeholder?: string
   required?: boolean
   type?: string
+  className?: string
 }) {
   return (
-    <label className="grid gap-1 text-sm">
+    <label className={cn("grid gap-1 text-sm", className)}>
       <span className="font-medium">{label}</span>
       <input
         name={name}
@@ -329,18 +366,36 @@ function ProductImage({ imagePath, name }: { imagePath?: string; name: string })
   )
 }
 
+// Shows the first 2 tags as chips; anything beyond that collapses into a
+// "+N" chip whose tooltip reveals the full list, rather than letting a
+// long ingredient/benefit list wrap the row awkwardly.
+const VISIBLE_TAG_COUNT = 2
+
 function TagList({ values }: { values?: string[] }) {
   if (!values || values.length === 0) {
     return <span className="text-xs text-muted-foreground">None recorded</span>
   }
 
+  const visible = values.slice(0, VISIBLE_TAG_COUNT)
+  const overflow = values.slice(VISIBLE_TAG_COUNT)
+
   return (
-    <div className="flex max-w-64 flex-wrap gap-1">
-      {values.map((value) => (
+    <div className="flex max-w-56 flex-wrap gap-1">
+      {visible.map((value) => (
         <span key={value} className="rounded-md border border-border bg-background px-2 py-0.5 text-xs text-muted-foreground">
           {value}
         </span>
       ))}
+      {overflow.length > 0 ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="cursor-default rounded-md border border-border bg-background px-2 py-0.5 text-xs font-medium text-foreground">
+              +{overflow.length}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>{overflow.join(", ")}</TooltipContent>
+        </Tooltip>
+      ) : null}
     </div>
   )
 }

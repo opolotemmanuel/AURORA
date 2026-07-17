@@ -3,6 +3,7 @@
 // about what's missing and why, per the tabbed console's no-fabrication rule.
 import type { ComponentType } from "react"
 
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 
 export function NotAvailablePanel({
@@ -22,7 +23,9 @@ export function NotAvailablePanel({
         </div>
         <p className="text-sm font-semibold">{title}</p>
         <p className="max-w-md text-sm leading-6 text-muted-foreground">{description}</p>
-        <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Not yet available</p>
+        <Badge variant="secondary" className="mt-1">
+          Not yet available
+        </Badge>
       </CardContent>
     </Card>
   )

@@ -5,15 +5,16 @@
 // whatever's currently filtered. Every row already exists because an admin
 // action succeeded (saveAuditLog is only ever called after a mutation
 // completes — see app/(dashboard)/settings/product-actions.ts and friends),
-// so "Result: Success" is an honest label, not an invented field.
+// so "Result: Success" is an honest label, not an invented field. Toolbar
+// and table card layout mirror the established pattern in
+// components/report/reports-table.tsx.
 import { useMemo, useState } from "react"
-import { IconDownload, IconHistory } from "@tabler/icons-react"
+import { IconDownload, IconHistory, IconSearch } from "@tabler/icons-react"
 
 import type { AuditLogEntry } from "@/lib/backend/types"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import {
   Table,
   TableBody,
@@ -49,9 +50,9 @@ export function AuditLogPanel({ entries }: { entries: AuditLogEntry[] }) {
   }, [entries, search, actionFilter])
 
   return (
-    <Card>
-      <CardHeader className="flex-row items-start justify-between gap-3 space-y-0 border-b border-border pb-(--card-spacing) sm:flex-row">
-        <div>
+    <div className="space-y-5">
+      <Card>
+        <CardHeader>
           <p className="flex items-center gap-2 text-xs font-semibold tracking-widest text-primary uppercase">
             <IconHistory className="size-4" />
             Audit Logs
@@ -59,65 +60,77 @@ export function AuditLogPanel({ entries }: { entries: AuditLogEntry[] }) {
           <CardTitle className="mt-2">Admin action history</CardTitle>
           <CardDescription className="mt-2 max-w-3xl leading-6">
             Real AuditLog rows from PostgreSQL, newest first (most recent 500). Every row here is written only
-            after an action already succeeded, so Result always reads Success — there is no failure-logging path
-            yet.
+            after an action already succeeded, so Result always reads Success — there is no failure-logging
+            path yet.
           </CardDescription>
-        </div>
-        <Button type="button" variant="outline" onClick={() => downloadCsv(filtered)} disabled={filtered.length === 0}>
-          <IconDownload className="size-4" />
-          Export CSV
-        </Button>
-      </CardHeader>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
+            <label className="relative">
+              <IconSearch className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search by user or action"
+                className="h-10 w-full rounded-md border border-input bg-background pr-3 pl-9 text-sm"
+              />
+            </label>
+            <select
+              value={actionFilter}
+              onChange={(event) => setActionFilter(event.target.value)}
+              className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="all">All actions</option>
+              {actionOptions.map((action) => (
+                <option key={action} value={action}>
+                  {action}
+                </option>
+              ))}
+            </select>
+            <Button type="button" variant="outline" onClick={() => downloadCsv(filtered)} disabled={filtered.length === 0}>
+              <IconDownload className="size-4" />
+              Export CSV
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-      <CardContent className="grid gap-4">
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-          <Input
-            placeholder="Search by user or action..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          <select
-            value={actionFilter}
-            onChange={(event) => setActionFilter(event.target.value)}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-          >
-            <option value="all">All actions</option>
-            {actionOptions.map((action) => (
-              <option key={action} value={action}>
-                {action}
-              </option>
-            ))}
-          </select>
-        </div>
+      <Card size="sm">
+        <CardContent className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">{filtered.length}</span>
+          <span>of</span>
+          <span className="font-medium text-foreground">{entries.length}</span>
+          <span>events shown</span>
+        </CardContent>
+      </Card>
 
-        <AuditTable entries={filtered} total={entries.length} />
-      </CardContent>
-    </Card>
+      <AuditTable entries={filtered} total={entries.length} />
+    </div>
   )
 }
 
 function AuditTable({ entries, total }: { entries: AuditLogEntry[]; total: number }) {
   if (total === 0) {
     return (
-      <div className="rounded-lg border border-border bg-muted p-4 text-sm text-muted-foreground">
-        No audit events have been recorded yet.
-      </div>
+      <Card>
+        <CardContent className="text-sm text-muted-foreground">No audit events have been recorded yet.</CardContent>
+      </Card>
     )
   }
 
   if (entries.length === 0) {
     return (
-      <div className="rounded-lg border border-border bg-muted p-4 text-sm text-muted-foreground">
-        No audit events match this search or filter.
-      </div>
+      <Card>
+        <CardContent className="text-sm text-muted-foreground">No audit events match this search or filter.</CardContent>
+      </Card>
     )
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-border bg-muted">
+    <Card className="overflow-hidden py-0">
       <div className="overflow-x-auto">
         <Table className="min-w-[900px]">
-          <TableHeader className="sticky top-0 z-10 bg-card">
+          <TableHeader className="sticky top-0 z-10 bg-muted">
             <TableRow>
               <TableHead>Time</TableHead>
               <TableHead>User</TableHead>
@@ -128,20 +141,22 @@ function AuditTable({ entries, total }: { entries: AuditLogEntry[]; total: numbe
           </TableHeader>
           <TableBody>
             {entries.map((entry) => (
-              <TableRow key={entry.id} className="bg-background">
+              <TableRow key={entry.id}>
                 <TableCell className="whitespace-nowrap">{new Date(entry.createdAt).toLocaleString()}</TableCell>
                 <TableCell>{describeActor(entry)}</TableCell>
                 <TableCell>{entry.action}</TableCell>
                 <TableCell className="capitalize">{entry.targetType}</TableCell>
                 <TableCell>
-                  <Badge variant="default">Success</Badge>
+                  <Badge variant="outline" className="border-success/30 bg-success/10 text-success">
+                    Success
+                  </Badge>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
-    </div>
+    </Card>
   )
 }
 

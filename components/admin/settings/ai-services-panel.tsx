@@ -5,8 +5,8 @@
 // that makes one real Gemini call via app/(dashboard)/settings/ai-actions.ts.
 // Model/key are shown read-only: they're env-driven, not runtime-editable,
 // so there is no fake "save" control for them here.
-import { useState, useTransition } from "react"
-import { IconCircleCheck, IconCircleX, IconSparkles } from "@tabler/icons-react"
+import { useState, useTransition, type ComponentType } from "react"
+import { IconChartBar, IconCircleCheck, IconCircleX, IconPlugConnected, IconSparkles } from "@tabler/icons-react"
 
 import { testGeminiConnectivityAction, type TestGeminiResult } from "@/app/(dashboard)/settings/ai-actions"
 import type { getAiServiceStatus } from "@/lib/backend/ai-services"
@@ -29,79 +29,107 @@ export function AiServicesPanel({ status }: { status: AiServiceStatus }) {
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <p className="flex items-center gap-2 text-xs font-semibold tracking-widest text-primary uppercase">
-            <IconSparkles className="size-4" />
-            AI Services
-          </p>
-          <CardTitle className="mt-2">Gemini configuration</CardTitle>
-          <CardDescription className="mt-2 max-w-3xl leading-6">
-            Read-only — these values come from server environment configuration, not an editable form, since
-            changing them requires a real deploy, not a database row.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3">
-          <InfoRow
-            label="Gemini API key"
-            value={status.apiKeyConfigured ? "Configured" : "Missing configuration"}
-            detail={
-              status.apiKeyConfigured
-                ? "Key is present server-side only. The key value is never displayed."
-                : "GEMINI_API_KEY is not available to the server process."
-            }
-          />
-          <InfoRow label="Model" value={status.model} detail="GEMINI_MODEL env override, or the adapter's default." />
-          <InfoRow
-            label="Recorded calls"
-            value={String(status.totalEvents)}
-            detail="Real scan-analysis AiProviderEvent rows saved in PostgreSQL."
-          />
-          <InfoRow
-            label="Success rate"
-            value={status.successRatePercent !== undefined ? `${status.successRatePercent}%` : "No data yet"}
-            detail={`${status.successCount} of ${status.totalEvents} recorded calls succeeded.`}
-          />
-          <InfoRow
-            label="Average response time"
-            value={status.averageDurationMs !== undefined ? `${status.averageDurationMs}ms` : "No data yet"}
-            detail="Averaged across recorded calls that reported a duration."
-          />
-        </CardContent>
-      </Card>
+    <div className="space-y-8">
+      <section className="space-y-3">
+        <SectionLabel icon={IconSparkles} label="AI Services" />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Test AI connectivity</CardTitle>
-          <CardDescription className="mt-2 max-w-3xl leading-6">
-            Sends one real, lightweight text-only message to Gemini and reports whether it succeeded. This uses
-            real API quota each time you click it.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <Button type="button" onClick={runTest} disabled={isPending} className="w-fit">
-            {isPending ? "Testing..." : "Test AI"}
-          </Button>
+        <Card>
+          <CardHeader>
+            <CardTitle>Configuration</CardTitle>
+            <CardDescription className="mt-2 max-w-3xl leading-6">
+              Read-only — these values come from server environment configuration, not an editable form, since
+              changing them requires a real deploy, not a database row.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            <InfoRow
+              label="Gemini API key"
+              value={status.apiKeyConfigured ? "Configured" : "Missing configuration"}
+              detail={
+                status.apiKeyConfigured
+                  ? "Key is present server-side only. The key value is never displayed."
+                  : "GEMINI_API_KEY is not available to the server process."
+              }
+            />
+            <InfoRow label="Model" value={status.model} detail="GEMINI_MODEL env override, or the adapter's default." />
+          </CardContent>
+        </Card>
+      </section>
 
-          {result ? (
-            <div className="flex items-start gap-3 rounded-lg border border-border bg-muted p-4">
-              {result.success ? (
-                <IconCircleCheck className="mt-0.5 size-5 shrink-0 text-primary" />
-              ) : (
-                <IconCircleX className="mt-0.5 size-5 shrink-0 text-destructive" />
-              )}
-              <div>
-                <p className="text-sm font-medium">{result.success ? "Success" : "Failed"}</p>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  {result.message} ({result.durationMs}ms)
-                </p>
+      <section className="space-y-3">
+        <SectionLabel icon={IconChartBar} label="Live Reliability Stats" />
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Scan-analysis call history</CardTitle>
+            <CardDescription className="mt-2 max-w-3xl leading-6">
+              Derived from real AiProviderEvent rows recorded during actual skin-scan analysis calls.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-3">
+            <InfoRow
+              label="Recorded calls"
+              value={String(status.totalEvents)}
+              detail="Real scan-analysis AiProviderEvent rows saved in PostgreSQL."
+            />
+            <InfoRow
+              label="Success rate"
+              value={status.successRatePercent !== undefined ? `${status.successRatePercent}%` : "No data yet"}
+              detail={`${status.successCount} of ${status.totalEvents} recorded calls succeeded.`}
+            />
+            <InfoRow
+              label="Average response time"
+              value={status.averageDurationMs !== undefined ? `${status.averageDurationMs}ms` : "No data yet"}
+              detail="Averaged across recorded calls that reported a duration."
+            />
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="space-y-3">
+        <SectionLabel icon={IconPlugConnected} label="Connectivity Test" />
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Test AI connectivity</CardTitle>
+            <CardDescription className="mt-2 max-w-3xl leading-6">
+              Sends one real, lightweight text-only message to Gemini and reports whether it succeeded. This
+              uses real API quota each time you click it.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <Button type="button" onClick={runTest} disabled={isPending} className="w-fit">
+              {isPending ? "Testing..." : "Test AI"}
+            </Button>
+
+            {result ? (
+              <div className="flex items-start gap-3 rounded-lg border border-border bg-muted p-4">
+                {result.success ? (
+                  <IconCircleCheck className="mt-0.5 size-5 shrink-0 text-success" />
+                ) : (
+                  <IconCircleX className="mt-0.5 size-5 shrink-0 text-destructive" />
+                )}
+                <div>
+                  <p className="text-sm font-medium">{result.success ? "Success" : "Failed"}</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    {result.message} ({result.durationMs}ms)
+                  </p>
+                </div>
               </div>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
+            ) : null}
+          </CardContent>
+        </Card>
+      </section>
     </div>
+  )
+}
+
+function SectionLabel({ icon: Icon, label }: { icon: ComponentType<{ className?: string }>; label: string }) {
+  return (
+    <p className="flex items-center gap-2 text-xs font-semibold tracking-widest text-primary uppercase">
+      <Icon className="size-4" />
+      {label}
+    </p>
   )
 }
 

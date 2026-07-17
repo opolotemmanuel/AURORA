@@ -56,6 +56,12 @@ export async function listProducts() {
   }))
 }
 
+// Real active-product count for the analytics "Platform health" strip — a
+// single count aggregate rather than listProducts()'s full fetch-and-filter.
+export async function countActiveProducts() {
+  return prisma.product.count({ where: { active: true } })
+}
+
 export async function listActiveRecommendationProducts() {
   const products = await prisma.product.findMany({
     where: { active: true },

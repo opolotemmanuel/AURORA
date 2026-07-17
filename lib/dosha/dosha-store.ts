@@ -20,6 +20,13 @@ export async function getDoshaProfile(userId: string): Promise<StoredDoshaProfil
   return profile ? mapProfile(profile) : null
 }
 
+// Real count of users who have completed the dosha questionnaire — backs
+// the analytics "Feature adoption" stat. One row per user (userId is
+// @unique on DoshaProfile), so this count is already a user count.
+export async function countDoshaProfiles() {
+  return prisma.doshaProfile.count()
+}
+
 // Upsert, not create — retaking the questionnaire updates the existing row
 // (one profile per user, enforced by DoshaProfile.userId's @unique
 // constraint) rather than accumulating duplicates.

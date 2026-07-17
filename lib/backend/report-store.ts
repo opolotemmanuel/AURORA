@@ -355,6 +355,73 @@ export async function listAiProviderEvents() {
   return events.map(mapAiProviderEvent)
 }
 
+// Real day-bucketed scan counts for the analytics "Scans over time" chart —
+// one grouped aggregate query in Postgres, not every Scan row loaded into JS.
+export async function getScanCountsByDay(since: Date) {
+  return prisma.$queryRaw<{ day: Date; count: number }[]>`
+    SELECT date_trunc('day', "createdAt") AS day, COUNT(*)::int AS count
+    FROM "Scan"
+    WHERE "createdAt" >= ${since}
+    GROUP BY day
+    ORDER BY day ASC
+  `
+}
+
+// Total ReportFinding rows — the denominator for the "Most common findings"
+// list's real percentages (see getTopReportFindings below).
+export async function countReportFindings() {
+  return prisma.reportFinding.count()
+}
+
+// Groups by (label, band) rather than label alone, since the same cosmetic
+// label can carry different bands (e.g. "Visible texture" / mild vs
+// balanced) and those are meaningfully different findings for this list.
+// The number of distinct (label, band) pairs is small and bounded by the
+// findings taxonomy, so sorting the grouped rows in JS is cheap — this
+// never loads individual ReportFinding rows.
+export async function getTopReportFindings(limit: number) {
+  const grouped = await prisma.reportFinding.groupBy({
+    by: ["label", "band"],
+    _count: { _all: true },
+  })
+
+  return grouped
+    .map((row) => ({ label: row.label, band: row.band, count: row._count._all }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit)
+}
+
+// Groups by productName (not productId) since anonymous/legacy recommendation
+// rows can have a null productId but always carry the name snapshot — see
+// mapRecommendation's productSnapshot fallback above for the same reasoning.
+export async function getTopRecommendedProducts(limit: number) {
+  const grouped = await prisma.recommendation.groupBy({
+    by: ["productName"],
+    _count: { _all: true },
+  })
+
+  return grouped
+    .map((row) => ({ name: row.productName, count: row._count._all }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit)
+}
+
+// Backs the "repeat usage" feature-adoption stat — real count of users with
+// more than one Scan row, computed entirely in Postgres (GROUP BY/HAVING)
+// rather than pulling every scan into memory to tally per-user counts.
+export async function countUsersWithRepeatScans() {
+  const rows = await prisma.$queryRaw<{ count: number }[]>`
+    SELECT COUNT(*)::int AS count FROM (
+      SELECT "userId" FROM "Scan"
+      WHERE "userId" IS NOT NULL
+      GROUP BY "userId"
+      HAVING COUNT(*) > 1
+    ) AS repeat_scan_users
+  `
+
+  return rows[0]?.count ?? 0
+}
+
 // Not a Prisma default (`cuid()`/`uuid()`) because scan-service needs the
 // scan and report IDs before either row is created, to cross-link them in
 // the same nested write above. Timestamp + random suffix keeps it roughly

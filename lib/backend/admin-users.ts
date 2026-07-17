@@ -34,6 +34,28 @@ export async function countUsers() {
   return prisma.user.count()
 }
 
+// Real day-bucketed signup counts for the analytics "User growth" chart —
+// same grouped-aggregate approach as report-store.ts's getScanCountsByDay.
+export async function getUserSignupsByDay(since: Date) {
+  return prisma.$queryRaw<{ day: Date; count: number }[]>`
+    SELECT date_trunc('day', "createdAt") AS day, COUNT(*)::int AS count
+    FROM "User"
+    WHERE "createdAt" >= ${since}
+    GROUP BY day
+    ORDER BY day ASC
+  `
+}
+
+// Real per-role user counts for the analytics "Role breakdown" list.
+export async function getUserRoleBreakdown() {
+  const grouped = await prisma.user.groupBy({
+    by: ["role"],
+    _count: { _all: true },
+  })
+
+  return grouped.map((row) => ({ role: row.role, count: row._count._all }))
+}
+
 export type DeleteUserResult =
   | { success: true; deletedUser: { id: string; name?: string; email: string; role: UserRole } }
   | { success: false; error: string }

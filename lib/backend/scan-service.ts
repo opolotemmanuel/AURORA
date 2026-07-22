@@ -19,11 +19,13 @@ import type {
 } from "@/lib/backend/types"
 import type { ClimateSnapshot } from "@/lib/climate/adapter"
 import { getDoshaProfile, type StoredDoshaProfile } from "@/lib/dosha/dosha-store"
+import { filterProductsByAllergies } from "@/lib/products/filter-recommendations-by-allergies"
 import {
   RECOMMENDATION_DISCLAIMER,
   recommendAuroraProducts,
 } from "@/lib/recommendations/recommendation-engine"
 import type { CosmeticAnalysisInput, SkinConcern } from "@/lib/recommendations/types"
+import { getUserAllergies } from "@/lib/user/allergies-store"
 
 // The Gemini adapter returns free-text finding labels; the recommendation
 // engine only understands a fixed set of SkinConcern keys. This bridges the
@@ -68,11 +70,21 @@ export async function createScanReport(input: {
   // bonus doesn't fire and scoring is identical to before this feature
   // existed. Anonymous scans (no userId) never look this up at all.
   const doshaProfile = input.userId ? await getDoshaProfile(input.userId) : null
+  // Optional and additive, same as doshaProfile above: a signed-in user with
+  // no declared allergies (the common case) gets `allergies: null`, so
+  // filterProductsByAllergies below is a no-op and every active product
+  // stays eligible — identical to before this feature existed. Anonymous
+  // scans (no userId) never look this up at all.
+  const userAllergies = input.userId ? await getUserAllergies(input.userId) : null
   // Recommendations are computed here (not by the AI adapter) so the
   // product catalog can change independently of what the model returns.
   const recommendationInput = buildRecommendationInput(input.analysis, input.climate, doshaProfile)
   const products = await listActiveRecommendationProducts()
-  const recommendations = recommendAuroraProducts(recommendationInput, 3, products)
+  // Safety exclusion, not a scoring penalty — applied before scoring so a
+  // product conflicting with a declared allergy can never be recommended,
+  // regardless of how well it would otherwise match.
+  const eligibleProducts = filterProductsByAllergies(products, userAllergies)
+  const recommendations = recommendAuroraProducts(recommendationInput, 3, eligibleProducts)
   const status: ScanStatus = input.analysis.source === "fallback" ? "fallback" : "analyzed"
 
   const scan = {

@@ -4,14 +4,27 @@
 // path); it doesn't introduce any new policy. The delete/data actions reuse
 // ManageYourDataCard so this page and /account's "Your data" tab never
 // drift apart on what "manage your data" actually offers.
+import { redirect } from "next/navigation"
 import { IconLock, IconPhoto, IconShieldCheck } from "@tabler/icons-react"
 
 import { ManageYourDataCard } from "@/components/account/manage-your-data-card"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { getSession } from "@/lib/auth/session"
+import { getYourDataSummary } from "@/lib/backend/account-data"
 
 export const dynamic = "force-dynamic"
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const session = await getSession()
+  if (!session) {
+    // (dashboard)/layout.tsx already redirects when there's no session, but
+    // that's a separate, independent getSession() call — see the identical
+    // note in app/(dashboard)/account/page.tsx.
+    redirect("/login")
+  }
+
+  const summary = await getYourDataSummary(session.user.id)
+
   return (
     <div className="max-w-2xl space-y-8">
       <section className="space-y-2">
@@ -46,7 +59,7 @@ export default function PrivacyPage() {
         </CardContent>
       </Card>
 
-      <ManageYourDataCard />
+      <ManageYourDataCard email={session.user.email} summary={summary} />
     </div>
   )
 }

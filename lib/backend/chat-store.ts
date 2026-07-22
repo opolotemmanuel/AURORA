@@ -24,6 +24,14 @@ export async function listReportChatMessages(reportId: string): Promise<ChatMess
   return messages.map(mapMessage)
 }
 
+// Real per-user message count for the /account "Your data" summary — one
+// half of "total chat messages across both chat features", combined with
+// lib/backend/skin-advice-store.ts's countSkinAdviceMessagesForUser by the
+// caller (lib/backend/account-data.ts).
+export async function countReportChatMessagesForUser(userId: string) {
+  return prisma.reportChatMessage.count({ where: { userId } })
+}
+
 export async function saveReportChatMessage(input: {
   reportId: string
   userId: string

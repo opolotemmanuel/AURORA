@@ -312,6 +312,31 @@ export async function listAuditLogs() {
   return auditLogs.map(mapAuditLog)
 }
 
+// Real per-user counts for the /account "Your data" summary — scoped to
+// one signed-in user's own rows, never a cross-user query.
+export async function countScansForUser(userId: string) {
+  return prisma.scan.count({ where: { userId } })
+}
+
+export async function countReportsForUser(userId: string) {
+  return prisma.report.count({ where: { userId } })
+}
+
+// Deletes a user's Scan rows and everything that cascades from them
+// (Report, ReportFinding, Recommendation, ReportChatMessage,
+// ReportDownload, AiProviderEvent) — Scan.user and Report.user are
+// SetNull, not Cascade (see prisma/schema.prisma), so these rows would
+// otherwise survive as orphans once the User row itself is gone. Mirrors
+// the first step of admin-users.ts's deleteUserAccount transaction; this
+// version backs the self-service path instead — see lib/auth/auth.ts's
+// user.deleteUser.beforeDelete hook, which runs this before better-auth
+// deletes the User row (which then cascades everything else: AuthAccount,
+// AuthSession, SkinAdviceMessage, DoshaProfile, any remaining
+// ReportChatMessage).
+export async function deleteAllScansForUser(userId: string) {
+  await prisma.scan.deleteMany({ where: { userId } })
+}
+
 // Backs the Overview tab's "today's scans" figure — real-time count, not a
 // cached/derived value, using the same local-midnight boundary convention
 // as lib/backend/skin-advice-store.ts's countSkinAdviceMessagesThisMonth.

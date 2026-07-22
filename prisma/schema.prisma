@@ -80,6 +80,14 @@ model User {
   updatedAt     DateTime  @updatedAt
   lastLoginAt   DateTime?
 
+  // Free-text, comma/semicolon-separated allergen list the user declares
+  // themselves (e.g. "fragrance, lanolin") — parsed by
+  // lib/products/match-allergies.ts's parseAllergyTokens. Optional and
+  // additive: null means no declared allergies, so
+  // filterProductsByAllergies leaves recommendations completely unchanged,
+  // same "absent means inert" pattern as DoshaProfile/climate.
+  allergies String?
+
   scans              Scan[]
   reports            Report[]
   downloads          ReportDownload[]

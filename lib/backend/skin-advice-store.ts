@@ -65,6 +65,13 @@ export async function countSkinAdviceMessagesThisMonth(
   })
 }
 
+// All-time per-user message count for the /account "Your data" summary —
+// distinct from countSkinAdviceMessagesThisMonth above, which is scoped to
+// the current calendar month for the usage-limit indicator.
+export async function countSkinAdviceMessagesForUser(userId: string): Promise<number> {
+  return prisma.skinAdviceMessage.count({ where: { userId } })
+}
+
 function mapMessage(message: {
   id: string
   userId: string

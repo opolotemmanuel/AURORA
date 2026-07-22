@@ -21,6 +21,7 @@ import { nextCookies } from "better-auth/next-js"
 
 import { prisma } from "@/lib/db"
 import { sendPasswordResetEmail, sendVerificationEmail } from "@/lib/email/adapter"
+import { deleteAllScansForUser, saveAuditLog } from "@/lib/backend/report-store"
 
 // Apple is only registered if all three env vars are present — better-auth
 // treats every socialProviders key as optional, so omitting `apple` entirely
@@ -51,6 +52,36 @@ export const auth = betterAuth({
         type: "date",
         input: false,
         required: false,
+      },
+    },
+    // Powers the real self-service "Delete your account" flow on /account
+    // (components/account/delete-account-section.tsx) — disabled by
+    // default in better-auth, so this has to be turned on explicitly.
+    // Requires the client to pass `password`, which the /delete-user
+    // endpoint verifies server-side against the real AuthAccount hash
+    // before anything runs (see node_modules/better-auth's
+    // dist/api/routes/update-user.mjs) — this app never calls
+    // authClient.deleteUser() without a password, so the request is always
+    // independently re-verified, never trusted from client state alone.
+    deleteUser: {
+      enabled: true,
+      // Scan/Report rows use `onDelete: SetNull` on their User relation
+      // (not Cascade — see prisma/schema.prisma's comments), so without
+      // this they'd survive as orphans once the User row is gone.
+      // deleteAllScansForUser cascades Report/ReportFinding/Recommendation/
+      // ReportChatMessage/ReportDownload/AiProviderEvent away first; the
+      // User row's own Cascade relations (AuthAccount, AuthSession,
+      // SkinAdviceMessage, DoshaProfile, any remaining ReportChatMessage)
+      // are handled automatically right after this hook returns, by
+      // better-auth's own internalAdapter.deleteUser call.
+      beforeDelete: async (user) => {
+        await deleteAllScansForUser(user.id)
+        await saveAuditLog({
+          actorId: user.id,
+          action: `Deleted own account (${user.email})`,
+          targetType: "admin",
+          targetId: user.id,
+        })
       },
     },
   },

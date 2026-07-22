@@ -4,7 +4,7 @@
 // scoped by session.user.id — never any other user's row.
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { IconCalendar, IconLock, IconMail, IconShieldCheck, IconUserCircle } from "@tabler/icons-react"
+import { IconCalendar, IconLock, IconMail, IconUserCircle } from "@tabler/icons-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -63,34 +63,26 @@ export default async function ProfilePage() {
       <Card>
         <CardHeader>
           <CardTitle>Account actions</CardTitle>
-          <CardDescription>Manage your password and security</CardDescription>
+          <CardDescription>Password and account deletion live in Account Settings</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent>
+          {/* In-session password change and real account deletion both live
+              on /account now (components/account/change-password-form.tsx,
+              components/account/delete-account-section.tsx) — pointing here
+              instead of duplicating either form keeps password/deletion
+              logic in exactly one place. */}
           <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted p-4">
             <div className="flex items-center gap-3">
               <IconLock className="size-5 text-primary" />
               <div>
-                <p className="text-sm font-medium">Change password</p>
+                <p className="text-sm font-medium">Password &amp; account deletion</p>
                 <p className="text-xs text-muted-foreground">
-                  Sends a reset link to your email — there&apos;s no in-session password change yet.
+                  Change your password or permanently delete your account.
                 </p>
               </div>
             </div>
             <Button asChild variant="outline" size="sm">
-              <Link href="/forgot-password">Reset password</Link>
-            </Button>
-          </div>
-
-          <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted p-4">
-            <div className="flex items-center gap-3">
-              <IconShieldCheck className="size-5 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">Delete account</p>
-                <p className="text-xs text-muted-foreground">Not available yet.</p>
-              </div>
-            </div>
-            <Button variant="outline" size="sm" disabled>
-              Coming soon
+              <Link href="/account">Go to Account Settings</Link>
             </Button>
           </div>
         </CardContent>

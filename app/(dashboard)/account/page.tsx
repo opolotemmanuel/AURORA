@@ -5,13 +5,18 @@
 // signed-in user's own row via getSession(), same pattern as /profile.
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { IconCloud, IconSettings, IconUserCircle } from "@tabler/icons-react"
+import { IconCalendar, IconCloud, IconSettings, IconUserCircle } from "@tabler/icons-react"
 
+import { AllergiesForm } from "@/components/account/allergies-form"
+import { ChangePasswordForm } from "@/components/account/change-password-form"
 import { ManageYourDataCard } from "@/components/account/manage-your-data-card"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getSession } from "@/lib/auth/session"
+import { getYourDataSummary } from "@/lib/backend/account-data"
 import { findReportOwner, listReportsForUser } from "@/lib/backend/report-store"
+import { getUserAllergies } from "@/lib/user/allergies-store"
 
 export const dynamic = "force-dynamic"
 
@@ -39,6 +44,9 @@ export default async function AccountSettingsPage() {
   const profile = await findReportOwner(session.user.id)
   const recentReports = await listReportsForUser(session.user.id, CLIMATE_LOOKBACK_REPORT_COUNT)
   const latestClimateReport = recentReports.find((report) => report.climate) ?? null
+  const email = profile?.email ?? session.user.email
+  const yourDataSummary = await getYourDataSummary(session.user.id)
+  const allergies = await getUserAllergies(session.user.id)
 
   return (
     <div className="max-w-2xl space-y-8">
@@ -64,15 +72,47 @@ export default async function AccountSettingsPage() {
           <Card>
             <CardHeader>
               <CardTitle>Account details</CardTitle>
-              <CardDescription>Read-only for now</CardDescription>
+              <CardDescription>Name and email are read-only for now</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <ProfileRow icon={IconUserCircle} label="Name" value={profile?.name ?? "Not set"} />
+              <div className="flex items-center justify-between gap-4">
+                <ProfileRow icon={IconUserCircle} label="Name" value={profile?.name ?? "Not set"} />
+                {profile?.role ? (
+                  <Badge variant={profile.role === "USER" ? "secondary" : "default"}>{profile.role}</Badge>
+                ) : null}
+              </div>
+              <ProfileRow icon={IconUserCircle} label="Email" value={email} />
               <ProfileRow
-                icon={IconUserCircle}
-                label="Email"
-                value={profile?.email ?? session.user.email}
+                icon={IconCalendar}
+                label="Account created"
+                value={formatDate(profile?.createdAt ?? session.user.createdAt)}
               />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Change password</CardTitle>
+              <CardDescription>
+                Requires your current password. Need to reset it instead?{" "}
+                <Link href="/forgot-password" className="font-medium text-primary hover:underline">
+                  Send a reset link
+                </Link>
+                .
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChangePasswordForm />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Allergies</CardTitle>
+              <CardDescription>Shapes which Aurora products can ever be recommended to you</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AllergiesForm initialAllergies={allergies} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -126,14 +166,14 @@ export default async function AccountSettingsPage() {
         </TabsContent>
 
         <TabsContent value="your-data" className="space-y-4">
-          <ManageYourDataCard />
+          <ManageYourDataCard email={email} summary={yourDataSummary} />
         </TabsContent>
       </Tabs>
     </div>
   )
 }
 
-function formatDate(value: string) {
+function formatDate(value: string | Date) {
   return new Date(value).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" })
 }
 

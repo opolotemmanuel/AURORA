@@ -294,6 +294,7 @@ function CameraPanel({
   isCameraActive,
   consentGiven,
   locationGranted,
+  scansExhausted,
   qualitySnapshot,
   landmarkerStatus,
   faceBox,
@@ -307,6 +308,7 @@ function CameraPanel({
   isCameraActive: boolean
   consentGiven: boolean
   locationGranted: boolean
+  scansExhausted: boolean
   qualitySnapshot: QualitySnapshot | null
   landmarkerStatus: LandmarkerStatus
   faceBox: FaceBoundingBox | null
@@ -397,7 +399,7 @@ function CameraPanel({
         <Button
           type="button"
           onClick={onCapture}
-          disabled={!isCameraActive || !consentGiven || !locationGranted || !readyToCapture}
+          disabled={!isCameraActive || !consentGiven || !locationGranted || scansExhausted || !readyToCapture}
           className={cn(readyToCapture && "ring-2 ring-success ring-offset-2 ring-offset-background")}
         >
           {isCameraActive && !readyToCapture ? "Improve image quality" : "Capture Image"}
@@ -406,6 +408,10 @@ function CameraPanel({
       {!consentGiven ? (
         <p className="mt-3 text-xs text-muted-foreground">
           Check the consent box to enable capture.
+        </p>
+      ) : scansExhausted ? (
+        <p className="mt-3 text-xs font-medium text-foreground">
+          You&apos;ve used all 10 of your free scans. We&apos;re not offering paid scans yet — check back soon.
         </p>
       ) : !locationGranted ? (
         <p className="mt-3 text-xs text-muted-foreground">
@@ -425,14 +431,16 @@ function UploadPanel({
   fileInputRef,
   consentGiven,
   locationGranted,
+  scansExhausted,
   onUpload,
 }: {
   fileInputRef: React.RefObject<HTMLInputElement | null>
   consentGiven: boolean
   locationGranted: boolean
+  scansExhausted: boolean
   onUpload: (event: React.ChangeEvent<HTMLInputElement>) => void
 }) {
-  const canUpload = consentGiven && locationGranted
+  const canUpload = consentGiven && locationGranted && !scansExhausted
 
   return (
     <div className="rounded-xl border border-border bg-card p-4">
@@ -466,6 +474,10 @@ function UploadPanel({
             <p className="mt-3 text-xs text-muted-foreground">
               Check the consent box to enable upload.
             </p>
+          ) : scansExhausted ? (
+            <p className="mt-3 text-xs font-medium text-foreground">
+              You&apos;ve used all 10 of your free scans. We&apos;re not offering paid scans yet — check back soon.
+            </p>
           ) : !locationGranted ? (
             <p className="mt-3 text-xs text-muted-foreground">
               Share your location above to enable upload — it&apos;s required to complete a
@@ -487,6 +499,7 @@ function CaptureStep({
   isCameraActive,
   consentGiven,
   locationGranted,
+  scansExhausted,
   qualitySnapshot,
   landmarkerStatus,
   faceBox,
@@ -503,6 +516,7 @@ function CaptureStep({
   isCameraActive: boolean
   consentGiven: boolean
   locationGranted: boolean
+  scansExhausted: boolean
   qualitySnapshot: QualitySnapshot | null
   landmarkerStatus: LandmarkerStatus
   faceBox: FaceBoundingBox | null
@@ -521,6 +535,7 @@ function CaptureStep({
           isCameraActive={isCameraActive}
           consentGiven={consentGiven}
           locationGranted={locationGranted}
+          scansExhausted={scansExhausted}
           qualitySnapshot={qualitySnapshot}
           landmarkerStatus={landmarkerStatus}
           faceBox={faceBox}
@@ -533,6 +548,7 @@ function CaptureStep({
           fileInputRef={fileInputRef}
           consentGiven={consentGiven}
           locationGranted={locationGranted}
+          scansExhausted={scansExhausted}
           onUpload={onUpload}
         />
       )}
@@ -936,7 +952,20 @@ function ScanPreview({
   )
 }
 
-export function ScanFlow() {
+export function ScanFlow({
+  scansRemaining,
+}: {
+  // Real per-user free-scan balance from app/(scan)/scan/page.tsx's server-
+  // side getRemainingScans — null means no allowance applies (anonymous,
+  // unmetered scanning), never "zero remaining". The server in
+  // app/api/scan/analyze/route.ts is the actual enforcement point; this
+  // only lets the Capture step explain a block honestly up front instead of
+  // showing a plain disabled button, same as the consent/location/lighting
+  // gates already do.
+  scansRemaining: number | null
+}) {
+  const scansExhausted = scansRemaining !== null && scansRemaining <= 0
+
   const [activeTab, setActiveTab] = useState<"upload" | "camera" | "advice">(
     "upload"
   )
@@ -1438,6 +1467,7 @@ export function ScanFlow() {
                         isCameraActive={isCameraActive}
                         consentGiven={consentGiven}
                         locationGranted={locationStatus === "granted"}
+                        scansExhausted={scansExhausted}
                         qualitySnapshot={qualitySnapshot}
                         landmarkerStatus={landmarkerStatus}
                         faceBox={faceBox}

@@ -392,6 +392,19 @@ export async function getScanCountsByDay(since: Date) {
   `
 }
 
+// Same as getScanCountsByDay, scoped to one user — backs the main
+// dashboard's "Scans over time" chart (app/(dashboard)/dashboard/page.tsx),
+// never a cross-user query.
+export async function getScanCountsByDayForUser(userId: string, since: Date) {
+  return prisma.$queryRaw<{ day: Date; count: number }[]>`
+    SELECT date_trunc('day', "createdAt") AS day, COUNT(*)::int AS count
+    FROM "Scan"
+    WHERE "createdAt" >= ${since} AND "userId" = ${userId}
+    GROUP BY day
+    ORDER BY day ASC
+  `
+}
+
 // Total ReportFinding rows — the denominator for the "Most common findings"
 // list's real percentages (see getTopReportFindings below).
 export async function countReportFindings() {

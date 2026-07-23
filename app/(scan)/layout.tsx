@@ -5,17 +5,25 @@ import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { CURRENT_PATH_HEADER } from "@/proxy"
+import { AuthUnavailable } from "@/components/auth/auth-unavailable"
 import { ScanShell } from "@/components/layouts/scan-shell"
-import { getSession } from "@/lib/auth/session"
+import { resolveSession } from "@/lib/auth/resolve-session"
 
 export default async function ScanLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const session = await getSession()
+  const result = await resolveSession()
 
-  if (!session) {
+  if (result.status === "db_unavailable") {
+    // A signed-in user hit a transient DB outage during the session
+    // lookup itself — show the reconnecting screen instead of bouncing
+    // them to /login, which would be both wrong and confusing.
+    return <AuthUnavailable />
+  }
+
+  if (result.status === "none") {
     // Only reached if a stale/invalid session cookie passed proxy's cheap
     // presence check but fails this real one — same callbackURL round-trip
     // as proxy's own redirect.

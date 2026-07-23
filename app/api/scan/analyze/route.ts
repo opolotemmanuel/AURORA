@@ -17,6 +17,7 @@ import { checkImageLighting } from "@/lib/backend/image-lighting"
 import { createScanReport } from "@/lib/backend/scan-service"
 import type { ScanAnalysisReport, ScanSource } from "@/lib/backend/types"
 import { getClimateSnapshot } from "@/lib/climate/adapter"
+import { getRemainingScans } from "@/lib/scans/balance"
 
 const MAX_IMAGE_SIZE = 8 * 1024 * 1024
 const DISCLAIMER =
@@ -91,6 +92,26 @@ export async function POST(request: Request) {
           : "This image is too bright or overexposed to analyze. Please retake it with less direct light or glare.",
         400,
       )
+    }
+
+    // The per-user free-scan allowance (10, server-enforced) — checked here,
+    // after every other request-shape gate above has already passed but
+    // before the climate fetch or the Gemini call below, so a blocked user
+    // never spends a Gemini call (or an Open-Meteo call) on a request that
+    // was always going to be rejected. Anonymous scans (no session) have no
+    // ScanBalance and are never gated by this — this is a per-user
+    // allowance, not a global one. This is a SEPARATE limit from the shared
+    // Gemini API quota (see lib/ai/gemini-adapter.ts) — a user can pass this
+    // check and still get a fallback report if that shared quota is
+    // exhausted; the two must never be conflated in the response.
+    if (session?.user.id) {
+      const remaining = await getRemainingScans(session.user.id)
+      if (remaining <= 0) {
+        return jsonError(
+          "You've used all 10 of your free scans. We're not offering paid scans yet — check back soon.",
+          402,
+        )
+      }
     }
 
     // Climate itself stays independent of the Gemini call above — it never

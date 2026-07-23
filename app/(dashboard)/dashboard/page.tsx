@@ -7,14 +7,17 @@
 // queries the signed-in user's own data via listReportsForUser's
 // `where: { userId }` scoping.
 //
-// Presentation-only redesign pass: recommendations and scan history are now
-// proper Table rows (both are genuinely row-like data — same product/
-// severity/date columns each time) instead of card-grid/list treatments.
-// Data fetching, session/ownership scoping, and the userId-threading fix
-// are all unchanged from before.
+// Density pass (2026-07-23): added a stat-card row + a real usage-over-time
+// chart + a recent-activity feed, matching wyasyn/review's dashboard
+// layout density — see components/dashboard/{stat-card,usage-chart,
+// recent-activity-list}.tsx. Every number here is real (ScanBalance,
+// ScanLedger, DoshaProfile, listReportsForUser) — nothing fabricated.
+// Everything below the stat row/chart/activity feed (the latest-scan
+// banner, "Recommended for you", "Scan history") is unchanged functionality
+// from before this pass, just reflowed underneath the new density.
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { IconArrowUpRight, IconCamera } from "@tabler/icons-react"
+import { IconArrowUpRight, IconCamera, IconFlower } from "@tabler/icons-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -26,11 +29,20 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { RecentActivityList } from "@/components/dashboard/recent-activity-list"
+import { StatCard } from "@/components/dashboard/stat-card"
+import { ScanUsageChart } from "@/components/dashboard/usage-chart"
 import { getSession } from "@/lib/auth/session"
-import { listReportsForUser, shortenReportId } from "@/lib/backend/report-store"
+import { listReportsForUser, shortenReportId, getScanCountsByDayForUser } from "@/lib/backend/report-store"
+import { DOSHA_LABELS } from "@/lib/dosha/dosha-content"
+import { getDoshaProfile } from "@/lib/dosha/dosha-store"
+import { buildDailyScanSeries, getStartOfDayNDaysAgo } from "@/lib/dashboard/usage-series"
 import { worstBandVisual } from "@/lib/reports/band-visuals"
+import { getOrCreateScanBalance, getRecentLedgerForUser } from "@/lib/scans/balance"
 
 export const dynamic = "force-dynamic"
+
+const USAGE_WINDOW_DAYS = 14
 
 export default async function DashboardPage() {
   const session = await getSession()
@@ -42,9 +54,20 @@ export default async function DashboardPage() {
     redirect("/login")
   }
 
-  const reports = await listReportsForUser(session.user.id, 6)
+  const userId = session.user.id
+  const since = getStartOfDayNDaysAgo(USAGE_WINDOW_DAYS)
+
+  const [reports, balance, doshaProfile, recentLedger, scanCountsByDay] = await Promise.all([
+    listReportsForUser(userId, 6),
+    getOrCreateScanBalance(userId),
+    getDoshaProfile(userId),
+    getRecentLedgerForUser(userId, 8),
+    getScanCountsByDayForUser(userId, since),
+  ])
+
   const latest = reports[0] ?? null
   const latestVisual = latest ? worstBandVisual(latest.analysis.cosmeticFindings) : null
+  const usageSeries = buildDailyScanSeries(scanCountsByDay, USAGE_WINDOW_DAYS)
 
   return (
     <div className="space-y-10">
@@ -67,6 +90,58 @@ export default async function DashboardPage() {
             Start a new scan
           </Link>
         </Button>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Scans remaining" value={balance.remaining} hint="Of 10 free scans" />
+        <StatCard label="Scans used" value={balance.lifetimeUsed} hint="All time" />
+        {doshaProfile ? (
+          <StatCard
+            label="Dosha result"
+            value={DOSHA_LABELS[doshaProfile.primaryDosha]}
+            hint={doshaProfile.secondaryDosha ? `with ${DOSHA_LABELS[doshaProfile.secondaryDosha]}` : "Primary type"}
+          />
+        ) : (
+          <Card size="sm">
+            <CardContent className="flex h-full flex-col justify-between gap-2">
+              <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">Dosha result</p>
+              <Link
+                href="/dosha-assessment"
+                className="flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+              >
+                <IconFlower className="size-4" />
+                Take the assessment
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+        <StatCard
+          label="Most recent scan"
+          value={latest ? formatDate(latest.createdAt) : "—"}
+          hint={latest ? shortenReportId(latest.id) : "No scans yet"}
+        />
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Scans over time</CardTitle>
+            <CardDescription>Your own scan activity, last {USAGE_WINDOW_DAYS} days</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ScanUsageChart data={usageSeries} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent activity</CardTitle>
+            <CardDescription>Your scan credit history</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RecentActivityList entries={recentLedger} />
+          </CardContent>
+        </Card>
       </section>
 
       {latest && latestVisual ? (

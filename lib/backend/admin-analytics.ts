@@ -119,10 +119,23 @@ async function countUsersWithChatActivity() {
   return rows[0]?.count ?? 0
 }
 
+// Deliberately all-UTC arithmetic (setUTCDate/getUTCDate, never the local-
+// time setDate/getDate/setHours) — getScanCountsByDay/getUserSignupsByDay
+// both bucket by date_trunc('day', "createdAt") under Postgres's session
+// timezone, which is UTC (confirmed via `SHOW timezone`), so these JS-side
+// day boundaries have to be computed in UTC too or the two disagree. Mixing
+// local-time Date mutations with toISOString()'s UTC-formatted output was a
+// real, observed bug here (same shape as the one originally caught and
+// fixed in lib/dashboard/usage-series.ts): on a server whose local timezone
+// is ahead of UTC (e.g. EAT, UTC+3), local midnight for "today" converts to
+// UTC as still being "yesterday", so a scan/signup that happened today
+// under the DB's UTC bucket would silently miss the locally-generated
+// series' key for that same day (mislabeled as the day before) and render
+// as if nothing had happened.
 function getStartOfDayNDaysAgo(days: number) {
   const date = new Date()
-  date.setHours(0, 0, 0, 0)
-  date.setDate(date.getDate() - (days - 1))
+  date.setUTCHours(0, 0, 0, 0)
+  date.setUTCDate(date.getUTCDate() - (days - 1))
   return date
 }
 
@@ -135,7 +148,7 @@ function buildDailySeries(rows: { day: Date; count: number }[], days: number) {
 
   return Array.from({ length: days }, (_, index) => {
     const date = new Date(start)
-    date.setDate(start.getDate() + index)
+    date.setUTCDate(start.getUTCDate() + index)
     const key = toDateKey(date)
     return { date: key, count: countsByDate.get(key) ?? 0 }
   })

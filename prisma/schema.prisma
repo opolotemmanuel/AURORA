@@ -69,6 +69,12 @@ enum DoshaType {
   KAPHA
 }
 
+enum ScanLedgerReason {
+  SIGNUP_BONUS
+  SCAN_DEBIT
+  ADMIN_GRANT
+}
+
 model User {
   id            String    @id @default(cuid())
   email         String    @unique
@@ -97,6 +103,8 @@ model User {
   chatMessages       ReportChatMessage[]
   skinAdviceMessages SkinAdviceMessage[]
   doshaProfile       DoshaProfile?
+  scanBalance        ScanBalance?
+  scanLedgers        ScanLedger[]
 
   @@index([role])
   @@index([emailVerified])
@@ -173,6 +181,8 @@ model Scan {
 
   user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
   report Report?
+
+  scanLedgers ScanLedger[]
 
   @@index([userId])
   @@index([status])
@@ -285,6 +295,53 @@ model DoshaProfile {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([primaryDosha])
+}
+
+// One row per user — the free-scan credit balance backing the new
+// per-user scan allowance (10 free scans, server-enforced in
+// app/api/scan/analyze/route.ts). Deliberately a separate table rather
+// than columns on User, same reasoning as DoshaProfile above: it's
+// feature-specific, one-row-per-user data, not core identity.
+//
+// This is INDEPENDENT of the shared Gemini API quota (the provider-side
+// daily request cap shared across every user of this app, surfaced as a
+// "quota" GeminiFailureKind in lib/ai/gemini-adapter.ts) — that's one
+// shared budget across the whole platform; this is each user's own
+// allowance against that shared budget. A user can have remaining > 0
+// here and still hit a Gemini fallback if the shared quota is already
+// exhausted by other users. Never conflate the two in UI copy or logic.
+model ScanBalance {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  remaining       Int      @default(10)
+  lifetimeGranted Int      @default(10)
+  lifetimeUsed    Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Signed-delta audit trail for ScanBalance changes (+10 signup_bonus,
+// -1 scan_debit, +N admin_grant) — same spirit as AuditLog, scoped to
+// credits specifically, and what powers the dashboard's recent-activity
+// feed. relatedScanId is SetNull (not Cascade) so deleting the Scan a
+// debit was for never blocks or removes the ledger row itself — same
+// "audit trail outlives what it's about" pattern as AuditLog.actor above.
+model ScanLedger {
+  id            String           @id @default(cuid())
+  userId        String
+  delta         Int
+  reason        ScanLedgerReason
+  relatedScanId String?
+  createdAt     DateTime         @default(now())
+
+  user        User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  relatedScan Scan? @relation(fields: [relatedScanId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([relatedScanId])
+  @@index([createdAt])
 }
 
 model ReportFinding {

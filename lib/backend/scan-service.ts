@@ -10,6 +10,7 @@ import {
   saveReportBundle,
 } from "@/lib/backend/report-store"
 import { listActiveRecommendationProducts } from "@/lib/backend/product-service"
+import { debitScanCredit } from "@/lib/scans/balance"
 import type {
   ScanAnalysisReport,
   ScanImageMetadata,
@@ -137,6 +138,19 @@ export async function createScanReport(input: {
   }
 
   const bundle = await saveReportBundle({ scan, report })
+
+  // This is the single place both of app/api/scan/analyze/route.ts's call
+  // sites (the Gemini-succeeded path and the outer catch-all fallback path)
+  // funnel through, so it's the one correct place to debit: a real Scan +
+  // Report row now exists either way, which is exactly the "reached a real,
+  // completed outcome" bar for spending a credit — never for a request
+  // rejected earlier (bad image, missing location, failed lighting), since
+  // those never reach this function at all. No-op for anonymous scans
+  // (input.userId undefined) — there's no ScanBalance to debit without a
+  // signed-in owner.
+  if (input.userId) {
+    await debitScanCredit(input.userId, scanId)
+  }
 
   // Separate from the audit log below: this tracks AI provider reliability
   // (success/fallback rate per model) for the admin analytics dashboard,

@@ -79,21 +79,38 @@ const ADMINISTRATION_SECTION: NavSection = {
   ],
 }
 
+// The actual nav markup (brand row, sections, user footer) — no positioning
+// or `<aside>` wrapper of its own, so the exact same content can be
+// rendered two different ways: fixed in place for desktop (DashboardSidebar
+// below) and inside a Sheet drawer for mobile (see components/layouts/
+// dashboard-shell.tsx's MobileNav). One nav definition, one place that can
+// go stale, instead of two copies drifting apart.
+//
 // `pathname` is passed in (rather than read here via usePathname) so this
 // stays a plain component the parent shell controls, matching-prefix logic
 // below keeps e.g. /reports/123 highlighting the /reports nav item.
 // `isAdminTier` hides admin-only links for plain USER accounts — the real
 // route protection is still lib/auth/admin.ts's requireAdminAccess, this
-// just avoids showing a link they can't follow.
-export function DashboardSidebar({ pathname, isAdminTier }: { pathname: string; isAdminTier: boolean }) {
+// just avoids showing a link they can't follow. `onNavigate` fires after a
+// link is clicked — the mobile drawer uses it to close itself; the desktop
+// sidebar (which has nothing to close) leaves it undefined.
+export function SidebarNavContent({
+  pathname,
+  isAdminTier,
+  onNavigate,
+}: {
+  pathname: string
+  isAdminTier: boolean
+  onNavigate?: () => void
+}) {
   const sections = isAdminTier ? [...NAV_SECTIONS, ADMINISTRATION_SECTION] : NAV_SECTIONS
   const { data: session } = authClient.useSession()
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 flex w-56 shrink-0 flex-col border-r border-border bg-sidebar">
+    <>
       <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-6">
         <IconLeaf className="size-5 text-primary" />
-        <Link href="/dashboard" className="font-heading text-sm font-medium tracking-wide">
+        <Link href="/dashboard" className="font-heading text-sm font-medium tracking-wide" onClick={onNavigate}>
           Aura
         </Link>
       </div>
@@ -112,6 +129,7 @@ export function DashboardSidebar({ pathname, isAdminTier }: { pathname: string; 
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={onNavigate}
                   className={cn(
                     "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
                     isActive
@@ -151,6 +169,18 @@ export function DashboardSidebar({ pathname, isAdminTier }: { pathname: string; 
           </div>
         </div>
       ) : null}
+    </>
+  )
+}
+
+// Desktop-only fixed sidebar — hidden below `lg` (see dashboard-shell.tsx's
+// MobileNav for the equivalent under `lg`), unchanged in every other way
+// from before mobile support existed: same fixed positioning, same width,
+// same content via SidebarNavContent above.
+export function DashboardSidebar({ pathname, isAdminTier }: { pathname: string; isAdminTier: boolean }) {
+  return (
+    <aside className="fixed inset-y-0 left-0 z-30 hidden w-56 shrink-0 flex-col border-r border-border bg-sidebar lg:flex">
+      <SidebarNavContent pathname={pathname} isAdminTier={isAdminTier} />
     </aside>
   )
 }

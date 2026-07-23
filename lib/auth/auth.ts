@@ -22,6 +22,7 @@ import { nextCookies } from "better-auth/next-js"
 import { prisma } from "@/lib/db"
 import { sendPasswordResetEmail, sendVerificationEmail } from "@/lib/email/adapter"
 import { deleteAllScansForUser, saveAuditLog } from "@/lib/backend/report-store"
+import { grantSignupScans } from "@/lib/scans/balance"
 
 // Apple is only registered if all three env vars are present — better-auth
 // treats every socialProviders key as optional, so omitting `apple` entirely
@@ -148,6 +149,20 @@ export const auth = betterAuth({
       }
     : {}),
   databaseHooks: {
+    user: {
+      create: {
+        // Fires exactly once per new account (email/password sign-up or a
+        // brand-new social sign-in alike — both create a User row through
+        // this same internal adapter path), so this is the one place that
+        // grants the starter scan balance regardless of provider. Existing
+        // users from before this feature are covered separately by the
+        // one-time backfill script (scripts/backfill-scan-credits.ts), not
+        // this hook.
+        async after(user) {
+          await grantSignupScans(user.id)
+        },
+      },
+    },
     session: {
       create: {
         // Fires on every successful sign-in (email/password or social alike

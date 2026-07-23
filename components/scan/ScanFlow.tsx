@@ -57,6 +57,14 @@ import type { QualitySnapshot } from "@/lib/scan/quality/types"
 import type { FaceBoundingBox } from "@/lib/scan/quality/checks"
 import { ScanQualityPanel } from "@/components/scan/ScanQualityPanel"
 import { FacePositionOverlay } from "@/components/scan/FacePositionOverlay"
+import { ScanCameraPicker } from "@/components/scan/scan-camera-picker"
+import {
+  enumerateVideoDevices,
+  getDeviceLabel,
+  resolvePreferredDeviceId,
+  type VideoDeviceOption,
+} from "@/lib/scan/camera-devices"
+import { computeInitialImageEdit } from "@/lib/scan/face-crop"
 import { SkinAdviceChat } from "@/components/skin-advice/skin-advice-chat"
 
 type ScanStep = "capture" | "review" | "processing" | "results"
@@ -299,8 +307,13 @@ function CameraPanel({
   landmarkerStatus,
   faceBox,
   videoDimensions,
+  devices,
+  activeDeviceId,
+  activeDeviceLabel,
+  switchingCamera,
   onStartCamera,
   onCapture,
+  onSelectDevice,
 }: {
   videoRef: React.RefObject<HTMLVideoElement | null>
   canvasRef: React.RefObject<HTMLCanvasElement | null>
@@ -313,8 +326,13 @@ function CameraPanel({
   landmarkerStatus: LandmarkerStatus
   faceBox: FaceBoundingBox | null
   videoDimensions: VideoDimensions | null
+  devices: VideoDeviceOption[]
+  activeDeviceId: string | null
+  activeDeviceLabel: string | null
+  switchingCamera: boolean
   onStartCamera: () => void
   onCapture: () => void
+  onSelectDevice: (deviceId: string) => void
 }) {
   const readyToCapture = qualitySnapshot?.readyToCapture ?? false
   const facePositionStatus = qualitySnapshot?.results.find((result) => result.id === "facePosition")?.status ?? "fail"
@@ -379,6 +397,18 @@ function CameraPanel({
                   : `${qualitySnapshot?.score ?? 0}% · ${qualitySnapshot?.scoreBand ?? "Poor"}`}
               </>
             )}
+          </div>
+        ) : null}
+        {isCameraActive ? (
+          <div className="absolute top-3 right-3">
+            <ScanCameraPicker
+              devices={devices}
+              activeDeviceId={activeDeviceId}
+              activeLabel={activeDeviceLabel}
+              onSelect={onSelectDevice}
+              disabled={switchingCamera}
+              switching={switchingCamera}
+            />
           </div>
         ) : null}
       </div>
@@ -504,9 +534,14 @@ function CaptureStep({
   landmarkerStatus,
   faceBox,
   videoDimensions,
+  devices,
+  activeDeviceId,
+  activeDeviceLabel,
+  switchingCamera,
   onStartCamera,
   onCapture,
   onUpload,
+  onSelectDevice,
 }: {
   method: "upload" | "camera"
   videoRef: React.RefObject<HTMLVideoElement | null>
@@ -521,9 +556,14 @@ function CaptureStep({
   landmarkerStatus: LandmarkerStatus
   faceBox: FaceBoundingBox | null
   videoDimensions: VideoDimensions | null
+  devices: VideoDeviceOption[]
+  activeDeviceId: string | null
+  activeDeviceLabel: string | null
+  switchingCamera: boolean
   onStartCamera: () => void
   onCapture: () => void
   onUpload: (event: React.ChangeEvent<HTMLInputElement>) => void
+  onSelectDevice: (deviceId: string) => void
 }) {
   return (
     <div className="grid gap-5">
@@ -540,8 +580,13 @@ function CaptureStep({
           landmarkerStatus={landmarkerStatus}
           faceBox={faceBox}
           videoDimensions={videoDimensions}
+          devices={devices}
+          activeDeviceId={activeDeviceId}
+          activeDeviceLabel={activeDeviceLabel}
+          switchingCamera={switchingCamera}
           onStartCamera={onStartCamera}
           onCapture={onCapture}
+          onSelectDevice={onSelectDevice}
         />
       ) : (
         <UploadPanel
@@ -578,6 +623,7 @@ function ReviewStep({
   selectedImage,
   inputMethod,
   imageEdit,
+  initialFaceBox,
   onEditChange,
   onResetEdit,
   onRetake,
@@ -586,16 +632,42 @@ function ReviewStep({
   selectedImage: string
   inputMethod: ScanInputMethod
   imageEdit: ImageEditState
+  initialFaceBox: { box: FaceBoundingBox; width: number; height: number } | null
   onEditChange: (nextEdit: ImageEditState) => void
   onResetEdit: () => void
   onRetake: () => void
   onRemove: () => void
 }) {
   const [dragState, setDragState] = useState<DragState>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
 
   function updateEdit(partialEdit: Partial<ImageEditState>) {
     onEditChange({ ...imageEdit, ...partialEdit })
   }
+
+  // Runs once per newly captured/uploaded image (keyed on selectedImage
+  // alone) — recenters the starting pan on the detected face instead of
+  // leaving it dead-center, using the container's actual rendered size
+  // (only knowable once mounted). Never re-fires after the user starts
+  // dragging, since selectedImage doesn't change again until a new capture.
+  // No-ops for uploads or a faceless capture (initialFaceBox is null there),
+  // leaving today's centered default exactly as it was.
+  useEffect(() => {
+    if (!initialFaceBox) return
+    const container = containerRef.current
+    if (!container) return
+
+    const { width: containerWidth, height: containerHeight } = container.getBoundingClientRect()
+    if (containerWidth <= 0 || containerHeight <= 0) return
+
+    const recentered = computeInitialImageEdit(initialFaceBox.box, initialFaceBox.width, initialFaceBox.height, containerWidth, containerHeight)
+    onEditChange(recentered)
+    // Deliberately excludes onEditChange/initialFaceBox from deps — this
+    // must fire exactly once per new image, not whenever the parent
+    // re-creates its onEditChange closure or a stale initialFaceBox
+    // reference changes identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedImage])
 
   function rotateImage(amount: number) {
     updateEdit({ rotation: imageEdit.rotation + amount })
@@ -630,6 +702,7 @@ function ReviewStep({
   return (
     <div className="grid gap-5">
       <div
+        ref={containerRef}
         className="relative mx-auto aspect-[4/5] w-full max-w-md touch-none overflow-hidden rounded-xl border border-border bg-muted"
         onPointerDown={startDrag}
         onPointerMove={moveDrag}
@@ -1008,6 +1081,27 @@ export function ScanFlow({
   const [reportId, setReportId] = useState<string | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isCameraActive, setIsCameraActive] = useState(false)
+  // Multi-camera device selection — populated once permission is granted
+  // (device labels are blank until then), never touches the quality-gate
+  // pipeline itself: switching devices only re-points videoRef.current's
+  // srcObject at a new stream, and lib/scan/quality/use-scan-quality.ts's
+  // polling loop keeps sampling videoRef.current fresh on every interval
+  // tick regardless of which stream is attached, so it re-evaluates against
+  // the new camera automatically.
+  const [devices, setDevices] = useState<VideoDeviceOption[]>([])
+  const [activeDeviceId, setActiveDeviceId] = useState<string | null>(null)
+  const [switchingCamera, setSwitchingCamera] = useState(false)
+  // Set only by a camera capture that had a live faceBox at the moment of
+  // capture (see captureImage) — null for uploads and for a capture where
+  // the quality gate hadn't detected a face. ReviewStep uses this once, on
+  // mount, to compute a face-centered starting pan position; it never
+  // re-applies it after the user starts dragging (see ReviewStep's effect,
+  // keyed on `selectedImage` alone).
+  const [initialFaceBox, setInitialFaceBox] = useState<{
+    box: FaceBoundingBox
+    width: number
+    height: number
+  } | null>(null)
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -1071,10 +1165,48 @@ export function ScanFlow({
       }
       setInputMethod("camera")
       setIsCameraActive(true)
+      // Device labels are blank until permission is granted, so enumeration
+      // only happens now, not before the first getUserMedia call. Reflects
+      // whichever device the browser actually picked (not necessarily the
+      // first in the list), read from the live track's own settings.
+      const nextDevices = await enumerateVideoDevices()
+      setDevices(nextDevices)
+      const actualDeviceId = stream.getVideoTracks()[0]?.getSettings().deviceId ?? null
+      setActiveDeviceId(resolvePreferredDeviceId(nextDevices, actualDeviceId))
     } catch (error) {
       stopCameraStream()
       setCameraError(getCameraErrorMessage(error))
       setIsCameraActive(false)
+    }
+  }
+
+  // Switches the live stream to a different video input device mid-session
+  // without tearing down useScanQuality's polling loop — that hook's effect
+  // only depends on [active, videoRef] (see lib/scan/quality/
+  // use-scan-quality.ts), neither of which changes here, so it keeps
+  // sampling videoRef.current on its own interval and picks up the new
+  // stream's frames automatically on the very next tick. Left untouched
+  // deliberately, per this feature's scope.
+  async function selectDevice(deviceId: string) {
+    if (deviceId === activeDeviceId || switchingCamera) return
+
+    setSwitchingCamera(true)
+    setCameraError(null)
+
+    try {
+      const stream = await requestCameraStream(deviceId)
+      streamRef.current?.getTracks().forEach((track) => track.stop())
+      streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        void videoRef.current.play().catch(() => undefined)
+      }
+      const actualDeviceId = stream.getVideoTracks()[0]?.getSettings().deviceId ?? deviceId
+      setActiveDeviceId(actualDeviceId)
+    } catch (error) {
+      setCameraError(getCameraErrorMessage(error))
+    } finally {
+      setSwitchingCamera(false)
     }
   }
 
@@ -1154,6 +1286,14 @@ export function ScanFlow({
     setSelectedImage(canvas.toDataURL("image/jpeg", 0.92))
     setSelectedFileName("aurora-skin-scan.jpg")
     setImageEdit(defaultImageEdit)
+    // faceBox (from the live quality gate, unmodified) is normalized against
+    // this exact same video.videoWidth/videoHeight frame, so its coordinates
+    // apply directly to the just-captured still — ReviewStep uses this to
+    // give the pan/zoom a face-centered starting position instead of always
+    // defaulting to dead-center (see computeInitialImageEdit). Upload has no
+    // live faceBox at all, so it's always null there — falls back to the
+    // centered default, same as before this feature existed.
+    setInitialFaceBox(faceBox ? { box: faceBox, width, height } : null)
     setCameraError(null)
     setAnalysisResult(null)
     setAnalysisError(null)
@@ -1185,6 +1325,7 @@ export function ScanFlow({
         setSelectedImage(reader.result)
         setSelectedFileName(file.name)
         setImageEdit(defaultImageEdit)
+        setInitialFaceBox(null)
         setAnalysisResult(null)
         setAnalysisError(null)
         setReportDownloadUrl(null)
@@ -1203,6 +1344,7 @@ export function ScanFlow({
     setSelectedImage(null)
     setInputMethod(null)
     setImageEdit(defaultImageEdit)
+    setInitialFaceBox(null)
     setAnalysisResult(null)
     setAnalysisError(null)
     setReportDownloadUrl(null)
@@ -1215,6 +1357,7 @@ export function ScanFlow({
     setSelectedImage(null)
     setInputMethod(null)
     setImageEdit(defaultImageEdit)
+    setInitialFaceBox(null)
     setAnalysisResult(null)
     setAnalysisError(null)
     setReportDownloadUrl(null)
@@ -1243,6 +1386,7 @@ export function ScanFlow({
     setSelectedImage(null)
     setSelectedFileName("aurora-skin-scan.jpg")
     setImageEdit(defaultImageEdit)
+    setInitialFaceBox(null)
     setInputMethod(null)
     setCameraError(null)
     setAnalysisResult(null)
@@ -1277,6 +1421,7 @@ export function ScanFlow({
       setSelectedImage(null)
       setInputMethod(null)
       setImageEdit(defaultImageEdit)
+      setInitialFaceBox(null)
       setAnalysisResult(null)
       setAnalysisError(null)
       setReportDownloadUrl(null)
@@ -1472,9 +1617,14 @@ export function ScanFlow({
                         landmarkerStatus={landmarkerStatus}
                         faceBox={faceBox}
                         videoDimensions={videoDimensions}
+                        devices={devices}
+                        activeDeviceId={activeDeviceId}
+                        activeDeviceLabel={getDeviceLabel(devices, activeDeviceId)}
+                        switchingCamera={switchingCamera}
                         onStartCamera={() => void startCamera()}
                         onCapture={captureImage}
                         onUpload={uploadImage}
+                        onSelectDevice={(deviceId) => void selectDevice(deviceId)}
                       />
                     </div>
                   </div>
@@ -1484,6 +1634,7 @@ export function ScanFlow({
                     selectedImage={selectedImage}
                     inputMethod={inputMethod}
                     imageEdit={imageEdit}
+                    initialFaceBox={initialFaceBox}
                     onEditChange={setImageEdit}
                     onResetEdit={() => setImageEdit(defaultImageEdit)}
                     onRetake={retakeImage}
@@ -1699,15 +1850,23 @@ function loadEditableImage(dataUrl: string) {
 // device/browser can't satisfy those specific constraints (common on older
 // or unusual hardware), retries with the loosest possible request
 // (`video: true`) rather than failing outright — better to get some camera
-// stream than none.
-async function requestCameraStream() {
+// stream than none. An explicit `deviceId` (from the multi-camera picker)
+// takes priority over the facingMode preference — the user picked a
+// specific device, so that choice wins over the "front camera" default.
+async function requestCameraStream(deviceId?: string) {
   const preferredConstraints: MediaStreamConstraints = {
     audio: false,
-    video: {
-      facingMode: { ideal: "user" },
-      height: { ideal: 960 },
-      width: { ideal: 1280 },
-    },
+    video: deviceId
+      ? {
+          deviceId: { exact: deviceId },
+          height: { ideal: 960 },
+          width: { ideal: 1280 },
+        }
+      : {
+          facingMode: { ideal: "user" },
+          height: { ideal: 960 },
+          width: { ideal: 1280 },
+        },
   }
 
   try {
@@ -1719,7 +1878,7 @@ async function requestCameraStream() {
 
     return navigator.mediaDevices.getUserMedia({
       audio: false,
-      video: true,
+      video: deviceId ? { deviceId: { exact: deviceId } } : true,
     })
   }
 }

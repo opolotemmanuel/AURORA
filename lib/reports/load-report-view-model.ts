@@ -13,6 +13,7 @@ import {
   listReportsForUser,
   saveAuditLog,
 } from "@/lib/backend/report-store"
+import { getDoshaProfile } from "@/lib/dosha/dosha-store"
 import { buildReportViewModel, type ReportViewModel } from "@/lib/reports/report-view-model"
 
 export async function loadReportViewModel(reportId: string): Promise<ReportViewModel | null> {
@@ -23,11 +24,12 @@ export async function loadReportViewModel(reportId: string): Promise<ReportViewM
     return null
   }
 
-  const [scan, owner, aiEvent, priorReports] = await Promise.all([
+  const [scan, owner, aiEvent, priorReports, doshaProfile] = await Promise.all([
     findScan(report.scanId),
     report.userId ? findReportOwner(report.userId) : null,
     findAiProviderEventForReport(report.id),
     report.userId ? listReportsForUser(report.userId) : Promise.resolve([]),
+    report.userId ? getDoshaProfile(report.userId) : Promise.resolve(null),
   ])
 
   if (!scan) return null
@@ -48,5 +50,6 @@ export async function loadReportViewModel(reportId: string): Promise<ReportViewM
     owner,
     aiEvent,
     priorReports: priorReports.filter((prior) => prior.id !== report.id),
+    doshaProfile,
   })
 }

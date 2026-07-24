@@ -76,10 +76,15 @@
 }
 
 @theme inline {
-    --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
-    --font-heading: Roboto, Inter, ui-sans-serif, system-ui, sans-serif;
-    --font-display: "Cormorant Garamond", Georgia, serif;
-    --font-mono: "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    /* Each var(--font-*) here is the actual font next/font/google loads in
+       app/layout.tsx (see its comment) — these property names are unchanged
+       from before that fix, so nothing else in the app needed to change;
+       the trailing fallback stacks stay as a safety net if a font ever
+       fails to load. */
+    --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    --font-heading: var(--font-roboto), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    --font-display: var(--font-cormorant-garamond), Georgia, serif;
+    --font-mono: var(--font-geist-mono), "SFMono-Regular", Consolas, "Liberation Mono", monospace;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -166,6 +171,90 @@
 
     .animate-hero-float {
         animation: none;
+    }
+}
+
+/* Editorial PDF restyle for app/reports/[reportId]/print/page.tsx — the
+   page lib/reports/pdf/render-report-pdf.ts screenshots into the
+   downloadable report PDF via headless Chrome + emulateMedia({ media:
+   "print" }). Scoped entirely to .report-print-surface (only present on
+   that page) so the on-screen dashboard report view — which renders the
+   exact same section components — is untouched. Reuses this app's own
+   tokens (--primary, --border, --muted, --foreground) throughout rather
+   than hardcoding a second palette, since this is a restyle of existing
+   tokens, not a new brand.
+   Outside any @layer, so it wins over Tailwind's own `utilities` layer by
+   cascade-layer order alone; the !importants below are extra insurance for
+   the couple of rules fighting a same-specificity utility class
+   (shadow-sm/ring-1 on Card, both implemented as box-shadow). */
+@media print {
+    .report-print-surface {
+        font-size: 10pt;
+        color: var(--foreground);
+    }
+
+    /* One shared divider rhythm for every top-level section — a thin
+       brand-colored rule with generous top space, in place of the
+       dashboard's individually shadowed cards. */
+    .report-print-surface > * {
+        margin-top: 20pt;
+        padding-top: 14pt;
+        border-top: 2pt solid var(--primary);
+    }
+
+    .report-print-surface > *:first-child {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+        box-shadow: none !important;
+    }
+
+    /* Flatten shadcn's Card chrome (shadow-sm + ring-1, both box-shadow
+       under the hood) — a shadowed panel reads as a screenshot of an app;
+       a plain flowing block reads as a printed report. */
+    .report-print-surface [data-slot="card"] {
+        box-shadow: none !important;
+        background: transparent;
+    }
+
+    /* The executive-summary stat tiles lose the ring that used to visually
+       group each one — a light tint (the same one ClimateConditions'
+       stat cells already use on screen) keeps them legible as distinct
+       cells instead of orphaned floating text. */
+    .report-print-surface .report-stat-tile {
+        background: var(--muted);
+        border-radius: 4pt;
+    }
+
+    .report-print-surface [data-slot="card-title"] {
+        font-size: 11pt;
+        letter-spacing: normal;
+        text-transform: none;
+    }
+
+    .report-print-surface [data-slot="card-description"] {
+        font-size: 9pt;
+    }
+
+    /* Tighter table density than the on-screen dashboard grid, plus a
+       faint zebra stripe for scannability across a wide findings table. */
+    .report-print-surface [data-slot="table-head"],
+    .report-print-surface [data-slot="table-cell"] {
+        height: auto;
+        padding: 6pt 8pt;
+    }
+
+    .report-print-surface [data-slot="table-row"]:nth-child(even) {
+        background: var(--muted);
+    }
+
+    /* Disclaimer stays exactly as prominent as it is on screen — reinforced
+       with the brand accent rather than flattened like every other
+       section, per the non-negotiable cosmetic-framing requirement. */
+    .report-print-surface .report-disclaimer {
+        border-color: var(--border);
+        border-left: 3pt solid var(--primary);
+        background: var(--muted);
     }
 }
 

@@ -5,11 +5,11 @@
 // route both just render whatever this array says, in this order.
 import type { ComponentType } from "react"
 
-import { AnalysisVisualization } from "@/components/report/sections/analysis-visualization"
 import { ClimateConditions } from "@/components/report/sections/climate-conditions"
 import { ConfidenceDonut } from "@/components/report/sections/confidence-donut"
 import { CoverHeader } from "@/components/report/sections/cover-header"
 import { Disclaimer } from "@/components/report/sections/disclaimer"
+import { DoshaSection } from "@/components/report/sections/dosha-section"
 import { ExecutiveSummaryCards } from "@/components/report/sections/executive-summary-cards"
 import { KeyFindingsTable } from "@/components/report/sections/key-findings-table"
 import { ProgressTracking } from "@/components/report/sections/progress-tracking"
@@ -45,13 +45,6 @@ export const REPORT_SECTIONS: ReportSectionDefinition[] = [
     fullWidth: true,
   },
   {
-    id: "analysis-visualization",
-    title: "Analysis Visualization",
-    component: AnalysisVisualization,
-    isEnabled: () => true,
-    fullWidth: true,
-  },
-  {
     id: "skin-metrics",
     title: "Skin Metrics",
     component: SkinMetrics,
@@ -70,6 +63,20 @@ export const REPORT_SECTIONS: ReportSectionDefinition[] = [
     title: "AI Confidence Breakdown",
     component: ConfidenceDonut,
     isEnabled: () => true,
+    fullWidth: true,
+  },
+  {
+    // Placed after the AI assessment sections (executive summary → skin
+    // assessment → metrics → key findings → confidence breakdown) and right
+    // before product recommendations, since scan-service.ts already factors
+    // a signed-in user's dosha into those recommendations — this section
+    // gives the reader the traditional-wellness context behind them. Gated
+    // on vm.dosha, which load-report-view-model.ts only populates when the
+    // report owner has completed the (opt-in) questionnaire.
+    id: "dosha",
+    title: "Dosha",
+    component: DoshaSection,
+    isEnabled: (vm) => vm.dosha !== null,
     fullWidth: true,
   },
   {

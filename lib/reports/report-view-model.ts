@@ -6,6 +6,8 @@
 import { FINDING_CONCERN_MAP } from "@/lib/backend/scan-service"
 import type { AiProviderEvent, ReportFinding, StoredReport, StoredScan } from "@/lib/backend/types"
 import { interpretClimate } from "@/lib/climate/interpret"
+import type { StoredDoshaProfile } from "@/lib/dosha/dosha-store"
+import type { Dosha } from "@/lib/dosha/questions"
 import {
   getBandVisual,
   getConfidenceVisual,
@@ -38,7 +40,6 @@ export type ReportViewModel = {
   reportShortId: string
   createdAt: Date
   owner: { name: string; email?: string; userId?: string }
-  coverImageAvailable: boolean
   // Follow-up chat requires a real report owner to attach messages to — an
   // anonymous scan (no userId) never gets a chat button, regardless of
   // viewer. Whoever already passed the ownership-or-admin gate to load this
@@ -100,6 +101,15 @@ export type ReportViewModel = {
     interpretiveSentences: string[]
     comfortBand: ComfortBand
   } | null
+  // Null whenever the report owner has never completed the dosha
+  // questionnaire (it's opt-in, see dosha-assessment/page.tsx) or the report
+  // has no owner (anonymous scan) — the Dosha section simply doesn't render
+  // in that case, same graceful-omission pattern as `climate` above.
+  dosha: {
+    primaryDosha: Dosha
+    secondaryDosha: Dosha | null
+    breakdown: Record<Dosha, number>
+  } | null
 }
 
 export function buildReportViewModel(input: {
@@ -108,8 +118,9 @@ export function buildReportViewModel(input: {
   owner: { name?: string; email?: string; id: string } | null
   aiEvent: AiProviderEvent | null
   priorReports: StoredReport[]
+  doshaProfile: StoredDoshaProfile | null
 }): ReportViewModel {
-  const { report, scan, owner, aiEvent, priorReports } = input
+  const { report, scan, owner, aiEvent, priorReports, doshaProfile } = input
   const findings = report.analysis.cosmeticFindings
   const overall = worstBandVisual(findings)
   const confidence = getConfidenceVisual(scan.quality.confidence)
@@ -124,7 +135,6 @@ export function buildReportViewModel(input: {
       email: owner?.email,
       userId: owner?.id,
     },
-    coverImageAvailable: false, // the original photo is never stored (see AGENTS.md's privacy rule) — nothing to show here beyond the schematic overlay in Analysis Visualization.
     chatEnabled: Boolean(report.userId),
     executiveSummary: {
       overallLabel: overall.wellnessLabel,
@@ -152,6 +162,13 @@ export function buildReportViewModel(input: {
     },
     progressTracking: buildProgressTracking(report, priorReports),
     climate: buildClimate(report),
+    dosha: doshaProfile
+      ? {
+          primaryDosha: doshaProfile.primaryDosha,
+          secondaryDosha: doshaProfile.secondaryDosha,
+          breakdown: doshaProfile.breakdown,
+        }
+      : null,
   }
 }
 

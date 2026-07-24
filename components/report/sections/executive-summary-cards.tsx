@@ -27,7 +27,12 @@ export function ExecutiveSummaryCards({ vm }: { vm: ReportViewModel }) {
       <h2 className="font-heading text-lg font-semibold text-foreground">Executive Summary</h2>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {cards.map((card) => (
-          <Card key={card.subtitle} className="h-full gap-3 py-5">
+          // report-stat-tile: print-stylesheet hook (app/globals.css) —
+          // these small stat cards lose their on-screen shadow/ring
+          // grouping when the PDF flattens Card chrome, so print CSS gives
+          // them a light tint instead, the same tinted-cell treatment
+          // ClimateConditions already uses for its own stat cells.
+          <Card key={card.subtitle} className="report-stat-tile h-full gap-3 py-5">
             <CardContent className="flex h-full flex-col gap-2">
               <card.icon className="size-5 text-primary" />
               <p className={`font-heading text-xl font-semibold ${VALUE_COLOR[card.variant]}`}>{card.value}</p>

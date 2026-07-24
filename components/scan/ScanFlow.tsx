@@ -479,8 +479,7 @@ function UploadPanel({
           <IconUpload className="mx-auto size-10 text-primary" />
           <p className="mt-4 text-sm font-medium">Upload a clear face image</p>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">
-            JPG, PNG, or WEBP images work best. Images stay local in this demo
-            flow.
+            JPG, PNG, or WEBP images work best. Images are not stored in the system.
           </p>
           <input
             ref={fileInputRef}
@@ -511,7 +510,7 @@ function UploadPanel({
           ) : !locationGranted ? (
             <p className="mt-3 text-xs text-muted-foreground">
               Share your location above to enable upload — it&apos;s required to complete a
-              scan.
+              scan. This is required to enable the model predict your skin based on the climate.
             </p>
           ) : null}
         </div>

@@ -53,13 +53,22 @@ async function launchBrowser(): Promise<Browser> {
 
 export async function renderReportPdf(input: {
   reportId: string
+  // The origin the download request itself arrived on (e.g.
+  // `new URL(request.url).origin`) — NOT process.env.BETTER_AUTH_URL.
+  // BETTER_AUTH_URL is deliberately pinned to the canonical production
+  // origin for auth-link purposes (see lib/auth/auth.ts) and is wrong here
+  // whenever the app is reachable somewhere else: a local dev server that
+  // landed on a fallback port because 3000 was already taken, or a Vercel
+  // preview deployment. Using the request's own origin means this always
+  // points at wherever this code is actually running.
+  baseUrl: string
   // The whole request cookie jar, forwarded as-is rather than picking out
   // one cookie by name — avoids hardcoding better-auth's default
   // "better-auth.session_token" naming convention, which would silently
   // break if a custom cookiePrefix/cookie name were ever configured.
   cookies: Array<{ name: string; value: string }>
 }): Promise<Buffer> {
-  const baseUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:3000"
+  const baseUrl = input.baseUrl
   const printUrl = new URL(`/reports/${input.reportId}/print`, baseUrl)
 
   const browser = await getBrowser()

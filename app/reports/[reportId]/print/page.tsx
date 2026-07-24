@@ -22,7 +22,12 @@ export default async function PrintReportPage({ params }: PrintReportPageProps) 
   if (!vm) notFound()
 
   return (
-    <div className="mx-auto max-w-[210mm] space-y-6 bg-background p-8 print:space-y-4 print:p-0">
+    // report-print-surface: styling hook only — see the `@media print`
+    // block in app/globals.css. Scoped to this class (not present on the
+    // dashboard's on-screen /reports/[reportId] page, which renders the
+    // same ReportSectionsList) so the editorial PDF restyle never leaks
+    // into the interactive web report.
+    <div className="report-print-surface mx-auto max-w-[210mm] space-y-6 bg-background p-8 print:space-y-4 print:p-0">
       <ReportSectionsList vm={vm} />
     </div>
   )

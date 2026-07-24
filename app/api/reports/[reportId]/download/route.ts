@@ -32,7 +32,13 @@ export async function GET(request: Request, context: ReportDownloadRouteContext)
 
   let pdf: Buffer
   try {
-    pdf = await renderReportPdf({ reportId: report.id, cookies: requestCookies })
+    pdf = await renderReportPdf({
+      reportId: report.id,
+      // The origin this request itself arrived on, not BETTER_AUTH_URL —
+      // see the baseUrl comment in render-report-pdf.ts for why.
+      baseUrl: new URL(request.url).origin,
+      cookies: requestCookies,
+    })
   } catch (error) {
     console.error(`[reports] PDF generation failed for report ${reportId}:`, error)
     return NextResponse.json(

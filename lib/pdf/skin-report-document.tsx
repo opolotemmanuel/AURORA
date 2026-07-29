@@ -10,7 +10,7 @@ import {
 } from "@react-pdf/renderer"
 
 import { DimensionRadarSvg } from "@/lib/pdf/dimension-radar-svg"
-import { reportStyles } from "@/lib/pdf/report-styles"
+import { reportStyles, sectionMinPresence } from "@/lib/pdf/report-styles"
 import { getBandPdfColor } from "@/lib/scan/band-styles"
 import {
   CONSULTATION_BOOKING_URL,
@@ -37,14 +37,6 @@ type SkinReportDocumentProps = {
   scanDate?: string
   logoSrc?: string
   captureMode?: string
-  usage?: {
-    modelId: string
-    totalTokens: number
-    inputTokens: number
-    outputTokens: number
-    cachedTokens?: number
-    reasoningTokens?: number | null
-  } | null
   productImageDataUris?: Map<string, string>
 }
 
@@ -82,7 +74,9 @@ function ReportDocumentHeader({
   ].filter(Boolean) as string[]
 
   return (
-    <View style={reportStyles.header}>
+    // Repeated on every page: a two-page report whose later sheets carry no
+    // branding reads as loose paper once it is printed or forwarded.
+    <View style={reportStyles.header} fixed>
       <View style={reportStyles.headerLeft}>
         {logoSrc ? <Image src={logoSrc} style={reportStyles.logo} /> : null}
         <View>
@@ -106,15 +100,23 @@ function ReportDocumentHeader({
 function ReportSection({
   title,
   first = false,
+  minPresence = sectionMinPresence.standard,
   children,
 }: {
   title: string
   first?: boolean
+  /**
+   * Space the title needs below it before a page break is allowed, so a heading
+   * never ends up stranded at the foot of a page with its content overleaf.
+   */
+  minPresence?: number
   children: ReactNode
 }) {
   return (
     <View style={first ? reportStyles.sectionFirst : reportStyles.section}>
-      <Text style={reportStyles.sectionTitle}>{title}</Text>
+      <Text style={reportStyles.sectionTitle} minPresenceAhead={minPresence}>
+        {title}
+      </Text>
       {children}
     </View>
   )
@@ -225,8 +227,13 @@ export function SkinReportDocument({
 
   return (
     <Document title="Aurora Organics Skin Report">
-      {/* Page 1: snapshot, weather, radar chart */}
-      <Page size="A4" style={reportStyles.page} wrap={false}>
+      {/*
+        One flowing page rather than a page per topic. The old layout pinned
+        each block to a fixed sheet, which left pages two and three around half
+        empty, and page one carried wrap={false} so a longer model summary was
+        silently truncated instead of continuing overleaf.
+      */}
+      <Page size="A4" style={reportStyles.page}>
         <ReportPageFooter />
 
         <ReportDocumentHeader
@@ -274,20 +281,27 @@ export function SkinReportDocument({
           />
         </ReportSection>
 
-        <ReportSection title={REPORT_SECTION_TITLES.areas}>
-          <Text style={reportStyles.chartCaption}>
-            Band levels from minimal (center) to elevated (outer edge)
-          </Text>
-          <DimensionRadarSvg dimensions={assessment.dimensions} />
-        </ReportSection>
-      </Page>
-
-      {/* Page 2: dimension cards + everyday care */}
-      <Page size="A4" style={reportStyles.page}>
-        <ReportPageFooter />
-
-        <View style={reportStyles.sectionFirst}>
-          <DimensionCards assessment={assessment} />
+        <View style={reportStyles.section}>
+          {/*
+            Heading, caption and chart are one unbreakable block. The chart
+            cannot be split across pages, and minPresenceAhead on the heading
+            alone was not enough to keep it from being left behind when the
+            chart moved overleaf.
+          */}
+          <View wrap={false}>
+            <Text style={reportStyles.sectionTitle}>
+              {REPORT_SECTION_TITLES.areas}
+            </Text>
+            <Text style={reportStyles.chartCaption}>
+              Band levels from minimal (center) to elevated (outer edge)
+            </Text>
+            <DimensionRadarSvg dimensions={assessment.dimensions} />
+          </View>
+          {/* The cards read the chart back in words, so they belong to the
+              same heading rather than opening a page with no title of their own. */}
+          <View style={reportStyles.dimensionCards}>
+            <DimensionCards assessment={assessment} />
+          </View>
         </View>
 
         {assessment.naturalRecommendations.length > 0 ? (
@@ -318,13 +332,11 @@ export function SkinReportDocument({
             })}
           </ReportSection>
         ) : null}
-      </Page>
 
-      {/* Page 3+: products and disclaimer */}
-      <Page size="A4" style={reportStyles.page}>
-        <ReportPageFooter />
-
-        <ReportSection title={REPORT_SECTION_TITLES.products} first>
+        <ReportSection
+          title={REPORT_SECTION_TITLES.products}
+          minPresence={sectionMinPresence.products}
+        >
           <Text style={[reportStyles.body, { marginBottom: 8 }]}>
             {RECOMMENDATION_SECTIONS.recommendedProducts.description}
           </Text>

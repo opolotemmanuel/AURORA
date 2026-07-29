@@ -28,6 +28,7 @@ export function ScanWizard({ scanTier }: { scanTier: ScanTier }) {
     null,
   )
   const [imageBlob, setImageBlob] = useState<Blob | null>(null)
+  const [captureSource, setCaptureSource] = useState<CaptureMode>("upload")
   const [livePayload, setLivePayload] = useState<LiveScanPayload | null>(null)
   const [assessment, setAssessment] = useState<SkinAssessment | null>(null)
   const [climateContext, setClimateContext] =
@@ -62,6 +63,15 @@ export function ScanWizard({ scanTier }: { scanTier: ScanTier }) {
     setScanId(null)
     setReportOpen(false)
   }, [revokeAllUrls])
+
+  /**
+   * Start over from capture, landing on whichever source the photo came from
+   * so an uploaded photo returns to the file picker rather than the camera.
+   */
+  const restartCapture = useCallback(() => {
+    resetScan()
+    setCaptureMode(captureSource === "camera" ? "camera" : "upload")
+  }, [captureSource, resetScan])
 
   const handleBackToEdit = useCallback(() => {
     if (croppedPreviewUrl) {
@@ -100,8 +110,9 @@ export function ScanWizard({ scanTier }: { scanTier: ScanTier }) {
   )
 
   const handleImageSelected = useCallback(
-    (file: File, previewUrl: string, _source: CaptureMode) => {
+    (file: File, previewUrl: string, source: CaptureMode) => {
       trackUrl(previewUrl)
+      setCaptureSource(source)
       setRawPreviewUrl(previewUrl)
       setImageBlob(file)
       setStep("edit")
@@ -183,9 +194,10 @@ export function ScanWizard({ scanTier }: { scanTier: ScanTier }) {
             {step === "quality" && croppedPreviewUrl ? (
               <ScanQualityStep
                 imageSrc={croppedPreviewUrl}
+                captureSource={captureSource}
                 onPass={handleQualityPass}
                 onReEdit={handleBackToEdit}
-                onRetake={resetScan}
+                onRetake={restartCapture}
               />
             ) : null}
 

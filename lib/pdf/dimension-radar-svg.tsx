@@ -14,32 +14,45 @@ type DimensionRadarSvgProps = {
   dimensions: SkinDimension[]
 }
 
-/** Inner chart diameter — labels sit in the padded margin outside this. */
-const CHART_SIZE = 190
-const LABEL_PADDING = 52
-const SVG_SIZE = CHART_SIZE + LABEL_PADDING * 2
+/**
+ * The chart is drawn small but the SVG spans the full text column, because axis
+ * labels are laid out in the SVG's own coordinate space and anything past its
+ * edge is clipped, not wrapped. Sizing the box to the plot alone truncated the
+ * longer labels ("Pigmentation & sun spots" lost its last word).
+ */
+const CHART_SIZE = 200
+const SVG_WIDTH = 515
+export const RADAR_SVG_HEIGHT = 210
+/** Gap between the outer ring and the label baseline. */
+const LABEL_GAP = 16
 
 export function DimensionRadarSvg({ dimensions }: DimensionRadarSvgProps) {
   if (dimensions.length === 0) return null
 
-  const geometry = buildDimensionChartGeometry(dimensions, CHART_SIZE, 0.26)
+  const geometry = buildDimensionChartGeometry(dimensions, CHART_SIZE, 0.38)
   const { outerRadius, points, gridRings } = geometry
-  const offset = LABEL_PADDING
-  const center = geometry.center + offset
+  const centerX = SVG_WIDTH / 2
+  const centerY = RADAR_SVG_HEIGHT / 2
+  const offsetX = centerX - geometry.center
+  const offsetY = centerY - geometry.center
   const count = points.length
 
   const offsetPolygon = points
-    .map((point) => `${point.x + offset},${point.y + offset}`)
+    .map((point) => `${point.x + offsetX},${point.y + offsetY}`)
     .join(" ")
 
   return (
-    <View wrap={false} style={{ alignItems: "center", marginVertical: 4 }}>
-      <Svg width={SVG_SIZE} height={SVG_SIZE} viewBox={`0 0 ${SVG_SIZE} ${SVG_SIZE}`}>
+    <View wrap={false} style={{ marginVertical: 4 }}>
+      <Svg
+        width={SVG_WIDTH}
+        height={RADAR_SVG_HEIGHT}
+        viewBox={`0 0 ${SVG_WIDTH} ${RADAR_SVG_HEIGHT}`}
+      >
         {gridRings.map((ringRadius) => {
           const ringPoints = Array.from({ length: count }, (_, index) => {
             const angle = (Math.PI * 2 * index) / count - Math.PI / 2
-            const x = center + ringRadius * Math.cos(angle)
-            const y = center + ringRadius * Math.sin(angle)
+            const x = centerX + ringRadius * Math.cos(angle)
+            const y = centerY + ringRadius * Math.sin(angle)
             return `${x},${y}`
           }).join(" ")
 
@@ -57,10 +70,10 @@ export function DimensionRadarSvg({ dimensions }: DimensionRadarSvgProps) {
         {points.map((point) => (
           <Line
             key={point.label}
-            x1={center}
-            y1={center}
-            x2={center + outerRadius * Math.cos(point.angle)}
-            y2={center + outerRadius * Math.sin(point.angle)}
+            x1={centerX}
+            y1={centerY}
+            x2={centerX + outerRadius * Math.cos(point.angle)}
+            y2={centerY + outerRadius * Math.sin(point.angle)}
             stroke={reportColors.border}
             strokeWidth={0.5}
           />
@@ -76,20 +89,20 @@ export function DimensionRadarSvg({ dimensions }: DimensionRadarSvgProps) {
         {points.map((point) => {
           const { x, y } = getAxisLabelPosition(
             point.angle,
-            center,
+            0,
             outerRadius,
-            LABEL_PADDING - 8,
+            LABEL_GAP,
           )
 
           return (
             <Text
               key={`axis-${point.label}`}
-              x={x}
-              y={y}
+              x={centerX + x}
+              y={centerY + y}
               textAnchor={getAxisLabelTextAnchor(point.angle)}
               dominantBaseline={getAxisLabelDominantBaseline(point.angle)}
               fill={reportColors.muted}
-              style={{ fontSize: 7, fontFamily: "Inter" }}
+              style={{ fontSize: 8, fontFamily: "Inter" }}
             >
               {point.label}
             </Text>

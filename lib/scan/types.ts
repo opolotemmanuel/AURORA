@@ -34,12 +34,21 @@ export type LiveScanPayload = {
 
 export type LightingBand = "too_dark" | "ok" | "too_bright"
 
+/**
+ * What the crop actually contains: a detected face, a close-up patch of skin
+ * with no face in frame, or neither.
+ */
+export type CropSubject = "face" | "skin" | "none"
+
 export type QualityCheckResult = {
   faceDetected: boolean
   faceCount: number
   faceCentered: boolean
   lightingScore: number
   lightingBand: LightingBand
+  skinCoverage: number
+  skinDetail: number
+  cropSubject: CropSubject
   isPlausibleSkin: boolean
   issues: string[]
   passed: boolean

@@ -11,10 +11,10 @@ export function OnboardingSkeleton() {
     <div className="w-full space-y-6">
       <div className="space-y-3">
         <div className="flex items-center gap-1.5">
-          {Array.from({ length: 8 }).map((_, index) => (
+          {Array.from({ length: 9 }).map((_, index) => (
             <div key={index} className="flex flex-1 items-center gap-1.5">
               <Skeleton className="size-7 shrink-0 rounded-full" />
-              {index < 7 ? <Skeleton className="h-px flex-1" /> : null}
+              {index < 8 ? <Skeleton className="h-px flex-1" /> : null}
             </div>
           ))}
         </div>

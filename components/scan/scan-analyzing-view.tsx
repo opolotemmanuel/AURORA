@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { IconCheck, IconLoader2, IconRefresh } from "@tabler/icons-react"
 
 import { AnimatedBadge } from "@/components/motion/animated-badge"
@@ -60,6 +60,27 @@ export function ScanAnalyzingView({
   const [error, setError] = useState<string | null>(null)
   const [isComplete, setIsComplete] = useState(false)
 
+  /**
+   * The image this component has already sent for analysis.
+   *
+   * Analysis is not a read: the endpoint creates a scan row and debits the
+   * user's balance, so firing it twice bills two scans for one capture. The
+   * previous guard was a local `cancelled` flag, which only suppressed the
+   * response handler; both requests still reached the server. StrictMode's
+   * double effect invocation was enough to trigger it on every dev scan. A ref
+   * survives that remount, so the second pass sees the blob already sent.
+   */
+  const requestedForRef = useRef<Blob | null>(null)
+  /** False once the component is genuinely gone, so late results are dropped. */
+  const activeRef = useRef(true)
+
+  useEffect(() => {
+    activeRef.current = true
+    return () => {
+      activeRef.current = false
+    }
+  }, [])
+
   const activeLabel = error
     ? "Analysis failed"
     : isComplete
@@ -84,6 +105,8 @@ export function ScanAnalyzingView({
       ? "Your personalized report is ready."
       : WAIT_DESCRIPTIONS[waitDescriptionIndex]
 
+  // Purely presentational: the phase ticker is decoupled from the request so
+  // re-running it can never re-trigger analysis.
   useEffect(() => {
     let cancelled = false
     let stepIndex = 0
@@ -102,9 +125,18 @@ export function ScanAnalyzingView({
       }
     }
 
-    async function run() {
-      advancePhase()
+    advancePhase()
 
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (requestedForRef.current === imageBlob) return
+    requestedForRef.current = imageBlob
+
+    async function run() {
       try {
         const mimeType = imageBlob.type.startsWith("image/")
           ? imageBlob.type
@@ -138,7 +170,7 @@ export function ScanAnalyzingView({
         })
 
         const result = (await response.json()) as AnalyzeScanResult
-        if (cancelled) return
+        if (!activeRef.current) return
 
         if (!response.ok || !result.ok) {
           const message = result.ok
@@ -156,16 +188,13 @@ export function ScanAnalyzingView({
           climateContext: result.climateContext,
         })
       } catch {
-        if (!cancelled) {
+        if (activeRef.current) {
           setError(toUserFacingScanError(new Error("Skin analysis failed")))
         }
       }
     }
 
     void run()
-    return () => {
-      cancelled = true
-    }
   }, [imageBlob, livePayload, onComplete])
 
   return (

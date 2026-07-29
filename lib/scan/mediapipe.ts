@@ -2,6 +2,7 @@
 
 import { FaceDetector, FilesetResolver } from "@mediapipe/tasks-vision"
 
+import { installMediapipeLogFilter } from "@/lib/scan/mediapipe-log-filter"
 import type { FaceDetection } from "@/lib/scan/types"
 
 type ImageSource =
@@ -53,6 +54,7 @@ function bumpVideoTimestamp() {
 
 async function getImageFaceDetector(): Promise<FaceDetector> {
   if (!imageDetectorPromise) {
+    installMediapipeLogFilter()
     imageDetectorPromise = (async () => {
       const vision = await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_BASE)
 
@@ -75,6 +77,7 @@ async function getImageFaceDetector(): Promise<FaceDetector> {
 
 async function getVideoFaceDetector(): Promise<FaceDetector> {
   if (!videoDetectorPromise) {
+    installMediapipeLogFilter()
     videoDetectorPromise = (async () => {
       const vision = await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_BASE)
 

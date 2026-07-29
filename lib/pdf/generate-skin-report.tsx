@@ -52,18 +52,6 @@ export async function generateSkinReportPdf(scanId: string, userId: string) {
       logoSrc={getBrandLogoDataUri()}
       captureMode={scan.captureMode}
       productImageDataUris={productImageDataUris}
-      usage={
-        scan.usage
-          ? {
-              modelId: scan.usage.modelId,
-              inputTokens: scan.usage.inputTokens,
-              outputTokens: scan.usage.outputTokens,
-              cachedTokens: scan.usage.cachedTokens,
-              reasoningTokens: scan.usage.reasoningTokens,
-              totalTokens: scan.usage.totalTokens,
-            }
-          : null
-      }
     />,
   )
 

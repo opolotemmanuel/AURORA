@@ -7,6 +7,7 @@ import {
   IconCrop,
   IconLoader2,
   IconRefresh,
+  IconUpload,
 } from "@tabler/icons-react"
 
 import { AnimatedBadge } from "@/components/motion/animated-badge"
@@ -15,11 +16,12 @@ import { ScanStepFrame } from "@/components/scan/scan-step-frame"
 import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import { Button } from "@/components/ui/button"
 import { runQualityGate } from "@/lib/scan/quality-gate"
-import type { QualityCheckResult } from "@/lib/scan/types"
+import type { CaptureMode, QualityCheckResult } from "@/lib/scan/types"
 import { cn } from "@/lib/utils"
 
 type ScanQualityStepProps = {
   imageSrc: string
+  captureSource: CaptureMode
   onPass: () => void
   onReEdit: () => void
   onRetake: () => void
@@ -27,10 +29,12 @@ type ScanQualityStepProps = {
 
 export function ScanQualityStep({
   imageSrc,
+  captureSource,
   onPass,
   onReEdit,
   onRetake,
 }: ScanQualityStepProps) {
+  const fromCamera = captureSource === "camera"
   const [loading, setLoading] = useState(true)
   const [result, setResult] = useState<QualityCheckResult | null>(null)
   const [resolutionWarning, setResolutionWarning] = useState<string | null>(null)
@@ -60,6 +64,9 @@ export function ScanQualityStep({
             faceCentered: false,
             lightingScore: 0,
             lightingBand: "too_dark",
+            skinCoverage: 0,
+            skinDetail: 0,
+            cropSubject: "none",
             isPlausibleSkin: false,
             issues: [
               "Face detection failed for this photo. Try better lighting, a larger crop, or retake.",
@@ -81,11 +88,14 @@ export function ScanQualityStep({
   const checks = [
     {
       id: "crop",
-      label: "Face in crop",
-      hint: "A single face fills the cropped area",
+      label: result?.cropSubject === "skin" ? "Skin close-up" : "Face in crop",
+      hint:
+        result?.cropSubject === "skin"
+          ? "The crop is filled with skin, no face needed"
+          : "A single face, or a close-up of skin, fills the crop",
       status: loading
         ? ("loading" as const)
-        : result?.faceDetected
+        : result && result.cropSubject !== "none"
           ? ("success" as const)
           : ("danger" as const),
     },
@@ -204,16 +214,22 @@ export function ScanQualityStep({
           </Button>
           <Button
             type="button"
-            variant="outline"
+            // The way out when a photo cannot pass, so highlight it on failure.
+            variant={!loading && !result?.passed ? "default" : "outline"}
             size="sm"
             onClick={onRetake}
             className="rounded-full"
           >
-            <IconRefresh className="size-3.5" />
-            Retake photo
+            {fromCamera ? (
+              <IconRefresh className="size-3.5" />
+            ) : (
+              <IconUpload className="size-3.5" />
+            )}
+            {fromCamera ? "Retake photo" : "Upload a different photo"}
           </Button>
           <Button
             type="button"
+            variant={!loading && !result?.passed ? "outline" : "default"}
             size="sm"
             disabled={loading || !result?.passed}
             onClick={onPass}

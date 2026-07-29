@@ -1,10 +1,13 @@
 import { StyleSheet } from "@react-pdf/renderer"
 
-/** Minimum space (pt) a section title should keep with content below it. */
+/**
+ * Minimum space (pt) a section title should keep with content below it, so a
+ * heading is not stranded at the foot of a page. Blocks that cannot be split at
+ * all (the radar chart) use wrap={false} instead.
+ */
 export const sectionMinPresence = {
   compact: 80,
   standard: 120,
-  dimensions: 200,
   products: 160,
 } as const
 
@@ -94,22 +97,6 @@ export const reportStyles = StyleSheet.create({
     color: reportColors.muted,
     textAlign: "right",
   },
-  tokenStrip: {
-    fontSize: 8,
-    color: reportColors.muted,
-    marginTop: 8,
-  },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: reportColors.border,
-  },
-  rowAlt: {
-    backgroundColor: reportColors.surfaceAlt,
-  },
   rowLabel: {
     fontSize: 10,
     fontFamily: "Inter",
@@ -185,6 +172,9 @@ export const reportStyles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
+  },
+  dimensionCards: {
+    marginTop: 8,
   },
   gridCell: {
     width: "48%",

@@ -63,26 +63,25 @@ export function LandingHero() {
             className="text-muted-foreground bg-muted/60 inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs sm:text-sm"
           >
             <span className="bg-primary size-1.5 rounded-full" />
-            Skincare, made personal
+            Personalized from one photo
           </motion.p>
 
           <motion.h1
             variants={itemVariants}
             className="font-display text-foreground max-w-xl text-4xl leading-[1.1] tracking-tight text-balance md:text-5xl lg:text-6xl"
           >
-            Understand your skin.
+            Know your skin.
             <br />
-            Discover your routine.
+            Find what fits.
           </motion.h1>
 
           <motion.p
             variants={itemVariants}
             className="text-muted-foreground max-w-lg text-base leading-relaxed md:text-lg"
           >
-            One photo reads six dimensions of your skin, from hydration to tone
-            and texture. You get an Ayurvedic skin lean, product matches
-            filtered against your allergies and local climate, and a report you
-            keep.
+            Take one photo and get a clear, honest read on your skin. Then get
+            Aurora matches and a routine shaped around you, your allergies, and
+            your climate. Keep the report. Rescan whenever your skin changes.
           </motion.p>
 
           <motion.div

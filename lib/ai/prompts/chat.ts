@@ -120,6 +120,7 @@ export function buildFollowUpContextText(
     {
       overallBand: assessment.overallBand,
       summary: assessment.summary,
+      concernsNotVisible: assessment.concernsNotVisible,
       dimensions: assessment.dimensions,
       doshaTyping: assessment.doshaTyping,
       naturalRecommendations: assessment.naturalRecommendations,

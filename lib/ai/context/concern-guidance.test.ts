@@ -47,7 +47,11 @@ describe("buildProfileConcernPromptBlock", () => {
     assert.match(block, /blemishes, breakout-prone areas, congestion/)
     assert.match(block, /excess sebum, shine, oil balance/)
     assert.match(block, /blemish and congestion patterns/)
-    assert.match(block, /must acknowledge every one of these by name: acne, oiliness/)
+    assert.match(
+      block,
+      /Account for every one of these exactly once: acne, oiliness/,
+    )
+    assert.match(block, /the rest go in concernsNotVisible/)
   })
 })
 

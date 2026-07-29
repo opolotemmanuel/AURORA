@@ -1,20 +1,5 @@
-import { formatTokenBreakdown } from "@/lib/tokens/format-usage"
-
-type ChatDebitMetadata = {
-  tokensDebited?: number
-  modelId?: string
-  inputTokens?: number
-  outputTokens?: number
-}
-
-type ScanDebitMetadata = {
-  modelId?: string
-  inputTokens?: number
-  outputTokens?: number
-  cachedTokens?: number
-  reasoningTokens?: number
-}
-
+// User-facing ledger copy: never surface token counts, costs, or model ids here,
+// those stay in the admin usage views.
 const REASON_LABELS: Record<string, string> = {
   scan_debit: "Scan",
   chat_token_debit: "Skin advice chat",
@@ -33,44 +18,12 @@ export function getLedgerShortLabel(reason: string): string {
   return humanizeReason(reason)
 }
 
-export function getLedgerDetail(reason: string, metadata: unknown): string | null {
-  if (reason === "chat_token_debit") {
-    const data = metadata as ChatDebitMetadata | null
-    if (!data?.tokensDebited) {
-      return null
-    }
-    const parts = [`${data.tokensDebited.toLocaleString()} tokens`]
-    if (data.modelId) {
-      parts.push(data.modelId)
-    }
-    return parts.join(" · ")
-  }
-
-  if (reason !== "scan_debit") {
-    return null
-  }
-
-  const data = metadata as ScanDebitMetadata | null
-  if (!data?.modelId) {
-    return null
-  }
-
-  if (data.inputTokens == null || data.outputTokens == null) {
-    return data.modelId
-  }
-
-  const tokens = formatTokenBreakdown({
-    inputTokens: data.inputTokens,
-    outputTokens: data.outputTokens,
-    cachedTokens: data.cachedTokens,
-    reasoningTokens: data.reasoningTokens,
-  })
-
-  return `${data.modelId} · ${tokens}`
+export function getLedgerDetail(reason: string): string | null {
+  return reason === "chat_token_debit" ? "1 message" : null
 }
 
-export function getLedgerFullLabel(reason: string, metadata: unknown): string {
-  const detail = getLedgerDetail(reason, metadata)
+export function getLedgerFullLabel(reason: string): string {
+  const detail = getLedgerDetail(reason)
   const short = getLedgerShortLabel(reason)
   return detail ? `${short} · ${detail}` : short
 }

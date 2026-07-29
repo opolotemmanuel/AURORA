@@ -67,10 +67,10 @@ export async function DashboardOverviewStats() {
           }
         />
         <StatCard
-          label="Chat budget"
-          value={stats.chatBudgetRemaining}
+          label="Chats remaining"
+          value={stats.chatMessagesRemaining}
           icon={<IconMessageCircle />}
-          hint="Tokens for skin advice"
+          hint="Skin advice questions left"
         />
         <StatCard
           label="Skin type"

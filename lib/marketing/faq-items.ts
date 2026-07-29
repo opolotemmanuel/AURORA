@@ -7,51 +7,51 @@ export const MARKETING_FAQ_ITEMS: MarketingFaqItem[] = [
   {
     question: "How does a scan work?",
     answer:
-      "Use your camera or upload a photo. On-screen quality checks help you get a clear shot, then you receive a personalized skin report with plain-language insights and product matches, all in seconds.",
+      "Snap a photo or go live. On-device checks confirm lighting and framing, then you get a plain-language skin report with Aurora matches in seconds.",
   },
   {
     question: "Is this a medical diagnosis?",
     answer:
-      "No. This is cosmetic and wellness guidance only. Results use simple skin bands, not clinical precision, and are not a substitute for advice from a licensed healthcare professional.",
+      "No. This is cosmetic and wellness guidance only. Results use simple bands, not clinical scores, and are not a substitute for professional care.",
   },
   {
     question: "Is my photo sent to AI?",
     answer:
-      "Yes. Your cropped photo is sent to Google Gemini for cosmetic analysis. Aurora Organics does not store your photo by default. Only the text assessment and recommendations are saved. On-device quality checks run locally in your browser and are not sent to our servers.",
+      "Yes. Your cropped photo goes to Google Gemini for cosmetic analysis. We do not store the photo by default—only the text assessment is saved.",
   },
   {
     question: "Do you keep my photos?",
     answer:
-      "By default, we store your report and assessment data, not your scan photo. You can delete scans, profile details, or your entire account anytime from the dashboard.",
+      "No. By default we keep your report, not your photo. You can delete scans, profile data, or your account anytime from the dashboard.",
   },
   {
     question: "What are scan tiers?",
     answer:
-      "Aurora Organics offers Starter, Thinking, and Pro tiers. Starter includes still-photo scans, and new accounts get three free Starter scans. Thinking adds deeper AI analysis. Pro adds live camera scans with real-time analysis. Each saved analysis uses one scan allowance.",
+      "Starter, Thinking, and Pro. Starter covers still scans with three free on signup. Thinking goes deeper. Pro adds live camera scans. Each saved analysis uses one scan.",
   },
   {
     question: "How do scan allowances work?",
     answer:
-      "Each saved analysis uses one scan from your tier allowance. New accounts receive three free Starter scans. Additional scans can be purchased by tier when billing is available.",
+      "One successful analysis uses one scan from your balance. New accounts get three free Starter scans. More can be added by tier when billing ships.",
   },
   {
     question: "What do the skin bands mean?",
     answer:
-      "Bands are simple labels for areas like hydration, tone, and texture: easy to read, honest about what the scan can tell you, and meant to guide product choices without fake percentages.",
+      "Clear labels for hydration, tone, texture, and more. Easy to read, honest about what a photo can tell you—no fake percentages.",
   },
   {
     question: "How are products recommended?",
     answer:
-      "Recommendations combine your scan results with your onboarding profile (skin type, routine, lifestyle, and local climate) to suggest formulas that may fit your needs.",
+      "Your scan plus your profile (allergies, routine, climate) filter Aurora Organics formulas that fit you.",
   },
   {
     question: "Can I download my report?",
     answer:
-      "Yes. Saved reports live in your dashboard. Open any report and download a text-only PDF — no photo is included. This is the way to keep or share your assessment results.",
+      "Yes. Open any saved report in your dashboard and download a text-only PDF. No photo is included.",
   },
   {
     question: "How is my data protected?",
     answer:
-      "Data is encrypted in transit using HTTPS/TLS and stored on encrypted database infrastructure. We only collect what is needed to deliver your report and recommendations. You must give explicit consent before your first scan.",
+      "Encrypted in transit and at rest. We collect only what the report needs. Explicit consent is required before your first scan.",
   },
 ]

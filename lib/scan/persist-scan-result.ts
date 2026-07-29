@@ -94,6 +94,7 @@ export async function persistScanResult(input: PersistScanResultInput) {
           dimensions: resultData.dimensions,
           doshaTyping: resultData.doshaTyping,
           summary: resultData.summary,
+          concernsNotVisible: resultData.concernsNotVisible,
           naturalRecommendations: resultData.naturalRecommendations,
           recommendations: resultData.recommendations,
           disclaimerVersion: resultData.disclaimerVersion,

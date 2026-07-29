@@ -37,7 +37,6 @@ export async function ReportsList({ page = 1 }: ReportsListProps) {
       take: REPORTS_PAGE_SIZE,
       include: {
         result: true,
-        usage: true,
         feedback: true,
         scanLedgers: {
           where: { reason: "scan_debit" },
@@ -66,18 +65,6 @@ export async function ReportsList({ page = 1 }: ReportsListProps) {
       status: scan.status,
       captureMode: scan.captureMode,
       locationSnapshot: scan.locationSnapshot,
-      usage: scan.usage
-        ? {
-            modelId: scan.usage.modelId,
-            inputTokens: scan.usage.inputTokens,
-            outputTokens: scan.usage.outputTokens,
-            cachedTokens: scan.usage.cachedTokens,
-            reasoningTokens: scan.usage.reasoningTokens,
-            totalTokens: scan.usage.totalTokens,
-            latencyMs: scan.usage.latencyMs,
-            estimatedCostMicros: scan.usage.estimatedCostMicros,
-          }
-        : null,
       scansDebited: getScansDebited(ledger),
       result: scan.result
         ? {
@@ -85,6 +72,7 @@ export async function ReportsList({ page = 1 }: ReportsListProps) {
             dimensions: scan.result.dimensions,
             doshaTyping: scan.result.doshaTyping,
             summary: scan.result.summary,
+            concernsNotVisible: scan.result.concernsNotVisible,
             naturalRecommendations: scan.result.naturalRecommendations,
             recommendations: enrichedGroups[index] ?? [],
             disclaimerVersion: scan.result.disclaimerVersion,

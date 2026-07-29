@@ -18,11 +18,11 @@ export async function UsageStats() {
         <StatCard label="Used" value={stats.lifetimeUsed} />
         <StatCard label="Granted" value={stats.lifetimeGranted} />
         <StatCard
-          label="Chat tokens used"
-          value={stats.lifetimeChatTokensUsed}
+          label="Chats used"
+          value={stats.chatMessagesUsed}
           hint={
             <>
-              <CompactNumber value={stats.chatBudgetRemaining} /> remaining
+              <CompactNumber value={stats.chatMessagesRemaining} /> remaining
             </>
           }
         />

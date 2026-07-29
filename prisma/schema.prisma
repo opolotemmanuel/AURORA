@@ -494,6 +494,7 @@ model ScanResult {
   dimensions             Json?
   doshaTyping            Json?
   summary                String?
+  concernsNotVisible     Json?
   naturalRecommendations Json?
   recommendations        Json?
   disclaimerVersion      String         @default("1.0")

@@ -13,6 +13,7 @@ import { DimensionRadarSvg } from "@/lib/pdf/dimension-radar-svg"
 import { reportStyles, sectionMinPresence } from "@/lib/pdf/report-styles"
 import { getBandPdfColor } from "@/lib/scan/band-styles"
 import {
+  CONCERNS_NOT_VISIBLE_TITLE,
   CONSULTATION_BOOKING_URL,
   RECOMMENDATION_SECTIONS,
   REPORT_SECTION_TITLES,
@@ -22,6 +23,7 @@ import {
   formatApplicationSchedule,
   formatBand,
   formatClimateBand,
+  formatConcernLabel,
   formatClimateZone,
   formatLocationLabel,
   formatSeasonBand,
@@ -253,11 +255,26 @@ export function SkinReportDocument({
             {formatBand(assessment.overallBand)}
           </Text>
           <Text style={[reportStyles.body, { marginTop: 4 }]}>
-            {formatSkinHeadline(assessment.overallBand)}
+            {formatSkinHeadline(assessment.overallBand, assessment.dimensions)}
           </Text>
           <Text style={[reportStyles.body, { marginTop: 6 }]}>
             {assessment.summary}
           </Text>
+          {assessment.concernsNotVisible.length > 0 ? (
+            <View style={{ marginTop: 8 }}>
+              <Text style={reportStyles.rowLabel}>
+                {CONCERNS_NOT_VISIBLE_TITLE}
+              </Text>
+              {assessment.concernsNotVisible.map((item) => (
+                <Text
+                  key={item.concern}
+                  style={[reportStyles.rowNote, { marginTop: 2 }]}
+                >
+                  {formatConcernLabel(item.concern)}: {item.note}
+                </Text>
+              ))}
+            </View>
+          ) : null}
         </ReportSection>
 
         <ReportSection title={REPORT_SECTION_TITLES.dosha}>

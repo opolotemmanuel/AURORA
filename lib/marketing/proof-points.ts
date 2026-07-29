@@ -4,55 +4,60 @@
  * codebase rather than asserted. Do not add a claim here without the code
  * behind it.
  */
+export type ProofVisualId =
+  | "bands"
+  | "lean"
+  | "allergy"
+  | "climate"
+  | "privacy"
+  | "chat"
+
 export interface ProofPoint {
-  /** Tabler icon name, resolved by the rendering component. */
-  icon: "scan" | "leaf" | "flask" | "cloud" | "lock" | "message" | "report"
+  visual: ProofVisualId
   title: string
   description: string
 }
 
 export const PROOF_POINTS: ProofPoint[] = [
   {
-    icon: "scan",
-    title: "Six dimensions, honest bands",
+    visual: "bands",
+    title: "Honest skin bands",
     description:
-      "Hydration, tone, texture and more, each reported as a clear band. Never an invented precision score.",
+      "Hydration, tone, texture, and more as clear bands. Never fake percentages.",
   },
   {
-    icon: "leaf",
-    title: "Ayurvedic skin lean",
+    visual: "lean",
+    title: "Ayurvedic lean",
     description:
-      "Your scan includes a dosha lean, so guidance reflects a whole-skin picture rather than one symptom.",
+      "A whole-skin dosha lean, so guidance sees the bigger picture.",
   },
   {
-    icon: "flask",
-    title: "Ingredient-level allergy filtering",
+    visual: "allergy",
+    title: "Allergy-safe matches",
     description:
-      "We parse full INCI ingredient lists and filter out matches that conflict with the allergies on your profile.",
+      "Full ingredient lists checked against your profile before anything is recommended.",
   },
   {
-    icon: "cloud",
-    title: "Matched to your climate",
+    visual: "climate",
+    title: "Climate-aware picks",
     description:
-      "Recommendations account for the humidity and conditions where you actually live, not a generic average.",
+      "Matched to the humidity and conditions where you actually live.",
   },
   {
-    icon: "lock",
-    title: "Photos are never stored",
+    visual: "privacy",
+    title: "Photo never stored",
     description:
-      "Your photo is analysed and then discarded. You keep the report, we keep no image.",
+      "Analyzed, then discarded. You keep the report. We keep no image.",
   },
   {
-    icon: "message",
-    title: "Ask follow-up questions",
+    visual: "chat",
+    title: "Ask follow-ups",
     description:
-      "Talk through your results by voice or text, and get answers grounded in your own scan.",
+      "Voice or text answers grounded in your own scan results.",
   },
 ]
 
 export const PROOF_SECTION = {
   badge: "What you get",
-  heading: "Guidance you can check, not just trust",
-  subheading:
-    "Every claim below maps to something the scan actually does. No fake precision, no borrowed credibility.",
+  heading: "Everything built into your scan",
 }

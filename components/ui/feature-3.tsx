@@ -1,39 +1,44 @@
 "use client"
 
 import Link from "next/link"
+import { useRef } from "react"
 
+import {
+  AmbientBeams,
+  AnimatedBeam,
+} from "@/components/marketing/animated-beam"
 import { FramedPanel } from "@/components/marketing/framed-panel"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 
+const BENEFITS = [
+  "Photo, camera, or live scan",
+  "Six plain-language skin bands",
+  "Matches for allergies and climate",
+  "PDF you keep. Photo never stored.",
+] as const
+
 export function Features3() {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const balanceRef = useRef<HTMLDivElement>(null)
+  const qualityRef = useRef<HTMLDivElement>(null)
+  const matchRef = useRef<HTMLDivElement>(null)
+
   return (
-    <section className="bg-muted/30 w-full py-20">
+    <section className="bg-muted/30 w-full py-28 md:py-36">
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 lg:grid-cols-2">
         <div className="space-y-6">
           <div className="text-muted-foreground bg-muted/50 inline-flex w-fit items-center gap-2 rounded-lg px-3 py-1 text-sm">
             <span className="bg-primary h-2 w-2 rounded-full" />
-            Why it works
+            Made for your skin
           </div>
 
           <h2 className="font-heading text-foreground text-3xl leading-tight font-medium tracking-tight text-balance md:text-4xl">
-            Skincare guidance that actually fits you
+            Guidance that fits you
           </h2>
 
-          <p className="text-muted-foreground max-w-lg">
-            No more trial and error at the shelf. One scan reads your skin across
-            six dimensions, explains each in plain language, and matches you to
-            Aurora Organics formulas that suit your goals, your routine, your
-            climate, and the ingredients you need to avoid.
-          </p>
-
           <div className="space-y-2">
-            {[
-              "Upload a photo, use your camera, or run a live real-time scan",
-              "Six skin dimensions in plain-language bands, plus an Ayurvedic skin lean",
-              "Matches filtered against your allergy list and your local climate",
-              "Keep the PDF report and ask follow-ups; your photo is never stored",
-            ].map((item) => (
+            {BENEFITS.map((item) => (
               <div key={item} className="flex items-center gap-2">
                 <div className="bg-primary/10 mt-1 flex size-6 items-center justify-center rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.15)]">
                   <div className="bg-primary h-2.5 w-2.5 rounded-full" />
@@ -54,8 +59,48 @@ export function Features3() {
         </div>
 
         <FramedPanel innerClassName="flex justify-center p-8">
-          <div className="relative h-[380px] w-full max-w-md">
-            <Card className="bg-background/80 dark:bg-card/80 ring-border/50 absolute top-0 left-0 w-[260px] rounded-lg p-0 shadow-md backdrop-blur-md">
+          <div
+            ref={containerRef}
+            className="relative h-[380px] w-full max-w-md"
+          >
+            <AmbientBeams />
+
+            <AnimatedBeam
+              containerRef={containerRef}
+              fromRef={qualityRef}
+              toRef={balanceRef}
+              curvature={55}
+              delay={0.2}
+              duration={4}
+              startYOffset={-8}
+              endYOffset={12}
+            />
+            <AnimatedBeam
+              containerRef={containerRef}
+              fromRef={qualityRef}
+              toRef={matchRef}
+              curvature={-40}
+              delay={1.4}
+              duration={4.2}
+              reverse
+              startYOffset={8}
+              endYOffset={-8}
+            />
+            <AnimatedBeam
+              containerRef={containerRef}
+              fromRef={balanceRef}
+              toRef={matchRef}
+              curvature={70}
+              delay={2.6}
+              duration={4.5}
+              startXOffset={20}
+              endXOffset={-10}
+            />
+
+            <Card
+              ref={balanceRef}
+              className="bg-background/80 dark:bg-card/80 ring-border/50 absolute top-0 left-0 z-10 w-[260px] rounded-lg p-0 shadow-md backdrop-blur-md"
+            >
               <CardContent className="space-y-2 p-4">
                 <div className="text-muted-foreground text-xs">
                   Skin balance
@@ -80,7 +125,10 @@ export function Features3() {
               </CardContent>
             </Card>
 
-            <Card className="bg-background/90 dark:bg-card/80 ring-border/50 absolute top-28 right-0 z-50 w-[240px] rounded-lg p-0 shadow-lg backdrop-blur-md">
+            <Card
+              ref={qualityRef}
+              className="bg-background/90 dark:bg-card/80 ring-border/50 absolute top-28 right-0 z-20 w-[240px] rounded-lg p-0 shadow-lg backdrop-blur-md"
+            >
               <CardContent className="space-y-3 p-4">
                 <div className="text-muted-foreground text-xs">
                   Scan quality
@@ -113,7 +161,10 @@ export function Features3() {
               </CardContent>
             </Card>
 
-            <Card className="bg-background/90 dark:bg-card/80 ring-border/50 absolute bottom-8 left-10 w-[260px] rounded-lg p-0 shadow-lg backdrop-blur-md">
+            <Card
+              ref={matchRef}
+              className="bg-background/90 dark:bg-card/80 ring-border/50 absolute bottom-8 left-10 z-10 w-[260px] rounded-lg p-0 shadow-lg backdrop-blur-md"
+            >
               <CardContent className="space-y-3 p-4">
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium">Top match</span>

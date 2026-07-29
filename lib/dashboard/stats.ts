@@ -5,6 +5,11 @@ import { utcDaysAgo } from "@/lib/admin/periods"
 import { getAdminUsageSnapshot } from "@/lib/admin/usage-analytics"
 import { prisma } from "@/lib/db/client"
 import { withDbRetry } from "@/lib/db/retry"
+import { AVG_CHAT_TOKENS_PER_MESSAGE } from "@/lib/scans/constants"
+
+function toMessageCount(tokens: bigint | null | undefined): number {
+  return Math.floor(Number(tokens ?? BigInt(0)) / AVG_CHAT_TOKENS_PER_MESSAGE)
+}
 
 export const getUserDashboardStats = cache(async (userId: string) => {
   await connection()
@@ -54,8 +59,11 @@ export const getUserDashboardStats = cache(async (userId: string) => {
       remaining: balance?.remaining ?? 0,
       lifetimeUsed: balance?.lifetimeUsed ?? 0,
       lifetimeGranted: balance?.lifetimeGranted ?? 0,
-      chatBudgetRemaining: Number(balance?.tokenBudgetRemaining ?? BigInt(0)),
-      lifetimeChatTokensUsed: Number(balance?.lifetimeTokensUsed ?? BigInt(0)),
+      // Chat allowance is metered in tokens internally, but users only ever see
+      // it as an estimated message count: raw token counts read as billing
+      // internals, not as something they can act on.
+      chatMessagesRemaining: toMessageCount(balance?.tokenBudgetRemaining),
+      chatMessagesUsed: toMessageCount(balance?.lifetimeTokensUsed),
       scanCount,
       totalDebited: Math.abs(ledgerAgg._sum.delta ?? 0),
       profile,

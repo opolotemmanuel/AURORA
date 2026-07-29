@@ -53,6 +53,9 @@ export function ScanDetailModal({
       typeof fromScanResult
     >[0]["doshaTyping"],
     summary: scan.result.summary,
+    concernsNotVisible: scan.result.concernsNotVisible as Parameters<
+      typeof fromScanResult
+    >[0]["concernsNotVisible"],
     naturalRecommendations: scan.result.naturalRecommendations as Parameters<
       typeof fromScanResult
     >[0]["naturalRecommendations"],
@@ -108,7 +111,6 @@ export function ScanDetailModal({
               <ReportDocumentHeader
                 scanDate={scanDate}
                 captureMode={scan.captureMode}
-                usage={scan.usage}
               />
 
               <SkinReportDocument

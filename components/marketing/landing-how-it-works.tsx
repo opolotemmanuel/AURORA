@@ -1,30 +1,42 @@
 "use client"
 
-import { IconBottle, IconCamera, IconSparkles } from "@tabler/icons-react"
+import type { ComponentType } from "react"
+import { IconArrowRight } from "@tabler/icons-react"
 import { motion, type Variants } from "motion/react"
 
 import { FramedPanel } from "@/components/marketing/framed-panel"
-import { Card, CardContent } from "@/components/ui/card"
+import {
+  AssessVisual,
+  ReportVisual,
+  ScanVisual,
+} from "@/components/marketing/how-it-works-visuals"
 import { EASE_OUT } from "@/lib/ease"
 
-const steps = [
+type Step = {
+  number: string
+  title: string
+  description: string
+  Visual: ComponentType
+}
+
+const steps: Step[] = [
   {
-    icon: IconCamera,
-    title: "Scan",
-    description:
-      "Answer a few questions about your skin, then snap a photo, upload one, or use a live camera scan. On-device checks confirm your lighting and framing before anything is sent.",
+    number: "1",
+    title: "Take a photo",
+    description: "Snap once. We check lighting on your device first.",
+    Visual: ScanVisual,
   },
   {
-    icon: IconSparkles,
-    title: "Assess",
-    description:
-      "Your scan becomes a skin profile across six dimensions, each in a plain-language band, alongside an Ayurvedic skin lean. No invented precision scores.",
+    number: "2",
+    title: "See your skin read",
+    description: "Clear bands for hydration, tone, texture, and more.",
+    Visual: AssessVisual,
   },
   {
-    icon: IconBottle,
-    title: "Recommend",
-    description:
-      "Get Aurora Organics matches filtered against your allergies and local climate. Keep the PDF report, ask follow-up questions, and scan again later to track how your skin changes.",
+    number: "3",
+    title: "Get your report",
+    description: "Keep the PDF with Aurora matches made for you.",
+    Visual: ReportVisual,
   },
 ]
 
@@ -32,16 +44,16 @@ const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.1 },
+    transition: { staggerChildren: 0.16 },
   },
 }
 
 const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 16 },
+  hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.5, ease: EASE_OUT },
+    transition: { duration: 0.55, ease: EASE_OUT },
   },
 }
 
@@ -50,16 +62,33 @@ export function LandingHowItWorks() {
     <section
       id="how-it-works"
       aria-label="How it works"
-      className="bg-background py-20"
+      className="bg-background relative overflow-hidden py-28 md:py-36"
     >
-      <div className="mx-auto max-w-6xl px-6">
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_40%_at_50%_0%,var(--primary)_0%,transparent_55%)] opacity-[0.05]"
+        aria-hidden
+      />
+
+      <div className="relative mx-auto max-w-6xl px-6">
         <div className="mb-12 text-center">
           <p className="text-muted-foreground mb-3 text-sm font-medium tracking-wide uppercase">
             How it works
           </p>
           <h2 className="font-heading text-foreground text-3xl leading-tight font-medium tracking-tight text-balance md:text-4xl">
-            Scan, learn, improve in three steps
+            Three steps to your report
           </h2>
+        </div>
+
+        {/* Clear horizontal flow label on desktop */}
+        <div
+          className="text-muted-foreground mb-8 hidden items-center justify-center gap-3 text-sm md:flex"
+          aria-hidden
+        >
+          <span>Photo</span>
+          <IconArrowRight className="size-4 opacity-50" />
+          <span>Skin read</span>
+          <IconArrowRight className="size-4 opacity-50" />
+          <span>Report</span>
         </div>
 
         <motion.div
@@ -67,32 +96,39 @@ export function LandingHowItWorks() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-80px" }}
-          className="grid gap-6 md:grid-cols-3"
+          className="relative grid gap-6 md:grid-cols-3 md:gap-5"
         >
-          {steps.map((step, index) => (
-            <motion.div key={step.title} variants={itemVariants}>
-              <FramedPanel className="h-full">
-                <Card className="bg-card h-full border-0 shadow-none ring-0">
-                  <CardContent className="space-y-4 p-6">
-                    <div className="flex items-center gap-3">
-                      <span className="bg-primary/10 text-primary flex size-10 items-center justify-center rounded-lg">
-                        <step.icon className="size-5" aria-hidden />
-                      </span>
-                      <span className="text-muted-foreground text-sm font-medium">
-                        Step {index + 1}
-                      </span>
+          {steps.map((step) => {
+            const Visual = step.Visual
+
+            return (
+              <motion.div
+                key={step.title}
+                variants={itemVariants}
+                className="relative"
+              >
+                <FramedPanel className="border-border/60 bg-muted/25 h-full">
+                  <div className="bg-card/50 flex h-full flex-col gap-4 p-3 sm:p-4">
+                    <Visual />
+
+                    <div className="space-y-2.5 px-2 pb-3 sm:px-3 sm:pb-4">
+                      <div className="flex items-center gap-2.5">
+                        <span className="bg-primary text-primary-foreground flex size-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+                          {step.number}
+                        </span>
+                        <h3 className="font-heading text-foreground text-lg font-semibold">
+                          {step.title}
+                        </h3>
+                      </div>
+                      <p className="text-muted-foreground text-sm leading-relaxed">
+                        {step.description}
+                      </p>
                     </div>
-                    <h3 className="font-heading text-foreground text-lg font-semibold">
-                      {step.title}
-                    </h3>
-                    <p className="text-muted-foreground text-sm leading-relaxed">
-                      {step.description}
-                    </p>
-                  </CardContent>
-                </Card>
-              </FramedPanel>
-            </motion.div>
-          ))}
+                  </div>
+                </FramedPanel>
+              </motion.div>
+            )
+          })}
         </motion.div>
       </div>
     </section>

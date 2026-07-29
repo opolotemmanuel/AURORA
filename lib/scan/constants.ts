@@ -31,4 +31,7 @@ export const REPORT_SECTION_TITLES = {
   products: RECOMMENDATION_SECTIONS.recommendedProducts.title,
 } as const
 
-export const REPORT_FORMAT_VERSION = "1.2"
+/** Heading for stated concerns this scan's photo did not support. */
+export const CONCERNS_NOT_VISIBLE_TITLE = "Concerns not visible in this scan"
+
+export const REPORT_FORMAT_VERSION = "1.3"

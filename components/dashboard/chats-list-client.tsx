@@ -185,6 +185,7 @@ export function ChatsListClient({
               handleViewModeChange(value as AdviceChatsViewMode)
             }
             variant="segment"
+            roundedSegment
           >
             <TabsList
               className="border border-border"

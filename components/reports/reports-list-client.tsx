@@ -27,7 +27,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { downloadReportPdf } from "@/lib/reports/download-report-pdf"
 import type { SkinAssessment } from "@/lib/scan/types"
-import { formatTokenBreakdownWithTotal } from "@/lib/tokens/format-usage"
 import {
   deleteAllScansAction,
 } from "@/lib/user/data-actions"
@@ -40,21 +39,12 @@ export type ReportListItem = {
   captureMode: string
   locationSnapshot: unknown
   scansDebited: number | null
-  usage: {
-    modelId: string
-    inputTokens: number
-    outputTokens: number
-    cachedTokens: number
-    reasoningTokens: number | null
-    totalTokens: number
-    latencyMs: number | null
-    estimatedCostMicros: number | null
-  } | null
   result: {
     overallBand: string
     dimensions: unknown
     doshaTyping: unknown
     summary: string | null
+    concernsNotVisible: unknown
     naturalRecommendations: unknown
     recommendations: unknown
     disclaimerVersion: string
@@ -229,20 +219,6 @@ export function ReportsListClient({
                   ) : null}
                 </div>
               </div>
-
-              {scan.usage ? (
-                <p className="mt-3 text-xs text-muted-foreground">
-                  {scan.usage.modelId}
-                  {" · "}
-                  {formatTokenBreakdownWithTotal({
-                    inputTokens: scan.usage.inputTokens,
-                    outputTokens: scan.usage.outputTokens,
-                    cachedTokens: scan.usage.cachedTokens,
-                    reasoningTokens: scan.usage.reasoningTokens ?? undefined,
-                    totalTokens: scan.usage.totalTokens,
-                  })}
-                </p>
-              ) : null}
 
               {scan.result ? (
                 <div

@@ -76,6 +76,21 @@ export const DIMENSION_BAND_CRITERIA: Record<
   },
 }
 
+/**
+ * Short cosmetic phrase naming each dimension in user-facing headline copy.
+ *
+ * These are deliberately shorter than the dimension labels and contain no
+ * internal "and", so two of them can be joined into one readable clause.
+ */
+export const DIMENSION_HEADLINE_PHRASE: Record<SkinDimensionId, string> = {
+  texture_pores: "visible congestion",
+  pigmentation: "uneven tone",
+  redness: "visible redness",
+  wrinkles: "fine lines",
+  hydration: "surface dryness",
+  aging_spots: "dark spots",
+}
+
 const DIMENSION_BY_ID = new Map(
   SKIN_DIMENSIONS.map((dimension) => [dimension.id, dimension]),
 )

@@ -43,7 +43,7 @@ export interface PeriodData {
 export interface PerformanceOverviewProps {
   title: string
   accentWord: string
-  subtitle: string
+  subtitle?: string
   ctaLabel: string
   /** Preferred over onCtaClick: renders a real anchor so the CTA is crawlable. */
   ctaHref?: string
@@ -113,9 +113,11 @@ export function PerformanceOverview({
             <h2 className="font-heading text-foreground text-3xl leading-tight font-medium tracking-tight text-balance md:text-4xl">
               {title} <span className="text-primary">{accentWord}</span>
             </h2>
-            <p className="text-muted-foreground max-w-md text-sm leading-relaxed sm:text-base">
-              {subtitle}
-            </p>
+            {subtitle ? (
+              <p className="text-muted-foreground max-w-md text-sm leading-relaxed sm:text-base">
+                {subtitle}
+              </p>
+            ) : null}
             <div className="mt-1">
               {ctaHref ? (
                 <Button

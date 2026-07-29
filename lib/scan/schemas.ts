@@ -45,6 +45,14 @@ export const skinAssessmentSchema = z.object({
   dimensions: z.array(skinDimensionSchema).length(SKIN_DIMENSION_IDS.length),
   doshaTyping: doshaTypingSchema,
   summary: z.string(),
+  concernsNotVisible: z
+    .array(
+      z.object({
+        concern: z.string(),
+        note: z.string(),
+      }),
+    )
+    .default([]),
   naturalRecommendations: z.array(
     z.object({
       id: z.string(),

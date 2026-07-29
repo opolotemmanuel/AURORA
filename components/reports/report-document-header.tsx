@@ -1,21 +1,12 @@
 import Image from "next/image"
 
 import brandIcon from "@/app/icon.png"
-import { formatTokenBreakdownWithTotal } from "@/lib/tokens/format-usage"
 import { cn } from "@/lib/utils"
 
 export type ReportDocumentHeaderProps = {
   scanDate: string
   userName?: string
   captureMode?: string
-  usage?: {
-    modelId: string
-    totalTokens: number
-    inputTokens: number
-    outputTokens: number
-    cachedTokens?: number
-    reasoningTokens?: number | null
-  } | null
   className?: string
 }
 
@@ -23,7 +14,6 @@ export function ReportDocumentHeader({
   scanDate,
   userName,
   captureMode,
-  usage,
   className,
 }: ReportDocumentHeaderProps) {
   const metaItems: string[] = []
@@ -31,19 +21,6 @@ export function ReportDocumentHeader({
   if (scanDate) metaItems.push(scanDate)
   if (userName) metaItems.push(`Prepared for ${userName}`)
   if (captureMode) metaItems.push(captureMode)
-
-  const usageItems: string[] = []
-  if (usage) {
-    usageItems.push(
-      formatTokenBreakdownWithTotal({
-        inputTokens: usage.inputTokens,
-        outputTokens: usage.outputTokens,
-        cachedTokens: usage.cachedTokens,
-        reasoningTokens: usage.reasoningTokens ?? undefined,
-        totalTokens: usage.totalTokens,
-      }),
-    )
-  }
 
   return (
     <header
@@ -67,9 +44,6 @@ export function ReportDocumentHeader({
           ) : null}
         </div>
       </div>
-      {usageItems.length > 0 ? (
-        <p className="text-xs text-muted-foreground">{usageItems.join(" · ")}</p>
-      ) : null}
     </header>
   )
 }

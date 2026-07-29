@@ -18,7 +18,6 @@ export async function generateSkinReportPdf(scanId: string, userId: string) {
       where: { id: scanId, userId },
       include: {
         result: true,
-        usage: true,
         user: { select: { name: true } },
         report: true,
       },

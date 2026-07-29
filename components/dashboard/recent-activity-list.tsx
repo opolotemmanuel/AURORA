@@ -32,20 +32,18 @@ function formatWhen(createdAt: string | Date): string {
 }
 
 function formatActivityDelta(entry: RecentActivityEntry): string {
+  // A chat debit spends the message allowance, not scans, so it reads as one
+  // message rather than the token amount behind it.
   if (entry.reason === "chat_token_debit") {
-    const data = entry.metadata as { tokensDebited?: number } | null
-    if (data?.tokensDebited) {
-      return `-${data.tokensDebited.toLocaleString()}`
-    }
-    return "—"
+    return "-1"
   }
 
   return `${entry.delta > 0 ? "+" : ""}${entry.delta.toLocaleString()}`
 }
 
 function ActivityRow({ entry }: { entry: RecentActivityEntry }) {
-  const detail = getLedgerDetail(entry.reason, entry.metadata)
-  const fullLabel = getLedgerFullLabel(entry.reason, entry.metadata)
+  const detail = getLedgerDetail(entry.reason)
+  const fullLabel = getLedgerFullLabel(entry.reason)
   const deltaLabel = formatActivityDelta(entry)
 
   return (

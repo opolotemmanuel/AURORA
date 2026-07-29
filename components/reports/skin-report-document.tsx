@@ -7,7 +7,12 @@ import { ReportDisclaimer } from "@/components/reports/report-disclaimer"
 import { ReportDoshaBlock } from "@/components/reports/report-dosha-block"
 import { ReportProductList } from "@/components/reports/report-product-list"
 import { ReportSection } from "@/components/reports/report-section"
-import { RECOMMENDATION_SECTIONS, REPORT_SECTION_TITLES } from "@/lib/scan/constants"
+import {
+  CONCERNS_NOT_VISIBLE_TITLE,
+  RECOMMENDATION_SECTIONS,
+  REPORT_SECTION_TITLES,
+} from "@/lib/scan/constants"
+import { formatConcernLabel } from "@/lib/scan/format"
 import type { ScanClimateContext, SkinAssessment } from "@/lib/scan/types"
 import { cn } from "@/lib/utils"
 
@@ -25,10 +30,33 @@ export function SkinReportDocument({
   return (
     <div className={cn("space-y-8 font-sans", className)}>
       <ReportSection title={REPORT_SECTION_TITLES.snapshot} first>
-        <ReportBandDisplay band={assessment.overallBand} />
+        <ReportBandDisplay
+          band={assessment.overallBand}
+          dimensions={assessment.dimensions}
+        />
         <p className="mt-4 max-w-prose text-sm leading-relaxed text-muted-foreground">
           {assessment.summary}
         </p>
+        {assessment.concernsNotVisible.length > 0 ? (
+          <div className="mt-4 max-w-prose">
+            <p className="text-xs font-medium text-foreground">
+              {CONCERNS_NOT_VISIBLE_TITLE}
+            </p>
+            <ul className="mt-1.5 space-y-1.5">
+              {assessment.concernsNotVisible.map((item) => (
+                <li
+                  key={item.concern}
+                  className="text-xs leading-relaxed text-muted-foreground"
+                >
+                  <span className="font-medium text-foreground">
+                    {formatConcernLabel(item.concern)}:
+                  </span>{" "}
+                  {item.note}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </ReportSection>
 
       <ReportSection title={REPORT_SECTION_TITLES.dosha}>

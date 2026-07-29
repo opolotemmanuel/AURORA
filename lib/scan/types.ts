@@ -98,11 +98,26 @@ export type ProductRecommendation = {
   storeUrl?: string | null
 }
 
+/**
+ * A stated concern the photo does not support, kept out of the summary.
+ *
+ * The summary used to have to acknowledge every stated concern inline, which
+ * appended a bookkeeping clause per concern and buried the actual findings.
+ * Concerns with nothing visible behind them land here instead.
+ */
+export type ConcernNotVisible = {
+  /** The profile concern id, e.g. "dryness". */
+  concern: string
+  /** One sentence on what the photo shows for it instead. */
+  note: string
+}
+
 export type SkinAssessment = {
   overallBand: AssessmentBand
   dimensions: SkinDimension[]
   doshaTyping: DoshaTyping
   summary: string
+  concernsNotVisible: ConcernNotVisible[]
   naturalRecommendations: NaturalRecommendation[]
   recommendations: ProductRecommendation[]
   disclaimer: string

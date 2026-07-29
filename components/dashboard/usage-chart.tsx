@@ -24,7 +24,7 @@ const yAxisProps = {
 
 export function UsageBarChart({
   data,
-  label = "Tokens",
+  label = "Scans",
 }: {
   data: { label: string; value: number }[]
   label?: string

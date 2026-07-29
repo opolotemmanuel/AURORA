@@ -24,6 +24,7 @@ const BAND_ORDER = ["minimal", "mild", "moderate", "elevated"] as const
 type Assessment = {
   overallBand: string
   summary: string
+  concernsNotVisible?: { concern: string; note: string }[]
   dimensions: { id: string; label: string; band: string; note: string }[]
   doshaTyping: { primary: string; note: string }
   naturalRecommendations: { title: string; description: string }[]
@@ -168,10 +169,10 @@ function checkConcernAcknowledgement(
   assessment: Assessment,
   testCase: ScanEvalCase,
 ): void {
-  // The prompt requires every stated concern to appear in the summary, either
-  // connected to something visible or explicitly noted as not visible. Match on
-  // the concern's own cosmetic vocabulary, since the prompt forbids the
-  // clinical word itself.
+  // Every stated concern must be accounted for in exactly one place: connected
+  // to something visible in the summary or dimension notes, or listed in
+  // concernsNotVisible. Match on the concern's own cosmetic vocabulary, since
+  // the prompt forbids the clinical word itself.
   const vocabulary: Record<string, RegExp> = {
     acne: /blemish|breakout|congest|spot/i,
     oiliness: /oil|shine|sebum|congest/i,
@@ -183,6 +184,8 @@ function checkConcernAcknowledgement(
     texture: /texture|pore|rough|smooth/i,
   }
 
+  const notVisible = assessment.concernsNotVisible ?? []
+  const notVisibleIds = new Set(notVisible.map((item) => item.concern))
   const haystack = [
     assessment.summary,
     ...assessment.dimensions.map((dimension) => dimension.note),
@@ -192,10 +195,29 @@ function checkConcernAcknowledgement(
     const pattern = vocabulary[concern]
     if (!pattern) continue
     checks.ok(
-      `acknowledges stated concern: ${concern}`,
-      pattern.test(assessment.summary) || pattern.test(haystack),
+      `accounts for stated concern: ${concern}`,
+      notVisibleIds.has(concern) || pattern.test(haystack),
     )
   }
+
+  // A concern the photo does not support must not also be discussed in the
+  // summary, which is the double-handling the split was meant to remove.
+  for (const item of notVisible) {
+    const pattern = vocabulary[item.concern]
+    if (!pattern) continue
+    checks.ok(
+      `keeps not-visible concern out of the summary: ${item.concern}`,
+      !pattern.test(assessment.summary),
+    )
+  }
+
+  // The bookkeeping clauses the prompt bans outright.
+  checks.ok(
+    "summary has no concern-acknowledgement filler",
+    !/\b(align(s|ing)?\s+with|relat(es|ing)\s+to|which\s+matches)\s+your\s+concern/i.test(
+      assessment.summary,
+    ),
+  )
 }
 
 function checkBands(

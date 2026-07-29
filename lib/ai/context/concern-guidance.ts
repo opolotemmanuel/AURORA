@@ -117,7 +117,7 @@ export function buildProfileConcernPromptBlock(
 
   if (profile.primaryConcerns.length > 0) {
     sections.push(
-      `The summary must acknowledge every one of these by name: ${profile.primaryConcerns.join(", ")}.`,
+      `Account for every one of these exactly once: ${profile.primaryConcerns.join(", ")}. Visible ones are covered by the finding that shows them; the rest go in concernsNotVisible. Do not name a concern in the summary as a concern.`,
     )
   }
 

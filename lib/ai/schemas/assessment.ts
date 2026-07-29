@@ -10,6 +10,7 @@ export const skinAssessmentJsonSchema = {
     "dimensions",
     "doshaTyping",
     "summary",
+    "concernsNotVisible",
     "naturalRecommendations",
     "recommendations",
   ],
@@ -75,7 +76,28 @@ export const skinAssessmentJsonSchema = {
     summary: {
       type: Type.STRING,
       description:
-        "2-4 sentence personalized cosmetic summary grounded in visible photo patterns across dimensions. Acknowledge profile primaryConcerns when listed, and call out other visible patterns even if not in the profile. Not a medical diagnosis.",
+        "2-4 sentence personalized cosmetic summary grounded in visible photo patterns across dimensions. Lead with what stands out in this photo, including patterns not in the profile. Stated concerns the photo does not support belong in concernsNotVisible, not here. Not a medical diagnosis.",
+    },
+    concernsNotVisible: {
+      type: Type.ARRAY,
+      description:
+        "One entry per profile primaryConcern that this photo does not support. Empty array when every stated concern is visible. Concerns listed here must not be mentioned in the summary.",
+      items: {
+        type: Type.OBJECT,
+        required: ["concern", "note"],
+        properties: {
+          concern: {
+            type: Type.STRING,
+            description:
+              "The profile primaryConcern id exactly as supplied, e.g. dryness.",
+          },
+          note: {
+            type: Type.STRING,
+            description:
+              "One sentence on what the photo shows for this concern instead, in cosmetic language.",
+          },
+        },
+      },
     },
     naturalRecommendations: {
       type: Type.ARRAY,

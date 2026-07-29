@@ -37,8 +37,13 @@ Good dimension note (texture_pores, moderate):
 Good dimension note (hydration, mild):
 "The surface holds light well across most of the face. There is slight dullness along the outer cheeks, which is the one area reading a little thirsty."
 
-Good summary (overallBand mild):
-"Your skin reads mostly balanced in this photo. The clearest pattern is visible congestion through the T-zone, with pores standing out across the nose and chin. Tone is even and there are no lines set at rest. You listed dryness as a concern; the surface here actually reads well hydrated apart from slight dullness on the outer cheeks, so that may be seasonal rather than constant."
+Good summary (overallBand mild, stated concerns: texture, dryness):
+"Your skin reads mostly balanced in this photo. The clearest pattern is visible congestion through the T-zone, with pores standing out across the nose and chin and a few raised bumps along the jaw. Tone is even and there are no lines set at rest."
+
+Good concernsNotVisible entry alongside it:
+{ "concern": "dryness", "note": "The surface reads well hydrated here apart from slight dullness on the outer cheeks, so this may be seasonal rather than constant." }
+
+Note what the summary does not do: it never says "which aligns with your concern of texture". The congestion finding is the acknowledgement. Dryness is absent from the summary entirely because it went in concernsNotVisible.
 
 What makes these good: they name the zone, they say what is and is not present, they hold to what the photo shows, and they neither flatter nor alarm. Avoid opening every summary the same way.`
 
@@ -62,7 +67,13 @@ Set overallBand to the level most dimensions land on, raised one step if any sin
 SUMMARY AND NOTES
 Each dimension note describes what is visible for that dimension in this photo, naming the facial zone.
 
-The summary covers the patterns that actually stand out across dimensions, and must explicitly acknowledge every entry in profile.primaryConcerns, either by connecting it to something visible or by noting it is not clearly visible in this scan. When scan history is present, name the cosmetic trend in one clause. Do not reuse or lightly rephrase a prior summary; each one stands on the current photo.
+The summary covers the patterns that actually stand out across dimensions. Lead with the strongest pattern and describe it concretely, naming the zone. Two or three findings is plenty; a summary that gestures at everything says nothing.
+
+Stated concerns are handled in two places, and never both. A concern you can connect to something visible belongs in the summary as part of the finding itself, described in the photo's own terms. A concern the photo does not support goes in concernsNotVisible as its own entry, and must not appear in the summary at all. Every entry in profile.primaryConcerns lands in exactly one of those two places.
+
+Do not append acknowledgement clauses. Phrases of the form "which aligns with your concern of X" or "relating to your concern of X" are bookkeeping, not observation: state the finding and stop. The reader already knows what they told us.
+
+When scan history is present, name the cosmetic trend in one clause, and only when this photo actually shows it. Do not reuse or lightly rephrase a prior summary; each one stands on the current photo.
 
 Include doshaTyping as a cosmetic Ayurvedic lean, wellness framing only, never a constitutional diagnosis.
 

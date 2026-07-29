@@ -1,54 +1,116 @@
 "use client"
 
+import { IconCheck } from "@tabler/icons-react"
+import { motion, useReducedMotion } from "motion/react"
+
 import {
   ONBOARDING_STEP_LABELS,
-  ONBOARDING_STEPS,
   type OnboardingStep,
 } from "@/lib/onboarding/constants"
+import { EASE_OUT } from "@/lib/ease"
 import { cn } from "@/lib/utils"
 
 type OnboardingStepperProps = {
+  /** Only the steps actually being asked, in order. */
+  sequence: OnboardingStep[]
   currentStep: OnboardingStep
+  /** Furthest step reached, so completed steps can be revisited. */
+  furthestStep: OnboardingStep
+  onNavigate: (step: OnboardingStep) => void
+  disabled?: boolean
 }
 
-export function OnboardingStepper({ currentStep }: OnboardingStepperProps) {
-  const currentIndex = ONBOARDING_STEPS.indexOf(currentStep)
+export function OnboardingStepper({
+  sequence,
+  currentStep,
+  furthestStep,
+  onNavigate,
+  disabled = false,
+}: OnboardingStepperProps) {
+  const reduceMotion = useReducedMotion()
+  const currentIndex = sequence.indexOf(currentStep)
+  const furthestIndex = sequence.indexOf(furthestStep)
+  const progress =
+    sequence.length <= 1 ? 1 : currentIndex / (sequence.length - 1)
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-baseline justify-between gap-3">
-        <p className="text-sm font-medium text-foreground">
-          Step {currentIndex + 1} of {ONBOARDING_STEPS.length}
-        </p>
-        <p className="text-sm text-muted-foreground">
-          {ONBOARDING_STEP_LABELS[currentStep]}
-        </p>
+    <nav aria-label="Onboarding progress" className="space-y-3">
+      {/* Mobile: a bar plus a position readout. Nine pills do not fit at 375px. */}
+      <div className="sm:hidden">
+        <div className="mb-2 flex items-baseline justify-between gap-3">
+          <p className="text-sm font-medium">
+            {currentIndex + 1} of {sequence.length}
+          </p>
+          <p className="text-muted-foreground text-sm">
+            {ONBOARDING_STEP_LABELS[currentStep]}
+          </p>
+        </div>
+        <div className="bg-muted h-1.5 overflow-hidden rounded-full">
+          <motion.div
+            className="bg-primary h-full rounded-full"
+            initial={false}
+            animate={{ scaleX: Math.max(progress, 0.04) }}
+            style={{ transformOrigin: "left" }}
+            transition={
+              reduceMotion ? { duration: 0 } : { duration: 0.4, ease: EASE_OUT }
+            }
+          />
+        </div>
       </div>
 
-      <div
-        className="flex gap-1.5"
-        role="progressbar"
-        aria-label="Onboarding progress"
-        aria-valuemin={1}
-        aria-valuemax={ONBOARDING_STEPS.length}
-        aria-valuenow={currentIndex + 1}
-      >
-        {ONBOARDING_STEPS.map((step, index) => {
+      {/* Desktop: numbered pills with completion state and connectors. */}
+      <ol className="hidden items-center gap-1.5 sm:flex">
+        {sequence.map((step, index) => {
           const isComplete = index < currentIndex
           const isCurrent = index === currentIndex
+          const canNavigate = !disabled && index <= furthestIndex && !isCurrent
 
           return (
-            <div
-              key={step}
-              className={cn(
-                "h-1.5 flex-1 rounded-full transition-colors duration-300",
-                isComplete || isCurrent ? "bg-primary" : "bg-muted",
-              )}
-              aria-hidden
-            />
+            <li key={step} className="flex flex-1 items-center gap-1.5">
+              <button
+                type="button"
+                disabled={!canNavigate}
+                aria-current={isCurrent ? "step" : undefined}
+                aria-label={`${ONBOARDING_STEP_LABELS[step]}${isComplete ? ", completed" : ""}`}
+                onClick={() => canNavigate && onNavigate(step)}
+                className={cn(
+                  "flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-medium transition-colors",
+                  "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                  isCurrent &&
+                    "border-primary bg-primary text-primary-foreground shadow-sm",
+                  isComplete &&
+                    "border-primary/40 bg-primary/15 text-primary hover:bg-primary/25",
+                  !isCurrent &&
+                    !isComplete &&
+                    "border-border bg-muted/50 text-muted-foreground",
+                  canNavigate ? "cursor-pointer" : "cursor-default",
+                )}
+              >
+                {isComplete ? (
+                  <IconCheck className="size-3.5" aria-hidden />
+                ) : (
+                  index + 1
+                )}
+              </button>
+              {index < sequence.length - 1 ? (
+                <span
+                  aria-hidden
+                  className={cn(
+                    "h-px flex-1 transition-colors",
+                    index < currentIndex ? "bg-primary/40" : "bg-border",
+                  )}
+                />
+              ) : null}
+            </li>
           )
         })}
-      </div>
-    </div>
+      </ol>
+
+      <p className="text-muted-foreground hidden text-sm sm:block">
+        Step {currentIndex + 1} of {sequence.length}
+        {" · "}
+        {ONBOARDING_STEP_LABELS[currentStep]}
+      </p>
+    </nav>
   )
 }

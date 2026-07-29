@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent } from "rea
 import {
   IconArrowLeft,
   IconCameraRotate,
-  IconCircle,
   IconGripHorizontal,
   IconSun,
   IconUser,
@@ -65,6 +64,7 @@ export function ScanCameraView({
   const checkingRef = useRef(false)
   const [quality, setQuality] = useState<QualityCheckResult>(INITIAL_QUALITY)
   const [capturing, setCapturing] = useState(false)
+  const [flash, setFlash] = useState(false)
   const { height: embeddedHeight, setHeight: setEmbeddedHeight } =
     useScanCameraHeight()
   const resizeStateRef = useRef<{ startY: number; startHeight: number } | null>(
@@ -169,6 +169,8 @@ export function ScanCameraView({
     if (!video || !canCapture) return
 
     setCapturing(true)
+    setFlash(true)
+    window.setTimeout(() => setFlash(false), 260)
     try {
       const canvas = document.createElement("canvas")
       canvas.width = video.videoWidth
@@ -199,14 +201,68 @@ export function ScanCameraView({
   }
 
   const lightingOk = quality.lightingBand === "ok"
+  const guidance = error
+    ? null
+    : !ready
+      ? "Starting your camera…"
+      : canCapture
+        ? "Looking great. Hold still and tap the shutter."
+        : (quality.issues[0] ??
+          (quality.faceDetected ? "Center your face in the oval." : "Find your face in the oval."))
+
+  const shutter = (
+    <button
+      type="button"
+      disabled={!canCapture}
+      onClick={() => void handleCapture()}
+      aria-label="Take photo"
+      className={cn(
+        "group pointer-events-auto relative grid size-18 place-items-center rounded-full transition-transform active:scale-95 disabled:cursor-not-allowed",
+        canCapture ? "cursor-pointer" : "cursor-not-allowed",
+      )}
+    >
+      {canCapture ? (
+        <motion.span
+          aria-hidden
+          className="absolute inset-0 rounded-full bg-primary/30"
+          animate={{ scale: [1, 1.18, 1], opacity: [0.5, 0, 0.5] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+        />
+      ) : null}
+      <span
+        aria-hidden
+        className={cn(
+          "absolute inset-0 rounded-full border-2 backdrop-blur-md transition-colors duration-300",
+          canCapture
+            ? "border-primary bg-background/40"
+            : "border-foreground/25 bg-background/30",
+        )}
+      />
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={canCapture ? "ready" : "wait"}
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.85 }}
+          transition={{ duration: 0.18 }}
+          className={cn(
+            "relative size-12 rounded-full shadow-lg transition-colors duration-300",
+            canCapture
+              ? "bg-primary shadow-primary/40"
+              : "bg-foreground/25 shadow-transparent",
+          )}
+        />
+      </AnimatePresence>
+    </button>
+  )
 
   const cameraViewport = (
     <div
       className={cn(
-        "relative isolate overflow-hidden bg-background",
+        "relative isolate overflow-hidden bg-foreground/5",
         isFullscreen
           ? "fixed inset-0 z-50"
-          : "w-full rounded-[1.75rem] border border-border",
+          : "scan-viewport w-full rounded-[1.75rem] border border-border/70",
       )}
       style={isFullscreen ? undefined : { height: embeddedHeight }}
     >
@@ -215,33 +271,44 @@ export function ScanCameraView({
         autoPlay
         playsInline
         muted
-        className={cn(
-          "size-full object-cover",
-          shouldMirror && "scale-x-[-1]",
-        )}
+        className={cn("size-full object-cover", shouldMirror && "scale-x-[-1]")}
       />
 
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/70 via-transparent to-background/80" />
+      {/* Scrims sit only where chrome does, so the preview itself stays clean. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-linear-to-b from-background/75 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-44 bg-linear-to-t from-background/85 via-background/45 to-transparent" />
+
+      <AnimatePresence>
+        {flash ? (
+          <motion.div
+            key="flash"
+            aria-hidden
+            initial={{ opacity: 0.85 }}
+            animate={{ opacity: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.26, ease: "easeOut" }}
+            className="pointer-events-none absolute inset-0 z-30 bg-background"
+          />
+        ) : null}
+      </AnimatePresence>
 
       <div
         className={cn(
-          "absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-2 p-4",
-          isFullscreen ? "pt-[max(1rem,env(safe-area-inset-top))]" : "p-3",
+          "absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-2",
+          isFullscreen
+            ? "p-4 pt-[max(1rem,env(safe-area-inset-top))]"
+            : "p-3.5",
         )}
       >
-        {isFullscreen ? (
-          onSwitchToUpload ? (
-            <button
-              type="button"
-              onClick={onSwitchToUpload}
-              aria-label="Back to upload"
-              className="pointer-events-auto grid size-10 shrink-0 place-items-center rounded-full border border-border bg-background/80 text-foreground backdrop-blur-sm active:scale-95"
-            >
-              <IconArrowLeft className="size-4" />
-            </button>
-          ) : (
-            <div />
-          )
+        {isFullscreen && onSwitchToUpload ? (
+          <button
+            type="button"
+            onClick={onSwitchToUpload}
+            aria-label="Back to upload"
+            className="pointer-events-auto grid size-10 shrink-0 place-items-center rounded-full border border-border/60 bg-background/70 text-foreground backdrop-blur-md transition-transform active:scale-95"
+          >
+            <IconArrowLeft className="size-4" />
+          </button>
         ) : (
           <div />
         )}
@@ -257,21 +324,43 @@ export function ScanCameraView({
         />
       </div>
 
+      {/* Face guide: dims everything outside the oval and turns primary once
+          the frame is good enough to capture. */}
       <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
         <div
           aria-hidden
-          className="absolute inset-0 bg-background/35 mask-[radial-gradient(ellipse_36%_43%_at_50%_50%,transparent_98%,black_100%)]"
+          className="absolute inset-0 bg-background/45 mask-[radial-gradient(ellipse_36%_43%_at_50%_50%,transparent_98%,black_100%)]"
         />
-        <div className="relative h-[62%] w-[72%] rounded-[50%] border-2 border-primary/70" />
+        <motion.div
+          aria-hidden
+          className={cn(
+            "relative h-[64%] w-[74%] rounded-[50%] border-2 transition-colors duration-500",
+            canCapture
+              ? "border-primary shadow-[0_0_40px_-4px_color-mix(in_oklab,var(--primary)_60%,transparent)]"
+              : quality.faceDetected
+                ? "border-primary/50"
+                : "border-foreground/30",
+          )}
+          animate={
+            canCapture ? { scale: [1, 1.012, 1] } : { scale: 1 }
+          }
+          transition={{
+            duration: 2.4,
+            repeat: canCapture ? Infinity : 0,
+            ease: "easeInOut",
+          }}
+        />
       </div>
 
       <div
         className={cn(
-          "absolute inset-x-0 bottom-0 z-10 space-y-4 p-4",
-          isFullscreen ? "pb-[max(1rem,env(safe-area-inset-bottom))]" : "p-3",
+          "absolute inset-x-0 bottom-0 z-10 space-y-3.5",
+          isFullscreen
+            ? "p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+            : "p-3.5",
         )}
       >
-        <div className="flex flex-wrap justify-center gap-2">
+        <div className="flex flex-wrap justify-center gap-1.5">
           <AnimatedBadge
             status={quality.faceDetected ? "success" : "warning"}
             size="sm"
@@ -298,19 +387,26 @@ export function ScanCameraView({
         </div>
 
         {error ? (
-          <div className="pointer-events-auto space-y-3 text-center">
+          <div className="pointer-events-auto mx-auto max-w-sm space-y-3 rounded-2xl border border-destructive/30 bg-background/80 p-3 text-center backdrop-blur-md">
             <p className="text-sm text-destructive">{error}</p>
             <div className="flex flex-wrap justify-center gap-2">
               <Button
                 type="button"
                 size="sm"
                 variant="secondary"
+                className="rounded-full"
                 onClick={() => void startStream()}
               >
                 Retry camera
               </Button>
               {onSwitchToUpload ? (
-                <Button type="button" size="sm" variant="outline" onClick={onSwitchToUpload}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="rounded-full"
+                  onClick={onSwitchToUpload}
+                >
                   Use photo upload instead
                 </Button>
               ) : null}
@@ -318,75 +414,47 @@ export function ScanCameraView({
           </div>
         ) : null}
 
-        {!canCapture && ready && !error && quality.issues[0] ? (
-          <p className="pointer-events-none text-center text-xs text-muted-foreground">
-            {quality.issues[0]}
-          </p>
+        {guidance ? (
+          <div className="flex justify-center" aria-live="polite">
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.p
+                key={guidance}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.2 }}
+                className={cn(
+                  "pointer-events-none max-w-xs rounded-full px-3 py-1 text-center text-xs backdrop-blur-md",
+                  canCapture
+                    ? "bg-primary/10 text-primary"
+                    : "bg-background/60 text-muted-foreground",
+                )}
+              >
+                {guidance}
+              </motion.p>
+            </AnimatePresence>
+          </div>
         ) : null}
 
-        {isFullscreen ? (
-          <div className="flex items-center justify-center gap-8">
-            {canFlipCamera ? (
+        <div className="flex items-center justify-center gap-8">
+          {isFullscreen ? (
+            canFlipCamera ? (
               <button
                 type="button"
                 disabled={capturing || switching}
                 onClick={() => void flipCamera()}
                 aria-label="Flip camera"
-                className="pointer-events-auto grid size-10 shrink-0 place-items-center rounded-full border border-border bg-background/80 text-foreground backdrop-blur-sm transition-transform active:scale-95 disabled:opacity-45"
+                className="pointer-events-auto grid size-10 shrink-0 place-items-center rounded-full border border-border/60 bg-background/70 text-foreground backdrop-blur-md transition-transform active:scale-95 disabled:opacity-45"
               >
                 <IconCameraRotate className="size-5" />
               </button>
             ) : (
               <div className="size-10 shrink-0" aria-hidden />
-            )}
-            <button
-              type="button"
-              disabled={!canCapture}
-              onClick={() => void handleCapture()}
-              aria-label="Take photo"
-              className={cn(
-                "pointer-events-auto grid size-16 place-items-center rounded-full border-4 border-primary bg-background/90 transition-transform active:scale-95 disabled:opacity-45",
-                canCapture ? "cursor-pointer" : "cursor-not-allowed",
-              )}
-            >
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.span
-                  key={canCapture ? "ready" : "wait"}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                >
-                  <IconCircle className="size-8 text-primary" />
-                </motion.span>
-              </AnimatePresence>
-            </button>
-            <div className="size-10 shrink-0" aria-hidden />
-          </div>
-        ) : (
-          <div className="flex items-center justify-center">
-            <button
-              type="button"
-              disabled={!canCapture}
-              onClick={() => void handleCapture()}
-              aria-label="Take photo"
-              className={cn(
-                "pointer-events-auto grid size-16 place-items-center rounded-full border-4 border-primary bg-background/90 transition-transform active:scale-95 disabled:opacity-45",
-                canCapture ? "cursor-pointer" : "cursor-not-allowed",
-              )}
-            >
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.span
-                  key={canCapture ? "ready" : "wait"}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                >
-                  <IconCircle className="size-8 text-primary" />
-                </motion.span>
-              </AnimatePresence>
-            </button>
-          </div>
-        )}
+            )
+          ) : null}
+          {shutter}
+          {isFullscreen ? <div className="size-10 shrink-0" aria-hidden /> : null}
+        </div>
       </div>
     </div>
   )
@@ -407,9 +475,12 @@ export function ScanCameraView({
         onPointerUp={handleResizePointerUp}
         onPointerCancel={handleResizePointerUp}
         onDoubleClick={handleResizeDoubleClick}
-        className="mt-1.5 flex w-full cursor-ns-resize touch-none items-center justify-center rounded-lg py-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+        className="group mt-1 flex w-full cursor-ns-resize touch-none items-center justify-center gap-1.5 rounded-xl py-1.5 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
       >
         <IconGripHorizontal className="size-4" aria-hidden />
+        <span className="text-[10px] opacity-0 transition-opacity group-hover:opacity-100">
+          Drag to resize
+        </span>
       </button>
     </div>
   )

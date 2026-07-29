@@ -7,7 +7,7 @@ export function DashboardLayoutSkeleton() {
         <Skeleton className="h-6 w-16" />
         <div className="mt-8 space-y-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-8 w-full rounded-none" />
+            <Skeleton key={i} className="h-8 w-full rounded-lg" />
           ))}
         </div>
       </div>
@@ -16,7 +16,7 @@ export function DashboardLayoutSkeleton() {
         <Skeleton className="mt-3 h-4 w-72" />
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-24 rounded-none" />
+            <Skeleton key={i} className="h-24 rounded-lg" />
           ))}
         </div>
       </div>

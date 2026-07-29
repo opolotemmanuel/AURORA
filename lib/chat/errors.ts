@@ -42,7 +42,7 @@ export function toUserFacingChatError(
   status?: number,
 ): string {
   if (status === 503) {
-    return "Aura is reconnecting. Please try again in a few seconds."
+    return "Reconnecting. Please try again in a few seconds."
   }
 
   if (status === 429) {

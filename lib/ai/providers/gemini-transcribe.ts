@@ -1,6 +1,11 @@
 import { GoogleGenAI } from "@google/genai"
 
-const TRANSCRIBE_MODEL_ID = "gemini-2.5-flash"
+import {
+  mapGeminiUsageMetadata,
+  type MappedGeminiUsage,
+} from "@/lib/ai/providers/gemini-usage"
+
+export const TRANSCRIBE_MODEL_ID = "gemini-2.5-flash"
 
 export type TranscribeAudioInput = {
   audio: Buffer
@@ -11,6 +16,7 @@ export type TranscribeAudioInput = {
 export type TranscribeAudioResult = {
   text: string
   latencyMs: number
+  usage: MappedGeminiUsage
 }
 
 export async function transcribeWithGemini(
@@ -52,6 +58,11 @@ export async function transcribeWithGemini(
 
   const latencyMs = Date.now() - startedAt
   const text = response.text?.trim() ?? ""
+  const usage = mapGeminiUsageMetadata(
+    "gemini",
+    TRANSCRIBE_MODEL_ID,
+    response.usageMetadata,
+  )
 
-  return { text, latencyMs }
+  return { text, latencyMs, usage }
 }

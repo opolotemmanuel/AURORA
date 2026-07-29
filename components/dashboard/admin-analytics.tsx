@@ -48,13 +48,13 @@ export async function AdminAnalytics() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-none border border-border bg-card p-5">
+        <div className="surface-panel rounded-xl border border-border/60 p-5">
           <h2 className="font-heading text-sm font-medium">Scans granted (14 days)</h2>
           <div className="mt-4">
             <UsageBarChart data={stats.grantsByDay} label="Granted" />
           </div>
         </div>
-        <div className="rounded-none border border-border bg-card p-5">
+        <div className="surface-panel rounded-xl border border-border/60 p-5">
           <h2 className="font-heading text-sm font-medium">Scans used (14 days)</h2>
           <div className="mt-4">
             <UsageBarChart data={stats.usageByDay} label="Used" />
@@ -63,7 +63,7 @@ export async function AdminAnalytics() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-none border border-border bg-card p-5">
+        <div className="surface-panel rounded-xl border border-border/60 p-5">
           <h2 className="font-heading text-sm font-medium">AI tokens (14 days)</h2>
           <p className="mt-1 text-xs text-muted-foreground">
             Scan analysis + skin advice chat
@@ -72,7 +72,7 @@ export async function AdminAnalytics() {
             <UsageBarChart data={stats.aiTokensByDay} label="Tokens" />
           </div>
         </div>
-        <div className="rounded-none border border-border bg-card p-5">
+        <div className="surface-panel rounded-xl border border-border/60 p-5">
           <h2 className="font-heading text-sm font-medium">Provider cost (14 days)</h2>
           <p className="mt-1 text-xs text-muted-foreground">
             USD from recorded micros
@@ -84,13 +84,13 @@ export async function AdminAnalytics() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-none border border-border bg-card p-5">
+        <div className="surface-panel rounded-xl border border-border/60 p-5">
           <h2 className="font-heading text-sm font-medium">Users by role</h2>
           <div className="mt-4">
             <RoleDistributionChart data={stats.usersByRole} />
           </div>
         </div>
-        <div className="rounded-none border border-border bg-card p-5">
+        <div className="surface-panel rounded-xl border border-border/60 p-5">
           <h2 className="font-heading text-sm font-medium">Scans by status</h2>
           <ul className="mt-4 space-y-2 text-sm">
             {stats.scansByStatus.map((s) => (
@@ -106,7 +106,7 @@ export async function AdminAnalytics() {
         </div>
       </div>
 
-      <div className="rounded-none border border-border bg-card p-5">
+      <div className="surface-panel rounded-xl border border-border/60 p-5">
         <h2 className="font-heading text-sm font-medium">Recent sign-ups</h2>
         <ul className="mt-4 space-y-2 text-sm">
           {stats.recentUsers.map((u) => (

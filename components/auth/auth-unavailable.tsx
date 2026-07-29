@@ -11,7 +11,7 @@ type AuthUnavailableProps = {
 }
 
 export function AuthUnavailable({
-  title = "Reconnecting to Aura",
+  title = "Reconnecting",
   description = "The database took too long to respond. This is usually temporary — try again in a few seconds.",
 }: AuthUnavailableProps) {
   const [pending, startTransition] = useTransition()

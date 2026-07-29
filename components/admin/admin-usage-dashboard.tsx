@@ -24,6 +24,14 @@ import {
 } from "@/lib/pricing/format-cost"
 import { formatTokenBreakdown } from "@/lib/tokens/format-usage"
 
+const FEATURE_LABELS: Record<string, string> = {
+  scan_analyze: "Scan analysis",
+  scan_live: "Live scan",
+  chat_reply: "Chat reply",
+  chat_guardrail: "Guardrail check",
+  transcribe: "Voice transcription",
+}
+
 type AdminUsageDashboardProps = {
   analytics: AdminUsageAnalytics
 }
@@ -127,13 +135,13 @@ export async function AdminUsageDashboard({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-none border border-border bg-card p-5">
+        <div className="surface-panel rounded-xl border border-border/60 p-5">
           <h2 className="font-heading text-sm font-medium">Token breakdown</h2>
           <div className="mt-4">
             <TokenBreakdownTable tokens={tokens} />
           </div>
         </div>
-        <div className="rounded-none border border-border bg-card p-5">
+        <div className="surface-panel rounded-xl border border-border/60 p-5">
           <h2 className="font-heading text-sm font-medium">Cost by model</h2>
           <div className="mt-4 overflow-x-auto">
             <Table>
@@ -186,7 +194,7 @@ export async function AdminUsageDashboard({
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-none border border-border bg-card p-5">
+        <div className="surface-panel rounded-xl border border-border/60 p-5">
           <h2 className="font-heading text-sm font-medium">Tokens over time</h2>
           <div className="mt-4">
             <UsageBarChart
@@ -198,7 +206,7 @@ export async function AdminUsageDashboard({
             />
           </div>
         </div>
-        <div className="rounded-none border border-border bg-card p-5">
+        <div className="surface-panel rounded-xl border border-border/60 p-5">
           <h2 className="font-heading text-sm font-medium">Cost over time (USD)</h2>
           <div className="mt-4">
             <UsageBarChart data={analytics.costSeries} label="USD" />
@@ -206,7 +214,7 @@ export async function AdminUsageDashboard({
         </div>
       </div>
 
-      <div className="rounded-none border border-border bg-card p-5">
+      <div className="surface-panel rounded-xl border border-border/60 p-5">
         <h2 className="font-heading text-sm font-medium">Per-model usage</h2>
         <div className="mt-4 overflow-x-auto">
           <Table>
@@ -254,7 +262,53 @@ export async function AdminUsageDashboard({
         </div>
       </div>
 
-      <div className="rounded-none border border-border bg-card p-5">
+      <div className="surface-panel rounded-xl border border-border/60 p-5">
+        <h2 className="font-heading text-sm font-medium">Cost by feature</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Every billable provider call, including guardrail checks and voice
+          transcription.
+        </p>
+        <div className="mt-4 overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Feature</TableHead>
+                <TableHead className="text-right">Calls</TableHead>
+                <TableHead className="text-right">Tokens</TableHead>
+                <TableHead className="text-right">Cost</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {analytics.perFeature.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-muted-foreground">
+                    No usage in this period
+                  </TableCell>
+                </TableRow>
+              ) : (
+                analytics.perFeature.map((row) => (
+                  <TableRow key={row.feature}>
+                    <TableCell>
+                      {FEATURE_LABELS[row.feature] ?? row.feature}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {row.callCount.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {row.tokens.totalTokens.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatMicroUsdCompact(row.tokens.estimatedCostMicros)}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      <div className="surface-panel rounded-xl border border-border/60 p-5">
         <h2 className="font-heading text-sm font-medium">Top users by tokens</h2>
         <div className="mt-4 overflow-x-auto">
           <Table>

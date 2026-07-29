@@ -1,5 +1,6 @@
 "use client"
 
+import { IconChartLine } from "@tabler/icons-react"
 import {
   CartesianGrid,
   Line,
@@ -10,6 +11,7 @@ import {
   YAxis,
 } from "recharts"
 
+import { DashboardEmptyState } from "@/components/dashboard/dashboard-card"
 import type { ScanTrendPoint } from "@/lib/dashboard/scan-trends"
 
 const BAND_SCORE: Record<string, number> = {
@@ -36,9 +38,12 @@ export function SkinTrendChart({ points }: SkinTrendChartProps) {
 
   if (data.length < 2) {
     return (
-      <p className="text-muted-foreground text-sm">
-        Complete at least two scans to see your skin journey trend.
-      </p>
+      <DashboardEmptyState
+        icon={IconChartLine}
+        title="Not enough scans yet"
+        description="Complete at least two scans to see how your skin changes over time."
+        className="h-56"
+      />
     )
   }
 

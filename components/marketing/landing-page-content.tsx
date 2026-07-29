@@ -4,7 +4,7 @@ import { LandingFaq } from "@/components/marketing/landing-faq"
 import { LandingFooter } from "@/components/marketing/landing-footer"
 import { LandingHero } from "@/components/marketing/landing-hero"
 import { LandingHowItWorks } from "@/components/marketing/landing-how-it-works"
-import { LandingTestimonials } from "@/components/marketing/landing-testimonials"
+import { LandingProofPoints } from "@/components/marketing/landing-proof-points"
 
 export function LandingPageContent() {
   return (
@@ -12,7 +12,7 @@ export function LandingPageContent() {
       <LandingHero />
       <LandingBenefits />
       <LandingHowItWorks />
-      <LandingTestimonials />
+      <LandingProofPoints />
       <LandingFaq />
       <LandingCta />
       <LandingFooter />

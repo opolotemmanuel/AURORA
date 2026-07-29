@@ -31,7 +31,7 @@ export function BandBadge({
     return (
       <span
         className={cn(
-          "inline-flex shrink-0 items-center rounded-none border font-medium",
+          "inline-flex shrink-0 items-center rounded-full border font-medium",
           CHIP_SIZE_CLASS[size],
           getBandChipClass(band),
           className,

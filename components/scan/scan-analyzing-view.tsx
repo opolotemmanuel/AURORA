@@ -1,18 +1,20 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { IconRefresh } from "@tabler/icons-react"
+import { IconCheck, IconLoader2, IconRefresh } from "@tabler/icons-react"
 
 import { AnimatedBadge } from "@/components/motion/animated-badge"
-import { ScanAnalysisProgressRow } from "@/components/scan/scan-analysis-progress-row"
 import { ScanAnalyzingOverlay } from "@/components/scan/scan-analyzing-overlay"
 import { ScanHeaderActionButton } from "@/components/scan/scan-header-action"
+import { ScanPhotoFrame } from "@/components/scan/scan-photo-frame"
 import { ScanStepFrame } from "@/components/scan/scan-step-frame"
 import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { cn } from "@/lib/utils"
 import { toUserFacingScanError } from "@/lib/scan/errors"
 import type {
   AnalyzeScanResult,
+  LiveScanPayload,
   ScanClimateContext,
   SkinAssessment,
 } from "@/lib/scan/types"
@@ -37,10 +39,7 @@ const WAIT_DESCRIPTIONS = [
 type ScanAnalyzingViewProps = {
   imageSrc: string
   imageBlob: Blob
-  livePayload?: {
-    transcript: string
-    sessionDurationMs: number
-  }
+  livePayload?: LiveScanPayload
   onComplete: (result: {
     assessment: SkinAssessment
     scanId: string
@@ -121,6 +120,12 @@ export function ScanAnalyzingView({
             "sessionDurationMs",
             String(livePayload.sessionDurationMs),
           )
+          if (livePayload.sessionUsage) {
+            formData.append(
+              "sessionUsage",
+              JSON.stringify(livePayload.sessionUsage),
+            )
+          }
         }
 
         const endpoint = livePayload
@@ -178,51 +183,86 @@ export function ScanAnalyzingView({
       }
     >
       <ScanStepShell
+        step="analyzing"
         title="Analyzing your scan"
         description={description}
       >
-      <Alert>
-        <AlertDescription>
-          {livePayload
-            ? "Your live session is finalized in memory and is not stored or included in saved reports."
-            : "Your photo is analyzed in memory and is not stored or included in saved reports."}
-        </AlertDescription>
-      </Alert>
+        <ScanPhotoFrame src={imageSrc} alt="Scan photo">
+          {!error && !isComplete ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/45 backdrop-blur-[1px]">
+              <ScanAnalyzingOverlay activePhase={phaseIndex} />
+              <AnimatedBadge status="loading" size="md" aria-live="polite">
+                {activeLabel}
+              </AnimatedBadge>
+            </div>
+          ) : null}
+        </ScanPhotoFrame>
 
-      <div className="relative mx-auto overflow-hidden rounded-[1.5rem] border border-border">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={imageSrc}
-          alt="Scan photo"
-          className="mx-auto aspect-[3/4] h-[min(48svh,20rem)] w-auto max-w-full object-cover"
-        />
-        {!error && !isComplete ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/45 backdrop-blur-[1px]">
-            <ScanAnalyzingOverlay activePhase={phaseIndex} />
-            <AnimatedBadge
-              status="loading"
-              size="md"
-              aria-live="polite"
-            >
-              {activeLabel}
-            </AnimatedBadge>
-          </div>
+        {!error ? (
+          <ol className="space-y-1 rounded-2xl border border-border/70 bg-muted/20 p-2.5">
+            {ANALYSIS_PHASE_LABELS.map((label, index) => {
+              const done = isComplete || index < phaseIndex
+              const active = !isComplete && index === phaseIndex
+
+              return (
+                <li
+                  key={label}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-xl px-2 py-1.5 transition-colors duration-300",
+                    active && "bg-primary/5",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "grid size-5 shrink-0 place-items-center rounded-full transition-colors duration-300",
+                      done
+                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                        : active
+                          ? "bg-primary/15 text-primary"
+                          : "bg-muted text-muted-foreground/60",
+                    )}
+                  >
+                    {done ? (
+                      <IconCheck className="size-3" aria-hidden />
+                    ) : active ? (
+                      <IconLoader2 className="size-3 animate-spin" aria-hidden />
+                    ) : (
+                      <span className="size-1.5 rounded-full bg-current" />
+                    )}
+                  </span>
+                  <span
+                    className={cn(
+                      "text-xs transition-colors duration-300",
+                      done
+                        ? "text-muted-foreground"
+                        : active
+                          ? "font-medium text-foreground"
+                          : "text-muted-foreground/60",
+                    )}
+                  >
+                    {label}
+                  </span>
+                </li>
+              )
+            })}
+          </ol>
         ) : null}
-      </div>
 
-      {error ? (
-        <Alert variant="destructive">
-          <AlertTitle>We couldn&apos;t finish your scan</AlertTitle>
-          <AlertDescription className="text-sm leading-relaxed">
-            {error}
-          </AlertDescription>
-        </Alert>
-      ) : null}
+        {error ? (
+          <Alert variant="destructive">
+            <AlertTitle>We couldn&apos;t finish your scan</AlertTitle>
+            <AlertDescription className="text-sm leading-relaxed">
+              {error}
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
-      {!error && !isComplete ? (
-        <ScanAnalysisProgressRow label={activeLabel} />
-      ) : null}
-    </ScanStepShell>
+        <p className="px-1 pb-0.5 text-center text-[11px] leading-relaxed text-muted-foreground">
+          {livePayload
+            ? "Your live session is finalized in memory. It is not stored or included in saved reports."
+            : "Your photo is analyzed in memory. It is not stored or included in saved reports."}
+        </p>
+      </ScanStepShell>
     </ScanStepFrame>
   )
 }

@@ -1,6 +1,11 @@
 import { GoogleGenAI } from "@google/genai"
 
-import { mapGeminiUsageMetadata } from "@/lib/ai/providers/gemini-usage"
+import { buildRecommendationsExtractionPrompt } from "@/lib/ai/prompts/chat"
+import { chatRecommendationsJsonSchema } from "@/lib/ai/schemas/chat-recommendations"
+import {
+  mapGeminiUsageMetadata,
+  type MappedGeminiUsage,
+} from "@/lib/ai/providers/gemini-usage"
 import type { UsageInput } from "@/lib/scans/cost"
 
 export type ChatHistoryMessage = {
@@ -106,10 +111,86 @@ export async function generateChatReply(
   return { text: text.trim(), usage, latencyMs }
 }
 
+export type ChatRecommendationsPayload = {
+  hasRecommendations: boolean
+  naturalRecommendations: unknown[]
+  productRecommendations: unknown[]
+}
+
+export type ExtractChatRecommendationsResult = {
+  payload: ChatRecommendationsPayload | null
+  usage: MappedGeminiUsage
+  latencyMs: number
+}
+
+/**
+ * Second pass over a prose reply, under constrained decoding, producing the
+ * recommendation card payload.
+ *
+ * Failure here is non-fatal by design: the user still gets the prose reply,
+ * just without cards. Returning null rather than throwing keeps a flaky
+ * extraction from taking down a good answer.
+ */
+export async function extractChatRecommendations(input: {
+  modelId: string
+  /** Same catalog and profile context the reply was generated against. */
+  systemInstruction: string
+  userMessage: string
+  proseReply: string
+}): Promise<ExtractChatRecommendationsResult> {
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not configured")
+  }
+
+  const ai = new GoogleGenAI({ apiKey })
+  const startedAt = Date.now()
+
+  const response = await ai.models.generateContent({
+    model: input.modelId,
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            text: buildRecommendationsExtractionPrompt(
+              input.userMessage,
+              input.proseReply,
+            ),
+          },
+        ],
+      },
+    ],
+    config: {
+      systemInstruction: input.systemInstruction,
+      responseMimeType: "application/json",
+      responseJsonSchema: chatRecommendationsJsonSchema,
+      temperature: 0,
+    },
+  })
+
+  const latencyMs = Date.now() - startedAt
+  const usage = mapGeminiUsageMetadata("gemini", input.modelId, response.usageMetadata)
+  const text = response.text
+
+  if (!text) {
+    return { payload: null, usage, latencyMs }
+  }
+
+  try {
+    return { payload: JSON.parse(text) as ChatRecommendationsPayload, usage, latencyMs }
+  } catch {
+    return { payload: null, usage, latencyMs }
+  }
+}
+
 export type ClassifyChatInputResult = {
   allowed: boolean
   category: string
   refusalReason: string | null
+  /** Usage for the classifier call itself, so guardrail spend is logged. */
+  usage?: MappedGeminiUsage
+  latencyMs?: number
 }
 
 const CLASSIFIER_SCHEMA = {
@@ -145,6 +226,7 @@ export async function classifyChatInput(
   }
 
   const ai = new GoogleGenAI({ apiKey })
+  const startedAt = Date.now()
 
   const response = await ai.models.generateContent({
     model: modelId,
@@ -179,12 +261,17 @@ Return JSON only with allowed (true only if category is an allowed category), ca
     },
   })
 
+  const latencyMs = Date.now() - startedAt
+  const usage = mapGeminiUsageMetadata("gemini", modelId, response.usageMetadata)
+
   const text = response.text
   if (!text) {
     return {
       allowed: false,
       category: "off_topic",
       refusalReason: "Could not classify message",
+      usage,
+      latencyMs,
     }
   }
 
@@ -204,12 +291,16 @@ Return JSON only with allowed (true only if category is an allowed category), ca
       allowed,
       category: parsed.category,
       refusalReason: allowed ? null : (parsed.refusalReason ?? "Off-topic"),
+      usage,
+      latencyMs,
     }
   } catch {
     return {
       allowed: false,
       category: "off_topic",
       refusalReason: "Invalid classification",
+      usage,
+      latencyMs,
     }
   }
 }

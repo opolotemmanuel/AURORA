@@ -1,7 +1,3 @@
-"use client"
-
-import { useRouter } from "next/navigation"
-
 import { PerformanceOverview } from "@/components/ui/cta-4"
 
 const periods = [
@@ -65,15 +61,13 @@ const periods = [
 ]
 
 export function LandingCta() {
-  const router = useRouter()
-
   return (
     <PerformanceOverview
       title="Ready to understand"
       accentWord="your skin?"
-      subtitle="Set up your profile and run one scan for personalized insights, product matches, and a routine made for you."
-      ctaLabel="Start your scan"
-      onCtaClick={() => router.push("/scan")}
+      subtitle="Set up your profile and run one scan for a skin snapshot, product matches filtered to your allergies, and a report you keep. Three free scans, no card required."
+      ctaLabel="Start your free scan"
+      ctaHref="/scan"
       periods={periods}
       defaultPeriodId="latest"
     />

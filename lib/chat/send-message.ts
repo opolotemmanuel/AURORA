@@ -1,6 +1,7 @@
 import type { ChatConversationKind } from "@/generated/prisma/client"
 
 import { chatAboutSkin } from "@/lib/ai/adapter"
+import { recordAiUsage } from "@/lib/ai/usage/record-usage"
 import { chatImageToDataUrl } from "@/lib/chat/image"
 import {
   appendChatMessages,
@@ -13,7 +14,13 @@ import {
 import {
   debitChatTokens,
 } from "@/lib/chat/token-budget"
-import { parseAndEnrichChatReply } from "@/lib/chat/parse-recommendations"
+import {
+  extractChatRecommendationsFromContent,
+  stripJsonFence,
+} from "@/lib/chat/extract-recommendations"
+import { stripDuplicateRecommendationProse } from "@/lib/chat/format-message-body"
+import { buildChatReply } from "@/lib/chat/parse-recommendations"
+import { splitChatDisclaimer } from "@/lib/chat/split-disclaimer"
 import type { ChatMessageMetadata } from "@/lib/chat/types"
 import { prisma } from "@/lib/db/client"
 import { CHAT_REFUSAL_MESSAGE } from "@/lib/ai/prompts/chat"
@@ -127,7 +134,7 @@ export async function sendChatMessage(
       }
     }
 
-    const savedConversationId = await appendChatMessages({
+    const saved = await appendChatMessages({
       conversationId: conversation?.id,
       userId: input.userId,
       kind: input.kind,
@@ -147,7 +154,7 @@ export async function sendChatMessage(
 
     return {
       ok: true,
-      conversationId: savedConversationId,
+      conversationId: saved.conversationId,
       assistantMessage: CHAT_REFUSAL_MESSAGE,
       assistantMetadata: null,
       blocked: true,
@@ -155,14 +162,16 @@ export async function sendChatMessage(
     }
   }
 
-  const parsedReply = await parseAndEnrichChatReply(
+  const parsedReply = await buildChatReply(
     chatResult.reply,
+    chatResult.recommendations,
     input.userId,
+    chatResult.catalog,
   )
   const totalTokens = getUsageTotalTokens(chatResult.usage)
   const costEstimate = await estimateScanProviderCost(chatResult.usage)
 
-  const savedConversationId = await appendChatMessages({
+  const saved = await appendChatMessages({
     conversationId: conversation?.id,
     userId: input.userId,
     kind: input.kind,
@@ -181,10 +190,22 @@ export async function sendChatMessage(
     metadata: parsedReply.metadata,
   })
 
+  await recordAiUsage({
+    feature: "chat_reply",
+    usage: chatResult.usage,
+    userId: input.userId,
+    scanId: input.scanId ?? null,
+    conversationId: saved.conversationId,
+    chatMessageId: saved.assistantMessageId,
+    latencyMs: chatResult.latencyMs,
+    costMicros: costEstimate?.costMicros ?? null,
+    marginMicros: costEstimate?.marginMicros ?? null,
+  })
+
   await debitChatTokens({
     userId: input.userId,
     tokens: totalTokens,
-    conversationId: savedConversationId,
+    conversationId: saved.conversationId,
     scanId: input.scanId,
     metadata: {
       modelId: chatResult.usage.modelId,
@@ -201,11 +222,41 @@ export async function sendChatMessage(
 
   return {
     ok: true,
-    conversationId: savedConversationId,
+    conversationId: saved.conversationId,
     assistantMessage: parsedReply.content,
     assistantMetadata: parsedReply.metadata,
     blocked: false,
     estimatedMessagesRemaining: budget.estimatedMessagesRemaining,
+  }
+}
+
+/**
+ * Rows written before recommendations moved into `metadata` still carry the
+ * JSON fence and disclaimer inside `content`. Recover them here, once per load,
+ * so the client can render `content` and `metadata` as-is.
+ */
+function recoverLegacyReply(content: string): {
+  content: string
+  metadata: ChatMessageMetadata | null
+} {
+  const recommendations = extractChatRecommendationsFromContent(content)
+  const { body, consultationNote } = splitChatDisclaimer(
+    stripJsonFence(content),
+  )
+
+  if (!recommendations && !consultationNote) {
+    return { content, metadata: null }
+  }
+
+  const metadata: ChatMessageMetadata = { ...(recommendations ?? {}) }
+  delete metadata.disclaimer
+  if (consultationNote) {
+    metadata.consultationNote = consultationNote
+  }
+
+  return {
+    content: stripDuplicateRecommendationProse(body, metadata),
+    metadata: Object.keys(metadata).length > 0 ? metadata : null,
   }
 }
 
@@ -219,16 +270,21 @@ function mapMessageForClient(m: {
   imageData: Buffer | Uint8Array | null
   metadata: unknown
 }) {
+  const storedMetadata = (m.metadata as ChatMessageMetadata | null) ?? null
+  const isAssistant = m.role === "assistant" || m.role === "system_refusal"
+  const recovered =
+    isAssistant && !storedMetadata ? recoverLegacyReply(m.content) : null
+
   return {
     id: m.id,
     role: m.role,
-    content: m.content,
+    content: recovered?.content ?? m.content,
     blocked: m.blocked,
     createdAt: m.createdAt.toISOString(),
     imageUrl: m.imageMimeType
       ? chatImageToDataUrl(m.imageMimeType, m.imageData)
       : null,
-    metadata: (m.metadata as ChatMessageMetadata | null) ?? null,
+    metadata: storedMetadata ?? recovered?.metadata ?? null,
   }
 }
 

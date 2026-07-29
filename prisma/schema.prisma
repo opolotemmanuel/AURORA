@@ -26,19 +26,19 @@ model User {
   onboardingCompleted Boolean?  @default(false)
   scanTier            ScanTier  @default(starter)
 
-  sessions      Session[]
-  accounts      Account[]
-  members       Member[]
-  invitations   Invitation[] @relation("Inviter")
-  profile       UserProfile?
-  location      UserLocation?
-  scanBalance   ScanBalance?
-  scanLedgers   ScanLedger[] @relation("ScanLedgerUser")
-  grantedScans  ScanLedger[] @relation("ScanGrantedBy")
-  scans              Scan[]
-  scanFeedbacks      ScanFeedback[]
-  chatConversations  ChatConversation[]
-  products           Product[]     @relation("ProductCreator")
+  sessions          Session[]
+  accounts          Account[]
+  members           Member[]
+  invitations       Invitation[]       @relation("Inviter")
+  profile           UserProfile?
+  location          UserLocation?
+  scanBalance       ScanBalance?
+  scanLedgers       ScanLedger[]       @relation("ScanLedgerUser")
+  grantedScans      ScanLedger[]       @relation("ScanGrantedBy")
+  scans             Scan[]
+  scanFeedbacks     ScanFeedback[]
+  chatConversations ChatConversation[]
+  products          Product[]          @relation("ProductCreator")
 
   @@unique([email])
   @@map("user")
@@ -339,16 +339,16 @@ model UserLocation {
 }
 
 model ScanBalance {
-  id                    String   @id @default(cuid())
-  userId                String   @unique
-  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  remaining             Int      @default(0)
-  lifetimeUsed          Int      @default(0)
-  lifetimeGranted       Int      @default(0)
-  tokenBudgetRemaining  BigInt   @default(0)
-  lifetimeTokensUsed    BigInt   @default(0)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  remaining            Int      @default(0)
+  lifetimeUsed         Int      @default(0)
+  lifetimeGranted      Int      @default(0)
+  tokenBudgetRemaining BigInt   @default(0)
+  lifetimeTokensUsed   BigInt   @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   @@map("scan_balance")
 }
@@ -371,6 +371,7 @@ model ScanLedger {
 
   @@index([userId])
   @@index([scanId])
+  @@index([createdAt])
   @@map("scan_ledger")
 }
 
@@ -435,25 +436,25 @@ model Ingredient {
 }
 
 model Scan {
-  id               String        @id @default(cuid())
-  userId           String
-  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organizationId   String?
-  organization     Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  status           ScanStatus        @default(pending)
-  captureMode      ScanCaptureMode   @default(still)
-  profileSnapshot  Json?
-  locationSnapshot Json?
-  consentSnapshot  Json?
-  imageRetained    Boolean       @default(false)
-  imageStorageKey  String?
-  imageMimeType    String?
-  imageData        Bytes?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-  usage            ScanUsage?
-  result           ScanResult?
-  report           Report?
+  id                String             @id @default(cuid())
+  userId            String
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organizationId    String?
+  organization      Organization?      @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  status            ScanStatus         @default(pending)
+  captureMode       ScanCaptureMode    @default(still)
+  profileSnapshot   Json?
+  locationSnapshot  Json?
+  consentSnapshot   Json?
+  imageRetained     Boolean            @default(false)
+  imageStorageKey   String?
+  imageMimeType     String?
+  imageData         Bytes?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  usage             ScanUsage?
+  result            ScanResult?
+  report            Report?
   feedback          ScanFeedback?
   scanLedgers       ScanLedger[]
   chatConversations ChatConversation[]
@@ -480,23 +481,25 @@ model ScanUsage {
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
 
+  @@index([createdAt])
+  @@index([modelId])
   @@map("scan_usage")
 }
 
 model ScanResult {
-  id                  String         @id @default(cuid())
-  scanId              String         @unique
-  scan                Scan           @relation(fields: [scanId], references: [id], onDelete: Cascade)
-  overallBand         AssessmentBand @default(not_assessed)
-  dimensions          Json?
-  doshaTyping         Json?
-  summary                 String?
-  naturalRecommendations  Json?
-  recommendations         Json?
-  disclaimerVersion       String         @default("1.0")
-  reportFormatVersion String         @default("1.0")
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
+  id                     String         @id @default(cuid())
+  scanId                 String         @unique
+  scan                   Scan           @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  overallBand            AssessmentBand @default(not_assessed)
+  dimensions             Json?
+  doshaTyping            Json?
+  summary                String?
+  naturalRecommendations Json?
+  recommendations        Json?
+  disclaimerVersion      String         @default("1.0")
+  reportFormatVersion    String         @default("1.0")
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
 
   @@map("scan_result")
 }
@@ -571,4 +574,46 @@ model ChatMessage {
   @@index([modelId])
   @@index([createdAt])
   @@map("chat_message")
+}
+
+enum AiUsageFeature {
+  scan_analyze
+  scan_live
+  chat_reply
+  /// Constrained second pass that turns a chat reply into recommendation cards.
+  chat_recommendations
+  chat_guardrail
+  transcribe
+}
+
+/// Single log of every billable provider call. Written alongside ScanUsage /
+/// ChatMessage, which stay the source of truth for per-scan display and token
+/// budgeting. Reference columns are plain ids without foreign keys so spend
+/// history survives scan, conversation, and user deletion.
+model AiUsage {
+  id                  String         @id @default(cuid())
+  feature             AiUsageFeature
+  provider            AiProvider
+  modelId             String
+  userId              String?
+  scanId              String?
+  conversationId      String?
+  chatMessageId       String?        @unique
+  inputTokens         Int            @default(0)
+  outputTokens        Int            @default(0)
+  cachedTokens        Int            @default(0)
+  reasoningTokens     Int?
+  totalTokens         Int            @default(0)
+  estimatedCostMicros Int?
+  marginMicros        Int?
+  latencyMs           Int?
+  rawUsage            Json?
+  createdAt           DateTime       @default(now())
+
+  @@index([createdAt])
+  @@index([feature, createdAt])
+  @@index([modelId, createdAt])
+  @@index([userId, createdAt])
+  @@index([scanId])
+  @@map("ai_usage")
 }

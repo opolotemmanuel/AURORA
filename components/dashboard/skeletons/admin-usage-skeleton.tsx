@@ -17,7 +17,7 @@ function TableSkeleton({ rows = 5 }: { rows?: number }) {
 export function AdminUsageSkeleton() {
   return (
     <div className="space-y-8">
-      <div className="rounded-none border border-border bg-card p-4">
+      <div className="surface-panel rounded-xl border border-border/60 p-4">
         <div className="flex flex-wrap gap-3">
           <Skeleton className="h-9 w-[140px]" />
           <Skeleton className="h-9 w-[120px]" />
@@ -29,13 +29,13 @@ export function AdminUsageSkeleton() {
       <StatCardsSkeleton count={4} />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-none border border-border bg-card p-5">
+        <div className="surface-panel rounded-xl border border-border/60 p-5">
           <Skeleton className="h-4 w-36" />
           <div className="mt-4">
             <TableSkeleton rows={5} />
           </div>
         </div>
-        <div className="rounded-none border border-border bg-card p-5">
+        <div className="surface-panel rounded-xl border border-border/60 p-5">
           <Skeleton className="h-4 w-32" />
           <div className="mt-4">
             <TableSkeleton rows={4} />
@@ -44,31 +44,31 @@ export function AdminUsageSkeleton() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-none border border-border bg-card p-5">
+        <div className="surface-panel rounded-xl border border-border/60 p-5">
           <Skeleton className="h-4 w-40" />
-          <Skeleton className="mt-4 h-48 w-full rounded-none" />
+          <Skeleton className="mt-4 h-48 w-full rounded-lg" />
         </div>
-        <div className="rounded-none border border-border bg-card p-5">
+        <div className="surface-panel rounded-xl border border-border/60 p-5">
           <Skeleton className="h-4 w-44" />
-          <Skeleton className="mt-4 h-48 w-full rounded-none" />
+          <Skeleton className="mt-4 h-48 w-full rounded-lg" />
         </div>
       </div>
 
-      <div className="rounded-none border border-border bg-card p-5">
+      <div className="surface-panel rounded-xl border border-border/60 p-5">
         <Skeleton className="h-4 w-32" />
         <div className="mt-4">
           <TableSkeleton rows={6} />
         </div>
       </div>
 
-      <div className="rounded-none border border-border bg-card p-5">
+      <div className="surface-panel rounded-xl border border-border/60 p-5">
         <Skeleton className="h-4 w-40" />
         <div className="mt-4">
           <TableSkeleton rows={5} />
         </div>
       </div>
 
-      <div className="rounded-none border border-border bg-card p-5">
+      <div className="surface-panel rounded-xl border border-border/60 p-5">
         <Skeleton className="h-4 w-28" />
         <div className="mt-4 grid gap-4 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (

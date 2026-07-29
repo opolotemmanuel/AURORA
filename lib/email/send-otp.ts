@@ -25,11 +25,19 @@ export async function sendOtpEmail({
     return
   }
 
-  await resend.emails.send({
+  // The Resend SDK reports API failures in `error` rather than throwing, so a
+  // silent failure here would show the user "code sent" for a code that was
+  // never delivered. Surface it to the caller instead.
+  const { error } = await resend.emails.send({
     from,
     to: email,
     subject: subjectForType(type),
     text: buildOtpEmailText({ otp, type }),
     html: buildOtpEmailHtml({ otp, type }),
   })
+
+  if (error) {
+    console.error("[email] Failed to send OTP", { type, error })
+    throw new Error("Could not send the verification email. Please try again.")
+  }
 }

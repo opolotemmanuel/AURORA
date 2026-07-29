@@ -196,7 +196,7 @@ export async function appendChatMessages(input: {
   modelId?: string | null
   estimatedCostMicros?: number | null
   metadata?: ChatMessageMetadata | null
-}): Promise<string> {
+}): Promise<{ conversationId: string; assistantMessageId: string }> {
   const assistantData = {
     role: input.assistantRole,
     content: input.assistantContent,
@@ -212,7 +212,7 @@ export async function appendChatMessages(input: {
   }
 
   if (input.conversationId) {
-    await prisma.$transaction([
+    const [, assistant] = await prisma.$transaction([
       prisma.chatMessage.create({
         data: {
           conversationId: input.conversationId,
@@ -239,7 +239,10 @@ export async function appendChatMessages(input: {
         data: { updatedAt: new Date() },
       }),
     ])
-    return input.conversationId
+    return {
+      conversationId: input.conversationId,
+      assistantMessageId: assistant.id,
+    }
   }
 
   if (!input.userId || input.kind !== "advice") {
@@ -272,13 +275,16 @@ export async function appendChatMessages(input: {
       },
     })
 
-    await tx.chatMessage.create({
+    const assistant = await tx.chatMessage.create({
       data: {
         conversationId: conversation.id,
         ...assistantData,
       },
     })
 
-    return conversation.id
+    return {
+      conversationId: conversation.id,
+      assistantMessageId: assistant.id,
+    }
   })
 }

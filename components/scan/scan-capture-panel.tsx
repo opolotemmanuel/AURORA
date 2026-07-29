@@ -11,7 +11,11 @@ import { ScanLivePanel } from "@/components/scan/scan-live-panel"
 import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import { ScanUploadPanel } from "@/components/scan/scan-upload-panel"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import type { CaptureMode, ScanTier } from "@/lib/scan/types"
+import type {
+  CaptureMode,
+  LiveScanPayload,
+  ScanTier,
+} from "@/lib/scan/types"
 import { CAPTURE_COPY } from "@/lib/scan/capture-copy"
 
 type ScanCapturePanelProps = {
@@ -24,6 +28,7 @@ type ScanCapturePanelProps = {
     bestFrameBlob: Blob
     previewUrl: string
     sessionDurationMs: number
+    sessionUsage: LiveScanPayload["sessionUsage"]
   }) => void
 }
 
@@ -96,6 +101,8 @@ export function ScanCapturePanel({
     )
   }
 
+  const showHints = activeMode === "upload" || activeMode === "camera"
+
   return (
     <div className="flex w-full flex-col items-center overflow-visible">
       <Tabs
@@ -103,32 +110,34 @@ export function ScanCapturePanel({
         onValueChange={(value) => onModeChange(value as CaptureMode)}
         variant="segment"
         roundedSegment
-        className="relative w-full max-w-2xl overflow-visible"
+        className="relative flex w-full max-w-2xl flex-col items-center overflow-visible"
       >
         <ScanCaptureHeader showLiveTab={canUseLiveScan} />
 
-        <div className="relative overflow-visible">
-          {activeMode === "advice" ? (
-            mode === "advice" ? <ScanCaptureAdvicePanel /> : null
-          ) : (
-            <ScanStepShell title={copy.title} description={copy.description}>
-              <TabsContent value="upload" className="mt-0">
-                <ScanUploadPanel onImageSelected={onImageSelected} />
-              </TabsContent>
-              <TabsContent value="camera" className="mt-0">
-                {mode === "camera" ? (
-                  <ScanCameraView
-                    onCapture={(file, previewUrl) =>
-                      onImageSelected(file, previewUrl, "camera")
-                    }
-                  />
-                ) : null}
-              </TabsContent>
-            </ScanStepShell>
-          )}
+        {activeMode === "advice" ? (
+          mode === "advice" ? <ScanCaptureAdvicePanel /> : null
+        ) : (
+          <ScanStepShell title={copy.title} description={copy.description}>
+            <TabsContent value="upload" className="mt-0">
+              <ScanUploadPanel onImageSelected={onImageSelected} />
+            </TabsContent>
+            <TabsContent value="camera" className="mt-0">
+              {mode === "camera" ? (
+                <ScanCameraView
+                  onCapture={(file, previewUrl) =>
+                    onImageSelected(file, previewUrl, "camera")
+                  }
+                />
+              ) : null}
+            </TabsContent>
+          </ScanStepShell>
+        )}
 
-          {mode === "camera" ? <ScanCameraHints placement="section" /> : null}
-        </div>
+        {/* Docked beside the card on xl+, aligned with the tab row. */}
+        {showHints ? <ScanCameraHints placement="section" /> : null}
+        {showHints ? (
+          <ScanCameraHints placement="inline" className="mt-3" />
+        ) : null}
       </Tabs>
     </div>
   )

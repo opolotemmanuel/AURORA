@@ -2,11 +2,19 @@ import type { AgeBand } from "@/generated/prisma/client"
 
 export const CONSENT_VERSION = "1.0"
 
+/**
+ * Canonical step order. Not every step is asked on every run: which ones apply
+ * is resolved by lib/onboarding/steps.ts from what the user has answered.
+ *
+ * `consent` merged into `welcome` and `skin` split into `skin_type` and
+ * `skin_concerns`. Accounts stored on the old ids are mapped forward by
+ * normalizeStoredStep.
+ */
 export const ONBOARDING_STEPS = [
   "welcome",
-  "consent",
   "basics",
-  "skin",
+  "skin_type",
+  "skin_concerns",
   "routine",
   "lifestyle",
   "location",
@@ -18,13 +26,13 @@ export type OnboardingStep = (typeof ONBOARDING_STEPS)[number]
 
 export const ONBOARDING_STEP_LABELS: Record<OnboardingStep, string> = {
   welcome: "Welcome",
-  consent: "Consent",
   basics: "About you",
-  skin: "Skin profile",
+  skin_type: "Your skin",
+  skin_concerns: "Focus",
   routine: "Routine",
   lifestyle: "Lifestyle",
-  location: "Location",
-  password: "Password",
+  location: "Climate",
+  password: "Security",
   complete: "Finish",
 }
 

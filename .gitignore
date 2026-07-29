@@ -38,3 +38,7 @@ pnpm-debug.log*
 next-env.d.ts
 
 /generated/prisma
+
+# Eval fixture photos are special-category data and stay out of git.
+evals/fixtures/images/*
+!evals/fixtures/images/.gitkeep

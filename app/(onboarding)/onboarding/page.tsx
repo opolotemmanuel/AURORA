@@ -7,7 +7,10 @@ import {
   DEFAULT_POST_ONBOARDING_PATH,
   safeCallbackPath,
 } from "@/lib/auth/callback-url"
+import { userNeedsPassword } from "@/lib/onboarding/actions"
+import { getFreeStarterScans } from "@/lib/onboarding/constants"
 import { getOnboardingContext } from "@/lib/onboarding/context"
+import { normalizeStoredStep } from "@/lib/onboarding/steps"
 
 export default async function OnboardingPage({
   searchParams,
@@ -51,11 +54,18 @@ async function OnboardingPageContent({
     DEFAULT_POST_ONBOARDING_PATH,
   )
 
+  // Accounts created through Google or Apple already have no credential, and
+  // accounts created with a password do. Asking either group the wrong thing is
+  // pure friction, so the step is branched away when it does not apply.
+  const needsPassword = await userNeedsPassword(context.user.id)
+
   return (
     <OnboardingWizard
-      initialStep={context.step}
+      initialStep={normalizeStoredStep(context.step)}
       userName={context.user.name ?? ""}
       callbackUrl={callbackUrl}
+      needsPassword={needsPassword}
+      freeScans={getFreeStarterScans()}
     />
   )
 }

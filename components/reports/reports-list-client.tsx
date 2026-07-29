@@ -168,7 +168,7 @@ export function ReportsListClient({
             <article
               key={scan.id}
               className={cn(
-                "@container rounded-none border border-border bg-card p-5 transition-colors",
+                "@container surface-panel rounded-xl border border-border/60 p-5 transition-colors",
                 scan.result && "cursor-pointer hover:bg-muted/30",
               )}
               onClick={() => scan.result && openReport(scan)}

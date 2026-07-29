@@ -4,7 +4,6 @@ import {
 } from "@/lib/ai/context/scan-history-safe"
 import { SCAN_ANALYSIS_HISTORY_LIMIT } from "@/lib/ai/context/scan-history"
 import { getUserScanContext } from "@/lib/ai/context/user"
-import { enrichProductLinks } from "@/lib/ai/enrich-product-links"
 import {
   runFullInputGuardrails,
   sanitizeAssistantOutput,
@@ -15,14 +14,24 @@ import {
   buildFollowUpContextText,
   buildFollowUpSystemPrompt,
 } from "@/lib/ai/prompts/chat"
+import { recordAiUsage } from "@/lib/ai/usage/record-usage"
 import { analyzeWithGemini } from "@/lib/ai/providers/gemini"
-import { generateChatReply } from "@/lib/ai/providers/gemini-chat"
+import {
+  extractChatRecommendations,
+  generateChatReply,
+  type ChatRecommendationsPayload,
+} from "@/lib/ai/providers/gemini-chat"
+import { CHAT_REFUSAL_MESSAGE } from "@/lib/ai/prompts/chat"
 import {
   transcribeWithGemini,
   type TranscribeAudioInput,
   type TranscribeAudioResult,
 } from "@/lib/ai/providers/gemini-transcribe"
-import type { AnalyzeSkinInput, AnalyzeSkinResult } from "@/lib/ai/types"
+import type {
+  AnalyzeSkinInput,
+  AnalyzeSkinResult,
+  CatalogProductContext,
+} from "@/lib/ai/types"
 import {
   mapUserClimateToTags,
   rankCatalogByClimateTags,
@@ -99,6 +108,10 @@ export type ChatAboutSkinResult =
   | {
       allowed: true
       reply: string
+      /** Card payload from the extraction call, or null when there are none. */
+      recommendations: ChatRecommendationsPayload | null
+      /** Ranked catalog used for this reply, for prose link enrichment. */
+      catalog: CatalogProductContext[]
       usage: AnalyzeSkinResult["usage"]
       latencyMs: number
     }
@@ -123,6 +136,16 @@ export async function chatAboutSkin(
     hasScanContext,
     { hasImage, history: input.history },
   )
+  if (guardrails.classifierUsage) {
+    await recordAiUsage({
+      feature: "chat_guardrail",
+      usage: guardrails.classifierUsage.usage,
+      userId: input.userId,
+      scanId: input.scanId ?? null,
+      latencyMs: guardrails.classifierUsage.latencyMs,
+    })
+  }
+
   if (!guardrails.allowed) {
     return { allowed: false, reason: guardrails.reason }
   }
@@ -186,14 +209,44 @@ export async function chatAboutSkin(
     userImage: input.image,
   })
 
-  const reply = enrichProductLinks(
-    sanitizeAssistantOutput(text),
-    rankedCatalog,
-  )
+  const reply = sanitizeAssistantOutput(text)
+
+  // Cards come from a separate constrained call over the prose, rather than
+  // from a fenced JSON block the model hand-writes inside its own answer. A
+  // refused reply never gets cards.
+  let recommendations: ChatRecommendationsPayload | null = null
+  if (reply !== CHAT_REFUSAL_MESSAGE) {
+    try {
+      const extraction = await extractChatRecommendations({
+        modelId: model.modelId,
+        systemInstruction: fullSystem,
+        userMessage: input.userMessage,
+        proseReply: reply,
+      })
+
+      if (extraction.payload?.hasRecommendations) {
+        recommendations = extraction.payload
+      }
+
+      await recordAiUsage({
+        feature: "chat_recommendations",
+        usage: extraction.usage,
+        userId: input.userId,
+        scanId: input.scanId ?? null,
+        latencyMs: extraction.latencyMs,
+      })
+    } catch (err) {
+      // The prose reply is already good. Losing the cards is a degradation,
+      // not a failure, so never let this take the reply down with it.
+      console.error("[chat] Recommendation extraction failed", err)
+    }
+  }
 
   return {
     allowed: true,
     reply,
+    recommendations,
+    catalog: rankedCatalog,
     usage: {
       provider: model.provider,
       modelId: model.modelId,

@@ -119,7 +119,7 @@ export function ModelRateEditor({
       </TabsList>
 
       <TabsContent value="models">
-        <div className="rounded-none border border-border">
+        <div className="rounded-xl border border-border/60">
           <div className="border-b border-border px-4 py-3">
             <h2 className="font-heading text-sm font-medium">Configured models</h2>
           </div>
@@ -140,22 +140,22 @@ export function ModelRateEditor({
                         {model.displayName ?? model.modelId}
                       </p>
                       {model.assignedTier ? (
-                        <span className="rounded-none bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                        <span className="rounded-lg bg-primary/10 px-2 py-0.5 text-xs text-primary">
                           {tierLabel(model.assignedTier)}
                         </span>
                       ) : null}
                       {model.supportsLive ? (
-                        <span className="rounded-none bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                        <span className="rounded-lg bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                           Live API
                         </span>
                       ) : null}
                       {model.thinkingLevel ? (
-                        <span className="rounded-none bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                        <span className="rounded-lg bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                           Thinking: {model.thinkingLevel}
                         </span>
                       ) : null}
                       {!model.isActive ? (
-                        <span className="rounded-none bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                        <span className="rounded-lg bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                           Inactive
                         </span>
                       ) : null}
@@ -221,7 +221,7 @@ export function ModelRateEditor({
 
       <TabsContent value="configure">
         <form
-          className="space-y-4 rounded-none border border-border p-4"
+          className="space-y-4 rounded-xl border border-border/60 p-4"
           onSubmit={(e) => {
             e.preventDefault()
             startTransition(async () => {

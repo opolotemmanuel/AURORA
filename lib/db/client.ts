@@ -1,7 +1,27 @@
+import net from "node:net"
+
 import { PrismaPg } from "@prisma/adapter-pg"
 import { Pool } from "pg"
 
 import { PrismaClient } from "@/generated/prisma/client"
+
+// Node's happy-eyeballs gives each candidate address only 250ms to complete the
+// TCP handshake. Neon resolves to several A/AAAA records, and on a link whose
+// round trip to us-east-1 is already ~250ms every attempt aborts, surfacing as
+// an ETIMEDOUT before the first query is ever sent. Give each address room for
+// a few round trips.
+const AUTOSELECT_ATTEMPT_TIMEOUT_MS = 3_000
+
+function widenAddressSelectionTimeout() {
+  if (typeof net.setDefaultAutoSelectFamilyAttemptTimeout !== "function") {
+    return
+  }
+  const current = net.getDefaultAutoSelectFamilyAttemptTimeout?.() ?? 0
+  if (current >= AUTOSELECT_ATTEMPT_TIMEOUT_MS) {
+    return
+  }
+  net.setDefaultAutoSelectFamilyAttemptTimeout(AUTOSELECT_ATTEMPT_TIMEOUT_MS)
+}
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
@@ -37,6 +57,8 @@ function createPgPool() {
   if (!connectionString) {
     throw new Error("DATABASE_URL is not set")
   }
+
+  widenAddressSelectionTimeout()
 
   const normalized = normalizeConnectionString(connectionString)
 

@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button"
 import { getCroppedImageBlob, type PixelCrop } from "@/lib/scan/crop-image"
 import { pickBestFaceCrop, type NormalizedRect } from "@/lib/scan/face-crop"
 import { detectFaces } from "@/lib/scan/mediapipe"
-import { cn } from "@/lib/utils"
 
 type ScanImageEditorProps = {
   imageSrc: string
@@ -90,60 +89,61 @@ export function ScanImageEditor({
   return (
     <ScanStepFrame>
       <ScanStepShell
+        step="edit"
         title="Adjust your photo"
-        description="Drag the box to move it. Pull the corners to resize. Only the highlighted rectangle is saved."
+        description="Drag the box to move it, pull the corners to resize. Only the highlighted rectangle is analyzed."
       >
-      <div className="relative">
-        <RectCropCanvas
-          imageSrc={imageSrc}
-          onCropChange={onCropChange}
-          initialCropRect={initialCropRect}
-        />
-        {detectingFace ? (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-[1.5rem] bg-background/50 backdrop-blur-[1px]">
-            <AnimatedBadge status="loading" size="sm">
-              Positioning crop on your face…
-            </AnimatedBadge>
-          </div>
-        ) : null}
-      </div>
+        <div className="relative">
+          <RectCropCanvas
+            imageSrc={imageSrc}
+            onCropChange={onCropChange}
+            initialCropRect={initialCropRect}
+          />
+          {detectingFace ? (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-[1.5rem] bg-background/50 backdrop-blur-[1px]">
+              <AnimatedBadge status="loading" size="sm">
+                Positioning crop on your face…
+              </AnimatedBadge>
+            </div>
+          ) : null}
+        </div>
 
-      <p className="text-center text-xs text-muted-foreground">
-        The dimmed area is not included in your scan.
-      </p>
+        <p className="text-center text-[11px] text-muted-foreground">
+          The dimmed area is not included in your scan.
+        </p>
 
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onRetake}
-          className={cn("rounded-full")}
-        >
-          <IconRefresh className="size-3.5" />
-          Retake
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onDelete}
-          className="rounded-full"
-        >
-          <IconTrash className="size-3.5" />
-          Delete
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          disabled={submitting || detectingFace || !croppedArea}
-          onClick={() => void handleConfirm()}
-          className="ml-auto rounded-full"
-        >
-          {submitting ? "Preparing…" : "Continue"}
-        </Button>
-      </div>
-    </ScanStepShell>
+        <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onRetake}
+            className="rounded-full"
+          >
+            <IconRefresh className="size-3.5" />
+            Retake
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onDelete}
+            className="rounded-full"
+          >
+            <IconTrash className="size-3.5" />
+            Delete
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            disabled={submitting || detectingFace || !croppedArea}
+            onClick={() => void handleConfirm()}
+            className="ml-auto rounded-full px-5"
+          >
+            {submitting ? "Preparing…" : "Continue"}
+          </Button>
+        </div>
+      </ScanStepShell>
     </ScanStepFrame>
   )
 }

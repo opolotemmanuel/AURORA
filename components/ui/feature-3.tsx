@@ -21,17 +21,18 @@ export function Features3() {
           </h2>
 
           <p className="text-muted-foreground max-w-lg">
-            No more trial and error at the shelf. One scan shows what your skin
-            needs, explains it in plain language, and matches you to Aurora
-            Organics formulas for your goals, routine, and climate.
+            No more trial and error at the shelf. One scan reads your skin across
+            six dimensions, explains each in plain language, and matches you to
+            Aurora Organics formulas that suit your goals, your routine, your
+            climate, and the ingredients you need to avoid.
           </p>
 
           <div className="space-y-2">
             {[
-              "Scan via camera or upload with on-device quality checks",
-              "Receive a clear cosmetic assessment with easy-to-read band labels",
-              "Get product matches chosen for your skin and lifestyle",
-              "Keep your report; photos are not stored by default",
+              "Upload a photo, use your camera, or run a live real-time scan",
+              "Six skin dimensions in plain-language bands, plus an Ayurvedic skin lean",
+              "Matches filtered against your allergy list and your local climate",
+              "Keep the PDF report and ask follow-ups; your photo is never stored",
             ].map((item) => (
               <div key={item} className="flex items-center gap-2">
                 <div className="bg-primary/10 mt-1 flex size-6 items-center justify-center rounded-full shadow-[inset_0_1px_2px_rgba(0,0,0,0.15)]">
@@ -48,7 +49,7 @@ export function Features3() {
             asChild
             className="rounded-sm px-6 shadow-[inset_0_0px_2px_0px_rgba(0,0,0,0.1),inset_0_0px_4px_0px_rgba(0,0,0,0.1)]"
           >
-            <Link href="/scan">Start your scan</Link>
+            <Link href="/scan">Start your free scan</Link>
           </Button>
         </div>
 

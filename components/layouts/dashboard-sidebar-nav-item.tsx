@@ -63,7 +63,7 @@ export function SidebarNavItem({
             {isActive ? (
               <motion.span
                 layoutId="sidebar-active-pill"
-                className="absolute inset-0 -mx-1 rounded-none bg-sidebar-accent"
+                className="absolute inset-0 -mx-1 rounded-lg bg-sidebar-accent"
                 transition={
                   reduceMotion
                     ? { duration: 0 }

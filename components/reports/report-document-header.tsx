@@ -55,7 +55,7 @@ export function ReportDocumentHeader({
       <div className="flex items-center gap-3">
         <Image
           src={brandIcon}
-          alt="Aura"
+          alt="Aurora Organics"
           width={40}
           height={40}
           className="size-10 rounded-lg"

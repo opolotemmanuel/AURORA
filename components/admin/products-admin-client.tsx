@@ -54,7 +54,7 @@ export function ProductsAdminClient({ products }: ProductsAdminClientProps) {
 
   return (
     <>
-      <div className="rounded-none  ">
+      <div className="rounded-lg  ">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-heading text-sm font-medium">Catalog</h2>
           <div className="flex flex-wrap gap-2">

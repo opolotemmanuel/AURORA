@@ -21,7 +21,6 @@ export function ChatNaturalRecommendations({
     <div className={cn("min-w-0 space-y-2 border-t border-border/60 pt-3", className)}>
       <RecommendationSectionHeader
         title={RECOMMENDATION_SECTIONS.everydayCare.title}
-        description={RECOMMENDATION_SECTIONS.everydayCare.description}
       />
       <ul className="space-y-2">
         {items.map((item) => (

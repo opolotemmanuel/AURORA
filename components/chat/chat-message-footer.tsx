@@ -4,11 +4,14 @@ import { cn } from "@/lib/utils"
 type ChatMessageFooterProps = {
   consultationNote?: string | null
   className?: string
+  /** Hidden when the surrounding view already shows a booking button. */
+  showBookingButton?: boolean
 }
 
 export function ChatMessageFooter({
   consultationNote,
   className,
+  showBookingButton = true,
 }: ChatMessageFooterProps) {
   if (!consultationNote) {
     return null
@@ -24,7 +27,7 @@ export function ChatMessageFooter({
       <p className="text-[11px] leading-snug text-muted-foreground">
         {consultationNote}
       </p>
-      <ConsultationBookingButton />
+      {showBookingButton ? <ConsultationBookingButton /> : null}
     </div>
   )
 }

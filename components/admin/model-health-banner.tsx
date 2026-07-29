@@ -17,7 +17,7 @@ export async function ModelHealthBanner() {
   }
 
   return (
-    <div className="mb-6 flex items-start gap-3 rounded-none border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+    <div className="mb-6 flex items-start gap-3 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm text-destructive">
       <IconAlertTriangle className="mt-0.5 size-4 shrink-0" />
       <div className="min-w-0 flex-1 space-y-1">
         <p className="font-medium">Model configuration needs attention</p>

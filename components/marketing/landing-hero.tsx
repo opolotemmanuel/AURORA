@@ -2,17 +2,13 @@
 
 import Image from "next/image"
 import Link from "next/link"
+import { IconGift, IconLock } from "@tabler/icons-react"
 import { motion, type Variants } from "motion/react"
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { EASE_OUT } from "@/lib/ease"
+import { scrollToSection } from "@/lib/marketing/sections"
 import { PLACEHOLDER_IMAGES } from "@/lib/marketing/placeholder-images"
-import {
-  HERO_TRUST_AVATAR_COUNT,
-  HERO_TRUST_LABEL,
-  TESTIMONIALS,
-} from "@/lib/marketing/testimonials"
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -38,7 +34,10 @@ function HeroBackground() {
   return (
     <div className="pointer-events-none absolute inset-0" aria-hidden>
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,var(--primary)_0%,transparent_55%)] opacity-[0.08]" />
-      <div className="text-primary absolute inset-0 bg-[radial-gradient(circle,currentColor_1px,transparent_1px)] bg-size-[24px_24px] opacity-[0.16] mask-[radial-gradient(ellipse_75%_65%_at_50%_55%,black,transparent)] dark:opacity-[0.10] md:mask-[radial-gradient(ellipse_60%_70%_at_72%_50%,black,transparent)]" />
+      {/* Same dot language as the scan flow (.dot-field), held at half strength
+          so it registers as texture without competing with the headline. The
+          mask falls off gently instead of clipping the field mid-section. */}
+      <div className="dot-field absolute inset-0 opacity-50 mask-[radial-gradient(ellipse_110%_95%_at_50%_45%,black_35%,transparent_100%)] md:mask-[radial-gradient(ellipse_95%_105%_at_68%_50%,black_35%,transparent_100%)]" />
     </div>
   )
 }
@@ -80,8 +79,10 @@ export function LandingHero() {
             variants={itemVariants}
             className="text-muted-foreground max-w-lg text-base leading-relaxed md:text-lg"
           >
-            Your best skin starts here. In seconds, one scan gives you a
-            profile, matched products, and a routine made for you.
+            One photo reads six dimensions of your skin, from hydration to tone
+            and texture. You get an Ayurvedic skin lean, product matches
+            filtered against your allergies and local climate, and a report you
+            keep.
           </motion.p>
 
           <motion.div
@@ -89,42 +90,31 @@ export function LandingHero() {
             className="grid w-full grid-cols-1 gap-3 sm:w-fit sm:grid-cols-2"
           >
             <Button asChild size="lg" className="w-full">
-              <Link href="/scan">Start your scan</Link>
+              <Link href="/scan">Start your free scan</Link>
             </Button>
-            <Button asChild variant="outline" size="lg" className="w-full">
-              <Link href="/dashboard">Dashboard</Link>
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full"
+              onClick={() => scrollToSection("how-it-works")}
+            >
+              See how it works
             </Button>
           </motion.div>
 
-          <motion.div
+          <motion.ul
             variants={itemVariants}
-            className="flex flex-col items-center gap-2.5 sm:flex-row sm:items-center md:items-start"
+            className="text-muted-foreground flex flex-col items-center gap-2 text-sm sm:flex-row sm:gap-x-5"
           >
-            <div className="flex shrink-0 -space-x-2">
-              {TESTIMONIALS.slice(0, HERO_TRUST_AVATAR_COUNT).map(
-                (testimonial) => (
-                  <Avatar
-                    key={testimonial.name}
-                    className="ring-background size-9 ring-2"
-                  >
-                    <AvatarImage
-                      src={testimonial.avatar}
-                      alt={testimonial.name}
-                    />
-                    <AvatarFallback>
-                      {testimonial.name
-                        .split(" ")
-                        .map((part) => part[0])
-                        .join("")}
-                    </AvatarFallback>
-                  </Avatar>
-                ),
-              )}
-            </div>
-            <p className="text-muted-foreground max-w-[13rem] text-center text-sm leading-snug text-balance sm:max-w-[15rem] sm:text-left md:max-w-[17rem]">
-              {HERO_TRUST_LABEL}
-            </p>
-          </motion.div>
+            <li className="flex items-center gap-2">
+              <IconGift className="text-primary size-4 shrink-0" aria-hidden />
+              Three free scans, no card required
+            </li>
+            <li className="flex items-center gap-2">
+              <IconLock className="text-primary size-4 shrink-0" aria-hidden />
+              Your photo is never stored
+            </li>
+          </motion.ul>
         </div>
 
         <motion.div

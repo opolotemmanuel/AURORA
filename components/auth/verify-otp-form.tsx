@@ -1,12 +1,21 @@
 "use client"
 
-import { useState } from "react"
+import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useEffect, useState } from "react"
+import { motion } from "motion/react"
 
+import {
+  AuthSplitShell,
+  authItemVariants,
+} from "@/components/auth/auth-split-shell"
 import { OTPInput } from "@/components/motion/otp-input"
 import { Button } from "@/components/ui/button"
 import { completeSignInAction } from "@/lib/auth/post-sign-in"
 import { authClient } from "@/lib/auth/client"
+
+/** Matches the server-side rate limit on OTP issuance in lib/auth/server.ts. */
+const RESEND_COOLDOWN_SECONDS = 30
 
 export function VerifyOtpForm() {
   const router = useRouter()
@@ -15,10 +24,20 @@ export function VerifyOtpForm() {
   const mode = searchParams.get("mode") ?? "sign-in"
   const name = searchParams.get("name") ?? ""
   const callbackUrl = searchParams.get("callbackUrl") ?? "/onboarding"
+
   const [otp, setOtp] = useState("")
   const [status, setStatus] = useState<"idle" | "error" | "success">("idle")
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [cooldown, setCooldown] = useState(RESEND_COOLDOWN_SECONDS)
+
+  // A code was just sent to get here, so the cooldown starts immediately.
+  // Without it, "Resend code" invited users straight into the rate limiter.
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const timer = window.setTimeout(() => setCooldown((n) => n - 1), 1000)
+    return () => window.clearTimeout(timer)
+  }, [cooldown])
 
   async function verifyCode(code: string) {
     if (!email) {
@@ -38,7 +57,7 @@ export function VerifyOtpForm() {
 
     if (signInError) {
       setLoading(false)
-      setError(signInError.message ?? "Invalid code. Try again.")
+      setError(signInError.message ?? "That code did not work. Try again.")
       setStatus("error")
       return
     }
@@ -51,73 +70,89 @@ export function VerifyOtpForm() {
         callbackUrl,
       )
       setStatus("success")
-      setLoading(false)
       router.replace(destination)
       return
     }
 
     setStatus("success")
-    setLoading(false)
     router.replace("/onboarding")
   }
 
   async function resend() {
-    if (!email) return
+    if (!email || cooldown > 0) return
     setError(null)
-    await authClient.emailOtp.sendVerificationOtp({ email, type: "sign-in" })
+    setCooldown(RESEND_COOLDOWN_SECONDS)
+
+    const { error: sendError } = await authClient.emailOtp.sendVerificationOtp({
+      email,
+      type: "sign-in",
+    })
+
+    if (sendError) {
+      setError(sendError.message ?? "Could not send another code.")
+      setStatus("error")
+    }
   }
 
   if (!email) {
     return (
-      <div className="border-border bg-card space-y-4 rounded-lg border p-6 text-center">
-        <p className="text-muted-foreground text-sm">No email provided.</p>
-        <Button asChild>
-          <a href="/login">Back to sign in</a>
+      <AuthSplitShell
+        title="Check your"
+        accent="inbox"
+        subtitle="We do not have an email address to verify."
+      >
+        <Button asChild className="h-11 w-full rounded-full">
+          <Link href="/login">Back to sign in</Link>
         </Button>
-      </div>
+      </AuthSplitShell>
     )
   }
 
   return (
-    <div className="border-border bg-card mx-auto w-full max-w-sm space-y-6 rounded-lg border p-6">
-      <div className="space-y-2 text-center">
-        <h1 className="font-heading text-xl font-medium">Verify code</h1>
-        <p className="text-muted-foreground text-sm">
-          Enter the 6-digit code sent to{" "}
-          <span className="text-foreground">{email}</span>
-        </p>
+    <AuthSplitShell
+      title="Check your"
+      accent="inbox"
+      subtitle={`We sent a six-digit code to ${email}.`}
+    >
+      <div className="flex flex-col gap-5">
+        <motion.div variants={authItemVariants}>
+          <OTPInput
+            length={6}
+            value={otp}
+            onChange={setOtp}
+            onComplete={verifyCode}
+            status={status}
+            errorMessage={error ?? undefined}
+            successMessage="Verified. Taking you through."
+            disabled={loading || status === "success"}
+            autoFocus
+            label="Verification code"
+            hint="Check your spam folder if it does not arrive."
+          />
+        </motion.div>
+
+        {status === "success" ? null : (
+          <motion.div variants={authItemVariants} className="flex flex-col gap-2">
+            <Button
+              type="button"
+              className="h-11 w-full rounded-full"
+              disabled={loading || otp.length !== 6}
+              onClick={() => verifyCode(otp)}
+            >
+              {loading ? "Verifying" : "Verify"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-11 w-full rounded-full"
+              disabled={cooldown > 0}
+              onClick={resend}
+            >
+              {cooldown > 0 ? `Resend code in ${cooldown}s` : "Resend code"}
+            </Button>
+          </motion.div>
+        )}
       </div>
-
-      <OTPInput
-        length={6}
-        value={otp}
-        onChange={setOtp}
-        onComplete={verifyCode}
-        status={status}
-        errorMessage={error ?? undefined}
-        successMessage="Code verified. Redirecting…"
-        disabled={loading || status === "success"}
-        autoFocus
-        label="Verification code"
-        hint="Check your inbox and spam folder if the code does not arrive."
-      />
-
-      {status === "success" ? null : (
-        <div className="flex flex-col gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            disabled={loading || otp.length !== 6}
-            onClick={() => verifyCode(otp)}
-          >
-            {loading ? "Verifying…" : "Verify"}
-          </Button>
-          <Button type="button" variant="ghost" className="w-full" onClick={resend}>
-            Resend code
-          </Button>
-        </div>
-      )}
-    </div>
+    </AuthSplitShell>
   )
 }

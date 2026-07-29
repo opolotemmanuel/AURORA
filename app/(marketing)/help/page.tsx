@@ -16,7 +16,7 @@ export default function HelpPage() {
             Help center
           </h1>
           <p className="text-muted-foreground text-sm">
-            Answers about Aura, your account, and your data.
+            Answers about Aurora Organics, your account, and your data.
           </p>
         </header>
 
@@ -57,7 +57,7 @@ export default function HelpPage() {
               Scan tiers
             </h2>
             <p>
-              Aura offers three tiers, each with different analysis capabilities:
+              Aurora Organics offers three tiers, each with different analysis capabilities:
             </p>
             <ul className="list-disc space-y-2 pl-5">
               <li>

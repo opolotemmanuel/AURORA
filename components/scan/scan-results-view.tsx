@@ -59,21 +59,32 @@ export function ScanResultsView({
         onRescan={onNewScan}
         onReEdit={onReEdit}
         onViewReport={onViewReport}
+        imageFooter={
+          scanId ? (
+            <ScanReportChatDock
+              scanId={scanId}
+              variant="footer"
+              className="w-full flex-col items-stretch"
+            />
+          ) : null
+        }
       >
-        <div className="mx-auto max-w-5xl space-y-6 pb-44">
+        <div className="mx-auto max-w-5xl space-y-6 pb-12">
           <ReportDocumentHeader scanDate={formattedDate} />
 
-          <Alert>
+          <Alert className="rounded-none">
             <AlertDescription>
               Your photo is shown only for this session. It is not stored or
               included in saved reports or PDFs.
             </AlertDescription>
           </Alert>
 
-          <SkinReportDocument
-            assessment={assessment}
-            climateContext={climateContext}
-          />
+          <div className="rounded-none border border-border bg-background/75 p-4 backdrop-blur-sm sm:p-6">
+            <SkinReportDocument
+              assessment={assessment}
+              climateContext={climateContext}
+            />
+          </div>
 
           <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
             <ScanDashboardLink />
@@ -96,17 +107,6 @@ export function ScanResultsView({
           </div>
         </div>
       </ScanReportLayout>
-
-      {scanId ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-30 px-4">
-          <div className="mx-auto grid w-full max-w-5xl lg:grid-cols-[minmax(0,280px)_1fr] lg:gap-8">
-            <div className="hidden lg:block" aria-hidden />
-            <div className="pointer-events-auto flex justify-end">
-              <ScanReportChatDock scanId={scanId} />
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   )
 }

@@ -1,12 +1,35 @@
 import { cache } from "react"
 import { connection } from "next/server"
 
+import { Prisma, type AiUsageFeature } from "@/generated/prisma/client"
+import {
+  buildBucketKeys,
+  bucketKey,
+  bucketLabel,
+  getBucketGranularity,
+  getPeriodStart,
+  startOfUtcDay,
+  truncUnit,
+  type UsagePeriod,
+} from "@/lib/admin/periods"
 import { prisma } from "@/lib/db/client"
 import { withDbRetry } from "@/lib/db/retry"
 import { listModelRates } from "@/lib/models/queries"
 
-export type UsagePeriod = "today" | "7d" | "30d" | "month" | "year" | "all"
-export type UsageSource = "all" | "scan" | "chat"
+export type { UsagePeriod }
+
+/** Filter values exposed in the UI, mapped to the features they cover. */
+export type UsageSource = "all" | "scan" | "chat" | "guardrail" | "transcribe"
+
+const SOURCE_FEATURES: Record<UsageSource, AiUsageFeature[] | null> = {
+  all: null,
+  scan: ["scan_analyze", "scan_live"],
+  chat: ["chat_reply", "chat_recommendations"],
+  guardrail: ["chat_guardrail"],
+  transcribe: ["transcribe"],
+}
+
+const SCAN_FEATURES = new Set<AiUsageFeature>(["scan_analyze", "scan_live"])
 
 export type UsageFilters = {
   period?: UsagePeriod
@@ -52,6 +75,12 @@ export type UserUsageRow = {
   tokens: TokenBreakdown
 }
 
+export type FeatureUsageRow = {
+  feature: AiUsageFeature
+  callCount: number
+  tokens: TokenBreakdown
+}
+
 export type UsageHighlights = {
   mostActiveUser: UserUsageRow | null
   mostUsedModel: ModelUsageRow | null
@@ -69,53 +98,27 @@ export type AdminUsageAnalytics = {
   costSeries: { label: string; value: number }[]
   perModel: ModelUsageRow[]
   perUser: UserUsageRow[]
+  perFeature: FeatureUsageRow[]
   highlights: UsageHighlights
 }
 
-type UsageRecord = {
-  createdAt: Date
-  inputTokens: number
-  outputTokens: number
-  cachedTokens: number
+type SumFields = {
+  inputTokens: number | null
+  outputTokens: number | null
+  cachedTokens: number | null
   reasoningTokens: number | null
-  totalTokens: number
+  totalTokens: number | null
   estimatedCostMicros: number | null
-  modelId: string | null
-  userId?: string
-  userName?: string
-  userEmail?: string
-  source: "scan" | "chat"
 }
 
-function startOfDay(date: Date): Date {
-  const d = new Date(date)
-  d.setHours(0, 0, 0, 0)
-  return d
-}
-
-function daysAgo(n: number): Date {
-  const d = new Date()
-  d.setDate(d.getDate() - n)
-  return d
-}
-
-export function getPeriodStart(period: UsagePeriod): Date | null {
-  const now = new Date()
-  switch (period) {
-    case "today":
-      return startOfDay(now)
-    case "7d":
-      return daysAgo(7)
-    case "30d":
-      return daysAgo(30)
-    case "month":
-      return new Date(now.getFullYear(), now.getMonth(), 1)
-    case "year":
-      return new Date(now.getFullYear(), 0, 1)
-    case "all":
-      return null
-  }
-}
+const SUM_SELECT = {
+  inputTokens: true,
+  outputTokens: true,
+  cachedTokens: true,
+  reasoningTokens: true,
+  totalTokens: true,
+  estimatedCostMicros: true,
+} as const
 
 function emptyBreakdown(): TokenBreakdown {
   return {
@@ -128,295 +131,254 @@ function emptyBreakdown(): TokenBreakdown {
   }
 }
 
-function sumBreakdowns(records: UsageRecord[]): TokenBreakdown {
-  return records.reduce<TokenBreakdown>(
-    (acc, row) => ({
-      inputTokens: acc.inputTokens + row.inputTokens,
-      outputTokens: acc.outputTokens + row.outputTokens,
-      cachedTokens: acc.cachedTokens + row.cachedTokens,
-      reasoningTokens: acc.reasoningTokens + (row.reasoningTokens ?? 0),
-      totalTokens: acc.totalTokens + row.totalTokens,
-      estimatedCostMicros:
-        acc.estimatedCostMicros + (row.estimatedCostMicros ?? 0),
-    }),
-    emptyBreakdown(),
-  )
+function toBreakdown(sum: SumFields | null | undefined): TokenBreakdown {
+  return {
+    inputTokens: sum?.inputTokens ?? 0,
+    outputTokens: sum?.outputTokens ?? 0,
+    cachedTokens: sum?.cachedTokens ?? 0,
+    reasoningTokens: sum?.reasoningTokens ?? 0,
+    totalTokens: sum?.totalTokens ?? 0,
+    estimatedCostMicros: sum?.estimatedCostMicros ?? 0,
+  }
 }
 
-function bucketKey(date: Date, period: UsagePeriod): string {
-  if (period === "today") {
-    return `${date.getHours().toString().padStart(2, "0")}:00`
+function addBreakdowns(a: TokenBreakdown, b: TokenBreakdown): TokenBreakdown {
+  return {
+    inputTokens: a.inputTokens + b.inputTokens,
+    outputTokens: a.outputTokens + b.outputTokens,
+    cachedTokens: a.cachedTokens + b.cachedTokens,
+    reasoningTokens: a.reasoningTokens + b.reasoningTokens,
+    totalTokens: a.totalTokens + b.totalTokens,
+    estimatedCostMicros: a.estimatedCostMicros + b.estimatedCostMicros,
   }
-  if (period === "year") {
-    return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, "0")}`
-  }
-  return date.toISOString().slice(0, 10)
 }
 
-function bucketLabel(key: string, period: UsagePeriod): string {
-  if (period === "today") {
-    return key
+function buildWhere(filters: Required<UsageFilters>): Prisma.AiUsageWhereInput {
+  const start = getPeriodStart(filters.period)
+  const features = SOURCE_FEATURES[filters.source] ?? null
+
+  return {
+    ...(start ? { createdAt: { gte: start } } : {}),
+    ...(filters.modelId ? { modelId: filters.modelId } : {}),
+    ...(features ? { feature: { in: features } } : {}),
   }
-  if (period === "year") {
-    const [, month] = key.split("-")
-    const monthNames = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ]
-    return monthNames[Number(month) - 1] ?? key
-  }
-  return key.slice(5)
 }
 
-function buildBucketKeys(period: UsagePeriod): string[] {
-  const now = new Date()
-  if (period === "today") {
-    return Array.from({ length: 24 }, (_, hour) =>
-      `${hour.toString().padStart(2, "0")}:00`,
+type TimeSeriesRow = {
+  bucket: string
+  tokens: bigint | number | null
+  cost: bigint | number | null
+  input: bigint | number | null
+  output: bigint | number | null
+  cached: bigint | number | null
+  reasoning: bigint | number | null
+}
+
+/** `to_char` output is UTC wall time, so read it back as UTC. */
+function parseBucketTimestamp(value: string): Date {
+  return new Date(`${value.replace(" ", "T")}Z`)
+}
+
+function toNumber(value: bigint | number | null | undefined): number {
+  if (value === null || value === undefined) return 0
+  return typeof value === "bigint" ? Number(value) : value
+}
+
+async function fetchTimeSeries(
+  filters: Required<UsageFilters>,
+): Promise<UsageTimeBucket[]> {
+  const granularity = getBucketGranularity(filters.period)
+  const start = getPeriodStart(filters.period)
+  const features = SOURCE_FEATURES[filters.source] ?? null
+
+  const conditions: Prisma.Sql[] = []
+  if (start) {
+    conditions.push(Prisma.sql`"createdAt" >= ${start}`)
+  }
+  if (filters.modelId) {
+    conditions.push(Prisma.sql`"modelId" = ${filters.modelId}`)
+  }
+  if (features) {
+    conditions.push(
+      Prisma.sql`"feature"::text IN (${Prisma.join(features.map((f) => Prisma.sql`${f}`))})`,
     )
   }
-  if (period === "year") {
-    return Array.from({ length: 12 }, (_, month) => {
-      const d = new Date(now.getFullYear(), month, 1)
-      return bucketKey(d, period)
-    })
+  const where =
+    conditions.length > 0
+      ? Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`
+      : Prisma.empty
+
+  const rows = await prisma.$queryRaw<TimeSeriesRow[]>(Prisma.sql`
+    SELECT
+      to_char(
+        date_trunc(${truncUnit(granularity)}, "createdAt"),
+        'YYYY-MM-DD HH24:MI:SS'
+      ) AS bucket,
+      SUM("totalTokens") AS tokens,
+      SUM(COALESCE("estimatedCostMicros", 0)) AS cost,
+      SUM("inputTokens") AS input,
+      SUM("outputTokens") AS output,
+      SUM("cachedTokens") AS cached,
+      SUM(COALESCE("reasoningTokens", 0)) AS reasoning
+    FROM "ai_usage"
+    ${where}
+    GROUP BY 1
+    ORDER BY 1 ASC
+  `)
+
+  const byKey = new Map<string, TimeSeriesRow>()
+  for (const row of rows) {
+    byKey.set(bucketKey(parseBucketTimestamp(row.bucket), granularity), row)
   }
 
-  const days =
-    period === "7d" ? 7 : period === "30d" || period === "month" ? 30 : 14
+  const earliest =
+    rows.length > 0 ? parseBucketTimestamp(rows[0].bucket) : null
 
-  return Array.from({ length: days }, (_, index) => {
-    const d = new Date()
-    d.setDate(d.getDate() - (days - 1 - index))
-    return bucketKey(d, period)
+  return buildBucketKeys(filters.period, { earliest }).map((key) => {
+    const row = byKey.get(key)
+    return {
+      label: bucketLabel(key, granularity),
+      tokens: toNumber(row?.tokens),
+      costMicros: toNumber(row?.cost),
+      inputTokens: toNumber(row?.input),
+      outputTokens: toNumber(row?.output),
+      cachedTokens: toNumber(row?.cached),
+      reasoningTokens: toNumber(row?.reasoning),
+    }
   })
 }
 
-function buildTimeSeries(
-  records: UsageRecord[],
-  period: UsagePeriod,
-): UsageTimeBucket[] {
-  const keys = buildBucketKeys(period)
-  const buckets = new Map<string, UsageTimeBucket>(
-    keys.map((key) => [
-      key,
-      {
-        label: bucketLabel(key, period),
-        tokens: 0,
-        costMicros: 0,
-        inputTokens: 0,
-        outputTokens: 0,
-        cachedTokens: 0,
-        reasoningTokens: 0,
-      },
+async function fetchPerModel(
+  where: Prisma.AiUsageWhereInput,
+  totalTokens: number,
+): Promise<ModelUsageRow[]> {
+  const [grouped, modelRates] = await Promise.all([
+    prisma.aiUsage.groupBy({
+      by: ["modelId", "feature"],
+      where,
+      _sum: SUM_SELECT,
+      _count: { _all: true },
+    }),
+    listModelRates(),
+  ])
+
+  const meta = new Map(
+    modelRates.map((rate) => [
+      rate.modelId,
+      { displayName: rate.displayName, assignedTier: rate.assignedTier },
     ]),
   )
 
-  for (const row of records) {
-    const key = bucketKey(row.createdAt, period)
-    const bucket = buckets.get(key)
-    if (!bucket) {
-      continue
-    }
-    bucket.tokens += row.totalTokens
-    bucket.costMicros += row.estimatedCostMicros ?? 0
-    bucket.inputTokens += row.inputTokens
-    bucket.outputTokens += row.outputTokens
-    bucket.cachedTokens += row.cachedTokens
-    bucket.reasoningTokens += row.reasoningTokens ?? 0
-  }
-
-  return Array.from(buckets.values())
-}
-
-async function fetchUsageRecords(
-  filters: Required<UsageFilters>,
-): Promise<UsageRecord[]> {
-  const start = getPeriodStart(filters.period)
-  const dateFilter = start ? { gte: start } : undefined
-  const records: UsageRecord[] = []
-
-  if (filters.source === "all" || filters.source === "scan") {
-    const scanRows = await prisma.scanUsage.findMany({
-      where: {
-        createdAt: dateFilter,
-        ...(filters.modelId ? { modelId: filters.modelId } : {}),
-      },
-      select: {
-        createdAt: true,
-        inputTokens: true,
-        outputTokens: true,
-        cachedTokens: true,
-        reasoningTokens: true,
-        totalTokens: true,
-        estimatedCostMicros: true,
-        modelId: true,
-        scan: {
-          select: {
-            userId: true,
-            user: { select: { name: true, email: true } },
-          },
-        },
-      },
-    })
-
-    for (const row of scanRows) {
-      records.push({
-        createdAt: row.createdAt,
-        inputTokens: row.inputTokens,
-        outputTokens: row.outputTokens,
-        cachedTokens: row.cachedTokens,
-        reasoningTokens: row.reasoningTokens,
-        totalTokens: row.totalTokens,
-        estimatedCostMicros: row.estimatedCostMicros,
-        modelId: row.modelId,
-        userId: row.scan.userId,
-        userName: row.scan.user.name,
-        userEmail: row.scan.user.email,
-        source: "scan",
-      })
-    }
-  }
-
-  if (filters.source === "all" || filters.source === "chat") {
-    const chatRows = await prisma.chatMessage.findMany({
-      where: {
-        role: "assistant",
-        blocked: false,
-        createdAt: dateFilter,
-        ...(filters.modelId ? { modelId: filters.modelId } : {}),
-      },
-      select: {
-        createdAt: true,
-        inputTokens: true,
-        outputTokens: true,
-        cachedTokens: true,
-        reasoningTokens: true,
-        totalTokens: true,
-        estimatedCostMicros: true,
-        modelId: true,
-        conversation: {
-          select: {
-            userId: true,
-            user: { select: { name: true, email: true } },
-          },
-        },
-      },
-    })
-
-    for (const row of chatRows) {
-      records.push({
-        createdAt: row.createdAt,
-        inputTokens: row.inputTokens,
-        outputTokens: row.outputTokens,
-        cachedTokens: row.cachedTokens,
-        reasoningTokens: row.reasoningTokens,
-        totalTokens: row.totalTokens,
-        estimatedCostMicros: row.estimatedCostMicros,
-        modelId: row.modelId,
-        userId: row.conversation.userId,
-        userName: row.conversation.user.name,
-        userEmail: row.conversation.user.email,
-        source: "chat",
-      })
-    }
-  }
-
-  return records
-}
-
-function groupByModel(
-  records: UsageRecord[],
-  modelNames: Map<string, { displayName: string | null; assignedTier: string | null }>,
-  totalTokens: number,
-): ModelUsageRow[] {
-  const map = new Map<string, { scanCount: number; chatCount: number; records: UsageRecord[] }>()
-
-  for (const row of records) {
-    const modelId = row.modelId ?? "unknown"
-    const entry = map.get(modelId) ?? { scanCount: 0, chatCount: 0, records: [] }
-    if (row.source === "scan") {
-      entry.scanCount += 1
-    } else {
-      entry.chatCount += 1
-    }
-    entry.records.push(row)
-    map.set(modelId, entry)
-  }
-
-  return Array.from(map.entries())
-    .map(([modelId, entry]) => {
-      const tokens = sumBreakdowns(entry.records)
-      const meta = modelNames.get(modelId)
-      return {
-        modelId,
-        displayName: meta?.displayName ?? null,
-        assignedTier: meta?.assignedTier ?? null,
-        scanCount: entry.scanCount,
-        chatCount: entry.chatCount,
-        tokens,
-        sharePercent:
-          totalTokens > 0
-            ? Math.round((tokens.totalTokens / totalTokens) * 1000) / 10
-            : 0,
-      }
-    })
-    .sort((a, b) => b.tokens.totalTokens - a.tokens.totalTokens)
-}
-
-function groupByUser(records: UsageRecord[]): UserUsageRow[] {
-  const map = new Map<
+  const byModel = new Map<
     string,
-    {
-      name: string
-      email: string
-      scanCount: number
-      chatCount: number
-      records: UsageRecord[]
-    }
+    { scanCount: number; chatCount: number; tokens: TokenBreakdown }
   >()
 
-  for (const row of records) {
-    if (!row.userId) {
-      continue
-    }
-    const entry = map.get(row.userId) ?? {
-      name: row.userName ?? "Unknown",
-      email: row.userEmail ?? "",
+  for (const row of grouped) {
+    const entry = byModel.get(row.modelId) ?? {
       scanCount: 0,
       chatCount: 0,
-      records: [],
+      tokens: emptyBreakdown(),
     }
-    if (row.source === "scan") {
-      entry.scanCount += 1
+    const count = row._count._all
+    if (SCAN_FEATURES.has(row.feature)) {
+      entry.scanCount += count
     } else {
-      entry.chatCount += 1
+      entry.chatCount += count
     }
-    entry.records.push(row)
-    map.set(row.userId, entry)
+    entry.tokens = addBreakdowns(entry.tokens, toBreakdown(row._sum))
+    byModel.set(row.modelId, entry)
   }
 
-  return Array.from(map.entries())
-    .map(([userId, entry]) => ({
-      userId,
-      name: entry.name,
-      email: entry.email,
+  return [...byModel.entries()]
+    .map(([modelId, entry]) => ({
+      modelId,
+      displayName: meta.get(modelId)?.displayName ?? null,
+      assignedTier: meta.get(modelId)?.assignedTier ?? null,
       scanCount: entry.scanCount,
       chatCount: entry.chatCount,
-      tokens: sumBreakdowns(entry.records),
+      tokens: entry.tokens,
+      sharePercent:
+        totalTokens > 0
+          ? Math.round((entry.tokens.totalTokens / totalTokens) * 1000) / 10
+          : 0,
     }))
     .sort((a, b) => b.tokens.totalTokens - a.tokens.totalTokens)
-    .slice(0, 20)
+}
+
+async function fetchPerUser(
+  where: Prisma.AiUsageWhereInput,
+): Promise<UserUsageRow[]> {
+  const top = await prisma.aiUsage.groupBy({
+    by: ["userId"],
+    where: { ...where, userId: { not: null } },
+    _sum: SUM_SELECT,
+    orderBy: { _sum: { totalTokens: "desc" } },
+    take: 20,
+  })
+
+  const userIds = top
+    .map((row) => row.userId)
+    .filter((id): id is string => Boolean(id))
+
+  if (userIds.length === 0) {
+    return []
+  }
+
+  const [users, counts] = await Promise.all([
+    prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true, email: true },
+    }),
+    prisma.aiUsage.groupBy({
+      by: ["userId", "feature"],
+      where: { ...where, userId: { in: userIds } },
+      _count: { _all: true },
+    }),
+  ])
+
+  const userById = new Map(users.map((user) => [user.id, user]))
+  const countsByUser = new Map<string, { scanCount: number; chatCount: number }>()
+  for (const row of counts) {
+    if (!row.userId) continue
+    const entry = countsByUser.get(row.userId) ?? { scanCount: 0, chatCount: 0 }
+    if (SCAN_FEATURES.has(row.feature)) {
+      entry.scanCount += row._count._all
+    } else {
+      entry.chatCount += row._count._all
+    }
+    countsByUser.set(row.userId, entry)
+  }
+
+  return top
+    .filter((row): row is typeof row & { userId: string } => Boolean(row.userId))
+    .map((row) => ({
+      userId: row.userId,
+      name: userById.get(row.userId)?.name ?? "Unknown",
+      email: userById.get(row.userId)?.email ?? "",
+      scanCount: countsByUser.get(row.userId)?.scanCount ?? 0,
+      chatCount: countsByUser.get(row.userId)?.chatCount ?? 0,
+      tokens: toBreakdown(row._sum),
+    }))
+}
+
+async function fetchPerFeature(
+  where: Prisma.AiUsageWhereInput,
+): Promise<FeatureUsageRow[]> {
+  const grouped = await prisma.aiUsage.groupBy({
+    by: ["feature"],
+    where,
+    _sum: SUM_SELECT,
+    _count: { _all: true },
+  })
+
+  return grouped
+    .map((row) => ({
+      feature: row.feature,
+      callCount: row._count._all,
+      tokens: toBreakdown(row._sum),
+    }))
+    .sort((a, b) => b.tokens.estimatedCostMicros - a.tokens.estimatedCostMicros)
 }
 
 async function getScanAllowanceStats(start: Date | null) {
@@ -439,19 +401,17 @@ async function getScanAllowanceStats(start: Date | null) {
   }
 }
 
-async function getTodayHighlights(): Promise<Pick<UsageHighlights, "scansToday" | "chatsToday">> {
-  const todayStart = startOfDay(new Date())
+async function getTodayHighlights(): Promise<
+  Pick<UsageHighlights, "scansToday" | "chatsToday">
+> {
+  const todayStart = startOfUtcDay(new Date())
 
   const [scansToday, chatsToday] = await Promise.all([
     prisma.scanLedger.count({
       where: { reason: "scan_debit", createdAt: { gte: todayStart } },
     }),
-    prisma.chatMessage.count({
-      where: {
-        role: "assistant",
-        blocked: false,
-        createdAt: { gte: todayStart },
-      },
+    prisma.aiUsage.count({
+      where: { feature: "chat_reply", createdAt: { gte: todayStart } },
     }),
   ])
 
@@ -469,35 +429,26 @@ export const getAdminUsageAnalytics = cache(
     }
 
     return withDbRetry(async () => {
-      const [records, allowance, highlightsToday, modelRates] = await Promise.all([
-        fetchUsageRecords(filters),
-        getScanAllowanceStats(getPeriodStart(filters.period)),
-        getTodayHighlights(),
-        listModelRates(),
-      ])
+      const where = buildWhere(filters)
 
-      const tokens = sumBreakdowns(records)
-      const chatCount = records.filter((r) => r.source === "chat").length
-      const modelNames = new Map(
-        modelRates.map((m) => [
-          m.modelId,
-          { displayName: m.displayName, assignedTier: m.assignedTier },
-        ]),
-      )
+      const [totals, chatCount, tokenSeries, perUser, perFeature, allowance, highlightsToday] =
+        await Promise.all([
+          prisma.aiUsage.aggregate({ where, _sum: SUM_SELECT }),
+          prisma.aiUsage.count({ where: { ...where, feature: "chat_reply" } }),
+          fetchTimeSeries(filters),
+          fetchPerUser(where),
+          fetchPerFeature(where),
+          getScanAllowanceStats(getPeriodStart(filters.period)),
+          getTodayHighlights(),
+        ])
 
-      const perModel = groupByModel(records, modelNames, tokens.totalTokens)
-      const perUser = groupByUser(records)
-      const tokenSeries = buildTimeSeries(records, filters.period)
+      const tokens = toBreakdown(totals._sum)
+      const perModel = await fetchPerModel(where, tokens.totalTokens)
+
       const costSeries = tokenSeries.map((bucket) => ({
         label: bucket.label,
         value: Math.round((bucket.costMicros / 1_000_000) * 10000) / 10000,
       }))
-
-      const highlights: UsageHighlights = {
-        ...highlightsToday,
-        mostActiveUser: perUser[0] ?? null,
-        mostUsedModel: perModel[0] ?? null,
-      }
 
       return {
         filters,
@@ -509,7 +460,12 @@ export const getAdminUsageAnalytics = cache(
         costSeries,
         perModel,
         perUser,
-        highlights,
+        perFeature,
+        highlights: {
+          ...highlightsToday,
+          mostActiveUser: perUser[0] ?? null,
+          mostUsedModel: perModel[0] ?? null,
+        },
       }
     })
   },
@@ -518,77 +474,29 @@ export const getAdminUsageAnalytics = cache(
 export const getAdminUsageSnapshot = cache(async () => {
   await connection()
   return withDbRetry(async () => {
-    const fourteenDaysAgo = daysAgo(14)
-    const todayStart = startOfDay(new Date())
+    const todayStart = startOfUtcDay(new Date())
 
-    const [scanUsage, chatUsage, allowance, scansToday, chatsToday] =
+    const [allTime, allowance, scansToday, chatsToday, recentSeries] =
       await Promise.all([
-        prisma.scanUsage.aggregate({
-          _sum: {
-            inputTokens: true,
-            outputTokens: true,
-            cachedTokens: true,
-            reasoningTokens: true,
-            totalTokens: true,
-            estimatedCostMicros: true,
-          },
-        }),
-        prisma.chatMessage.aggregate({
-          where: { role: "assistant", blocked: false },
-          _sum: {
-            inputTokens: true,
-            outputTokens: true,
-            cachedTokens: true,
-            reasoningTokens: true,
-            totalTokens: true,
-            estimatedCostMicros: true,
-          },
-        }),
+        prisma.aiUsage.aggregate({ _sum: SUM_SELECT }),
         getScanAllowanceStats(null),
         prisma.scanLedger.count({
           where: { reason: "scan_debit", createdAt: { gte: todayStart } },
         }),
-        prisma.chatMessage.count({
-          where: {
-            role: "assistant",
-            blocked: false,
-            createdAt: { gte: todayStart },
-          },
+        prisma.aiUsage.count({
+          where: { feature: "chat_reply", createdAt: { gte: todayStart } },
         }),
+        fetchTimeSeries({ period: "30d", modelId: "", source: "all" }),
       ])
 
-    const combineSum = (
-      a: typeof scanUsage._sum,
-      b: typeof chatUsage._sum,
-    ): TokenBreakdown => ({
-      inputTokens: (a.inputTokens ?? 0) + (b.inputTokens ?? 0),
-      outputTokens: (a.outputTokens ?? 0) + (b.outputTokens ?? 0),
-      cachedTokens: (a.cachedTokens ?? 0) + (b.cachedTokens ?? 0),
-      reasoningTokens: (a.reasoningTokens ?? 0) + (b.reasoningTokens ?? 0),
-      totalTokens: (a.totalTokens ?? 0) + (b.totalTokens ?? 0),
-      estimatedCostMicros:
-        (a.estimatedCostMicros ?? 0) + (b.estimatedCostMicros ?? 0),
-    })
-
-    const allTimeTokens = combineSum(scanUsage._sum, chatUsage._sum)
-
-    const recentRecords = (
-      await fetchUsageRecords({
-        period: "30d",
-        modelId: "",
-        source: "all",
-      })
-    ).filter((r) => r.createdAt >= fourteenDaysAgo)
-
-    const tokenSeries14 = buildTimeSeries(recentRecords, "30d").slice(-14)
-
+    const tokenSeries14 = recentSeries.slice(-14)
     const costSeries14 = tokenSeries14.map((bucket) => ({
       label: bucket.label,
       value: Math.round((bucket.costMicros / 1_000_000) * 10000) / 10000,
     }))
 
     return {
-      allTimeTokens,
+      allTimeTokens: toBreakdown(allTime._sum),
       scansGranted: allowance.scansGranted,
       scansUsed: allowance.scansUsed,
       scansToday,

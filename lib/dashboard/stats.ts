@@ -1,6 +1,7 @@
 import { cache } from "react"
 import { connection } from "next/server"
 
+import { utcDaysAgo } from "@/lib/admin/periods"
 import { getAdminUsageSnapshot } from "@/lib/admin/usage-analytics"
 import { prisma } from "@/lib/db/client"
 import { withDbRetry } from "@/lib/db/retry"
@@ -68,7 +69,7 @@ export const getUserDashboardStats = cache(async (userId: string) => {
 export const getAdminDashboardStats = cache(async () => {
   await connection()
   return withDbRetry(async () => {
-    const thirtyDaysAgo = daysAgo(30)
+    const thirtyDaysAgo = utcDaysAgo(30)
 
     const [userCount, scanCount, productCount, usageSnapshot] = await Promise.all([
       prisma.user.count(),
@@ -146,21 +147,13 @@ export const getAdminDashboardStats = cache(async () => {
   })
 })
 
-function daysAgo(n: number) {
-  const d = new Date()
-  d.setDate(d.getDate() - n)
-  return d
-}
-
 function bucketByDay(
   entries: { delta: number; createdAt: Date }[],
   days: number,
 ): { label: string; value: number }[] {
   const buckets = new Map<string, number>()
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date()
-    d.setDate(d.getDate() - i)
-    buckets.set(d.toISOString().slice(0, 10), 0)
+    buckets.set(utcDaysAgo(i).toISOString().slice(0, 10), 0)
   }
   for (const entry of entries) {
     const key = entry.createdAt.toISOString().slice(0, 10)

@@ -15,6 +15,27 @@ export type MappedGeminiUsage = UsageInput & {
   rawUsage: GeminiUsageMetadata | null
 }
 
+/**
+ * Adds two usage records for the same model. Used when a single logical
+ * operation costs more than one model call (for example a validation repair
+ * retry), so billing and the usage log see the true total.
+ */
+export function sumGeminiUsage(
+  first: MappedGeminiUsage,
+  second: MappedGeminiUsage,
+): MappedGeminiUsage {
+  return {
+    provider: first.provider,
+    modelId: first.modelId,
+    inputTokens: first.inputTokens + second.inputTokens,
+    outputTokens: first.outputTokens + second.outputTokens,
+    cachedTokens: (first.cachedTokens ?? 0) + (second.cachedTokens ?? 0),
+    reasoningTokens: first.reasoningTokens + second.reasoningTokens,
+    totalTokens: first.totalTokens + second.totalTokens,
+    rawUsage: second.rawUsage ?? first.rawUsage,
+  }
+}
+
 export function mapGeminiUsageMetadata(
   provider: UsageInput["provider"],
   modelId: string,

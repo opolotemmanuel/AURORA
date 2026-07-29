@@ -77,21 +77,19 @@ export function collectProfileWellnessPriorities(
   return [...priorities]
 }
 
+/**
+ * The per-user layer of the scan prompt: which dimensions each stated concern
+ * maps onto, and the cosmetic vocabulary allowed for it.
+ *
+ * This block used to open with a restatement of the system prompt's grounding
+ * and recommendation rules. Those live in the system prompt now and are stated
+ * once; repeating them here only diluted both copies.
+ */
 export function buildProfileConcernPromptBlock(
   profile: UserScanContext["profile"],
 ): string {
-  const sections: string[] = [
-    "Photo-first analysis:",
-    "- Assess all six dimensions from the attached image before personalizing.",
-    "- Report visible cosmetic patterns even when they are not in the user's profile.",
-    "- Profile concerns and goals personalize the narrative; they do not limit what you observe.",
-    "Recommendation rules:",
-    "- naturalRecommendations and catalog products must each target specific findings from this scan: visible photo patterns, dimension bands (especially moderate/elevated), and relevant profile concerns/goals.",
-    "- Do not suggest generic habits or products disconnected from what you observed in the image.",
-  ]
-
   if (!profile) {
-    return sections.join("\n")
+    return "No stated concerns or goals on file. Assess the photo on its own terms."
   }
 
   const concernLines = profile.primaryConcerns
@@ -102,12 +100,12 @@ export function buildProfileConcernPromptBlock(
     .filter((line): line is string => line != null)
 
   if (concernLines.length === 0 && goalLines.length === 0) {
-    return sections.join("\n")
+    return "No stated concerns or goals on file. Assess the photo on its own terms."
   }
 
-  sections.push(
-    "Profile wellness priorities — also address in summary, dimension notes, and recommendations using cosmetic language only:",
-  )
+  const sections: string[] = [
+    "Stated wellness priorities. Map each onto the dimensions listed and use only the cosmetic vocabulary shown:",
+  ]
 
   if (concernLines.length > 0) {
     sections.push("Primary concerns:", ...concernLines)
@@ -119,7 +117,7 @@ export function buildProfileConcernPromptBlock(
 
   if (profile.primaryConcerns.length > 0) {
     sections.push(
-      `Also acknowledge each listed primary concern (${profile.primaryConcerns.join(", ")}): connect to visible photo patterns where supported, or briefly note when not clearly visible in this scan.`,
+      `The summary must acknowledge every one of these by name: ${profile.primaryConcerns.join(", ")}.`,
     )
   }
 

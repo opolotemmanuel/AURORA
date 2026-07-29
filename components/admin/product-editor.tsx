@@ -87,7 +87,7 @@ function ChipSelect({
               type="button"
               size="sm"
               variant={active ? "default" : "outline"}
-              className="rounded-none capitalize"
+              className="rounded-lg capitalize"
               onClick={() => onChange(toggleItem(selected, option))}
             >
               {option.replace(/_/g, " ")}

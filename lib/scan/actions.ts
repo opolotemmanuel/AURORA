@@ -3,6 +3,7 @@
 import type { Prisma } from "@/generated/prisma/client"
 import { revalidatePath } from "next/cache"
 
+import { recordAiUsage } from "@/lib/ai/usage/record-usage"
 import { toLocationSnapshot } from "@/lib/climate/context"
 import { requireSession } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/client"
@@ -154,6 +155,17 @@ export async function saveScanResultAction(
         return { scan: created, report }
       }),
     )
+
+    if (hasMeteredUsage(usage)) {
+      await recordAiUsage({
+        feature: "scan_analyze",
+        usage,
+        userId: session.user.id,
+        scanId: scan.scan.id,
+        costMicros: costEstimate?.costMicros ?? null,
+        marginMicros: costEstimate?.marginMicros ?? null,
+      })
+    }
 
     revalidatePath("/reports")
     revalidatePath("/dashboard")

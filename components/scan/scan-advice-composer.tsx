@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   IconArrowUp,
   IconLoader2,
@@ -23,10 +23,7 @@ import { ChatThinkingIndicator } from "@/components/chat/chat-thinking-indicator
 import { VoiceRecordingBar } from "@/components/chat/voice-recording-bar"
 import { useVoiceDictation } from "@/hooks/use-voice-dictation"
 import { MAX_CHAT_MESSAGE_LENGTH } from "@/lib/scans/constants"
-import { extractChatRecommendationsFromContent } from "@/lib/chat/extract-recommendations"
 import { toUserFacingChatError } from "@/lib/chat/errors"
-import { formatChatMessageBody } from "@/lib/chat/format-message-body"
-import { splitChatDisclaimer } from "@/lib/chat/split-disclaimer"
 import type { ChatMessageMetadata } from "@/lib/chat/types"
 import { cn } from "@/lib/utils"
 
@@ -108,33 +105,22 @@ type PendingImage = {
   previewUrl: string
 }
 
-function MessageBubble({ message }: { message: ChatMessageItem }) {
+function MessageBubble({
+  message,
+  showBookingButton = true,
+}: {
+  message: ChatMessageItem
+  showBookingButton?: boolean
+}) {
   const isUser = message.role === "user"
   const useMarkdown = message.role === "assistant" || message.role === "system_refusal"
 
-  const extracted = useMemo(
-    () =>
-      message.role === "assistant" || message.role === "system_refusal"
-        ? extractChatRecommendationsFromContent(message.content)
-        : null,
-    [message.content, message.role],
-  )
-
-  const naturalRecommendations =
-    message.metadata?.naturalRecommendations ??
-    extracted?.naturalRecommendations ??
-    []
-  const productRecommendations =
-    message.metadata?.productRecommendations ??
-    extracted?.productRecommendations ??
-    []
-  const body = formatChatMessageBody(message.content, {
-    naturalRecommendations,
-    productRecommendations,
-  })
-  const { consultationNote } = splitChatDisclaimer(message.content)
-  const consultationNoteText =
-    message.metadata?.consultationNote ?? consultationNote
+  // Recommendations, disclaimer, and JSON fence are already split out server
+  // side (parse-recommendations.ts / mapMessageForClient), so render as stored.
+  const naturalRecommendations = message.metadata?.naturalRecommendations ?? []
+  const productRecommendations = message.metadata?.productRecommendations ?? []
+  const body = message.content
+  const consultationNoteText = message.metadata?.consultationNote
   const hasStructuredContent =
     naturalRecommendations.length > 0 || productRecommendations.length > 0
 
@@ -174,7 +160,10 @@ function MessageBubble({ message }: { message: ChatMessageItem }) {
           <ChatProductList products={productRecommendations} />
         ) : null}
         {consultationNoteText ? (
-          <ChatMessageFooter consultationNote={consultationNoteText} />
+          <ChatMessageFooter
+            consultationNote={consultationNoteText}
+            showBookingButton={showBookingButton}
+          />
         ) : null}
       </div>
     </div>
@@ -607,7 +596,7 @@ export function ScanAdviceComposer({
           ? cn(
               "w-full",
               pinnedInput
-                ? "flex h-full min-h-0 flex-col rounded-none"
+                ? "flex h-full min-h-0 flex-col rounded-[1.5rem]"
                 : "rounded-2xl",
             )
           : open
@@ -730,7 +719,11 @@ export function ScanAdviceComposer({
             ) : (
               <>
                 {messages.map((message) => (
-                  <MessageBubble key={message.id} message={message} />
+                  <MessageBubble
+                    key={message.id}
+                    message={message}
+                    showBookingButton={mode !== "follow_up"}
+                  />
                 ))}
                 {sending ? <ChatThinkingIndicator /> : null}
               </>

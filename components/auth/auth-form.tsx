@@ -7,11 +7,18 @@ import { useState, useId } from "react"
 import { AnimatePresence, LayoutGroup, motion, type Variants } from "motion/react"
 
 import { PasswordInput } from "@/components/auth/password-input"
+import { PasswordStrengthMeter } from "@/components/auth/password-strength"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { completeSignInAction, ensureUserRecordsAction } from "@/lib/auth/post-sign-in"
 import { authClient } from "@/lib/auth/client"
+import {
+  otpRequestSchema,
+  signInSchema,
+  signUpSchema,
+} from "@/lib/auth/form-schemas"
+import { validate, type FieldErrors } from "@/lib/onboarding/client-validation"
 import { PLACEHOLDER_IMAGES } from "@/lib/marketing/placeholder-images"
 import { EASE_OUT, SPRING_SWAP } from "@/lib/ease"
 import { cn } from "@/lib/utils"
@@ -85,17 +92,19 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [loading, setLoading] = useState(false)
 
+  // Both providers are gated the same way now. Google used to render
+  // unconditionally, so with GOOGLE_CLIENT_ID unset the button failed from the
+  // server with nothing useful to show the user.
+  const googleEnabled = process.env.NEXT_PUBLIC_GOOGLE_AUTH_ENABLED !== "false"
   const appleEnabled = process.env.NEXT_PUBLIC_APPLE_AUTH_ENABLED === "true"
+  const anySocialEnabled = googleEnabled || appleEnabled
 
   async function handleSocial(provider: "google" | "apple") {
     setError(null)
-
-    if (provider === "apple" && !appleEnabled) {
-      setError("Apple Sign In is not configured yet.")
-      return
-    }
+    setFieldErrors({})
 
     setLoading(true)
     const { error: socialError } = await authClient.signIn.social({
@@ -112,9 +121,14 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
   async function handlePasswordSubmit(event: React.FormEvent) {
     event.preventDefault()
     setError(null)
+    setFieldErrors({})
 
-    if (isSignUp && password !== confirmPassword) {
-      setError("Passwords do not match.")
+    const validation = isSignUp
+      ? validate(signUpSchema, { name, email, password, confirmPassword })
+      : validate(signInSchema, { email, password })
+
+    if (!validation.ok) {
+      setFieldErrors(validation.errors)
       return
     }
 
@@ -127,18 +141,23 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
         name: name || email.split("@")[0] || "Member",
       })
 
-      setLoading(false)
-
       if (signUpError) {
+        setLoading(false)
         setError(signUpError.message ?? "Could not create account.")
         return
       }
 
       if (data?.user) {
+        // Stay disabled through record creation and the redirect. Clearing
+        // `loading` first left a window where the button could be pressed
+        // again mid-navigation.
         await ensureUserRecordsAction(data.user.id, data.user.email, data.user.name)
         router.push("/onboarding")
         router.refresh()
+        return
       }
+
+      setLoading(false)
       return
     }
 
@@ -170,8 +189,16 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
 
   async function handleOtpSubmit(event: React.FormEvent) {
     event.preventDefault()
-    setLoading(true)
     setError(null)
+    setFieldErrors({})
+
+    const validation = validate(otpRequestSchema, { email })
+    if (!validation.ok) {
+      setFieldErrors(validation.errors)
+      return
+    }
+
+    setLoading(true)
 
     const { error: otpError } = await authClient.emailOtp.sendVerificationOtp({
       email,
@@ -252,36 +279,50 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
             </h2>
           </motion.div>
 
-          <motion.div variants={itemVariants} className="mb-6 grid grid-cols-2 gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11 rounded-full"
-              disabled={loading}
-              onClick={() => handleSocial("google")}
-            >
-              <GoogleIcon className="mr-2 size-4" />
-              Google
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11 rounded-full"
-              disabled={loading}
-              onClick={() => handleSocial("apple")}
-            >
-              <AppleIcon className="mr-2 size-4" />
-              Apple
-            </Button>
-          </motion.div>
+          {anySocialEnabled ? (
+            <>
+              <motion.div
+                variants={itemVariants}
+                className={cn(
+                  "mb-6 grid gap-3",
+                  googleEnabled && appleEnabled ? "grid-cols-2" : "grid-cols-1",
+                )}
+              >
+                {googleEnabled ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 rounded-full"
+                    disabled={loading}
+                    onClick={() => handleSocial("google")}
+                  >
+                    <GoogleIcon className="mr-2 size-4" />
+                    Google
+                  </Button>
+                ) : null}
+                {appleEnabled ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 rounded-full"
+                    disabled={loading}
+                    onClick={() => handleSocial("apple")}
+                  >
+                    <AppleIcon className="mr-2 size-4" />
+                    Apple
+                  </Button>
+                ) : null}
+              </motion.div>
 
-          <motion.div variants={itemVariants} className="relative mb-6 flex items-center">
-            <div className="border-border grow border-t" />
-            <span className="text-muted-foreground px-4 text-[11px] font-medium tracking-wider uppercase">
-              Or
-            </span>
-            <div className="border-border grow border-t" />
-          </motion.div>
+              <motion.div variants={itemVariants} className="relative mb-6 flex items-center">
+                <div className="border-border grow border-t" />
+                <span className="text-muted-foreground px-4 text-[11px] font-medium tracking-wider uppercase">
+                  Or
+                </span>
+                <div className="border-border grow border-t" />
+              </motion.div>
+            </>
+          ) : null}
 
           <motion.div variants={itemVariants}>
             <LayoutGroup id={authMethodPillId}>
@@ -348,12 +389,18 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
               <Input
                 id="email"
                 type="email"
-                required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 autoComplete="email"
+                aria-invalid={fieldErrors.email ? true : undefined}
+                aria-describedby={fieldErrors.email ? "email-error" : undefined}
               />
+              {fieldErrors.email ? (
+                <p id="email-error" role="alert" className="text-destructive text-sm">
+                  {fieldErrors.email}
+                </p>
+              ) : null}
             </motion.div>
 
             <div
@@ -367,25 +414,28 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
             >
               <div className="min-h-0 overflow-hidden">
                 <div className="space-y-4">
-                  <PasswordInput
-                    id="password"
-                    label="Password"
-                    required={authMethod === "password"}
-                    minLength={8}
-                    value={password}
-                    onChange={setPassword}
-                    placeholder="Enter your password"
-                    autoComplete={isSignUp ? "new-password" : "current-password"}
-                    tabIndex={authMethod === "password" ? 0 : -1}
-                  />
+                  <div className="space-y-2">
+                    <PasswordInput
+                      id="password"
+                      label="Password"
+                      minLength={8}
+                      value={password}
+                      onChange={setPassword}
+                      error={fieldErrors.password}
+                      placeholder="Enter your password"
+                      autoComplete={isSignUp ? "new-password" : "current-password"}
+                      tabIndex={authMethod === "password" ? 0 : -1}
+                    />
+                    {isSignUp ? <PasswordStrengthMeter value={password} /> : null}
+                  </div>
                   {isSignUp ? (
                     <PasswordInput
                       id="confirmPassword"
                       label="Confirm password"
-                      required={authMethod === "password"}
                       minLength={8}
                       value={confirmPassword}
                       onChange={setConfirmPassword}
+                      error={fieldErrors.confirmPassword}
                       placeholder="Confirm your password"
                       autoComplete="new-password"
                       tabIndex={authMethod === "password" ? 0 : -1}

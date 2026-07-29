@@ -7,12 +7,28 @@ import {
 } from "@/lib/ai/context/concern-guidance"
 
 describe("buildProfileConcernPromptBlock", () => {
-  it("includes photo-first guidance when profile is null", () => {
+  it("degrades to a short instruction when no profile is on file", () => {
     const block = buildProfileConcernPromptBlock(null)
-    assert.match(block, /Photo-first analysis/)
-    assert.match(block, /not in the user's profile/)
-    assert.match(block, /Recommendation rules/)
-    assert.match(block, /naturalRecommendations and catalog products/)
+    assert.match(block, /No stated concerns or goals on file/)
+  })
+
+  it("leaves grounding and recommendation rules to the system prompt", () => {
+    // These rules are stated once, in buildSystemPrompt. Restating them here
+    // dilutes both copies, so the per-user block must stay scoped to mapping.
+    const block = buildProfileConcernPromptBlock({
+      ageBand: null,
+      skinType: null,
+      fitzpatrickBand: null,
+      skinDosha: null,
+      primaryConcerns: ["acne"],
+      skinGoals: [],
+      allergies: null,
+      currentRoutine: null,
+      lifestyleFactors: [],
+    })
+
+    assert.doesNotMatch(block, /Photo-first analysis/)
+    assert.doesNotMatch(block, /Recommendation rules/)
   })
 
   it("includes acne concern mapping and summary requirement", () => {
@@ -31,10 +47,7 @@ describe("buildProfileConcernPromptBlock", () => {
     assert.match(block, /blemishes, breakout-prone areas, congestion/)
     assert.match(block, /excess sebum, shine, oil balance/)
     assert.match(block, /blemish and congestion patterns/)
-    assert.match(
-      block,
-      /acknowledge each listed primary concern \(acne, oiliness\)/,
-    )
+    assert.match(block, /must acknowledge every one of these by name: acne, oiliness/)
   })
 })
 

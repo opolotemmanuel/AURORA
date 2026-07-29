@@ -17,7 +17,7 @@ export async function sendDeletionRequestEmail({
 }): Promise<void> {
   const subject = `Data deletion request — ${email}`
   const text = [
-    "A user submitted a data deletion request via Aura.",
+    "A user submitted a data deletion request via Aurora Organics.",
     "",
     `Email: ${email}`,
     userId ? `User ID: ${userId}` : "User ID: (not signed in)",

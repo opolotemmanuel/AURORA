@@ -19,9 +19,17 @@ export type CaptureMode = "upload" | "camera" | "live" | "advice"
 
 export type ScanTier = "starter" | "thinking" | "pro"
 
+/** Token counters reported by the client-side Gemini Live session. */
+export type LiveSessionUsage = {
+  promptTokenCount: number
+  responseTokenCount: number
+  totalTokenCount: number
+}
+
 export type LiveScanPayload = {
   transcript: string
   sessionDurationMs: number
+  sessionUsage?: LiveSessionUsage | null
 }
 
 export type LightingBand = "too_dark" | "ok" | "too_bright"

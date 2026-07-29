@@ -13,7 +13,8 @@ import {
   toUserFacingScanError,
 } from "@/lib/scan/errors"
 import { persistScanResult } from "@/lib/scan/persist-scan-result"
-import type { AnalyzeScanResult } from "@/lib/scan/types"
+import type { AnalyzeScanResult, LiveSessionUsage } from "@/lib/scan/types"
+import { recordAiUsage } from "@/lib/ai/usage/record-usage"
 import { getScansRemaining } from "@/lib/scans/balance"
 import { estimateScanProviderCost } from "@/lib/scans/cost"
 
@@ -23,6 +24,7 @@ type RunLiveAnalyzeScanInput = {
   mimeType: "image/jpeg" | "image/png" | "image/webp"
   transcript: string
   sessionDurationMs: number
+  sessionUsage?: LiveSessionUsage | null
 }
 
 export async function runLiveAnalyzeScan(
@@ -101,11 +103,31 @@ export async function runLiveAnalyzeScan(
       assessment: enrichedAssessment,
       usage: analysis.usage,
       estimatedCostMicros: costEstimate?.costMicros ?? null,
+      marginMicros: costEstimate?.marginMicros ?? null,
       latencyMs: analysis.latencyMs + input.sessionDurationMs,
       captureMode: "live",
       location,
       profile,
     })
+
+    if (input.sessionUsage) {
+      // The Live conversation itself, separate from the still-image analysis
+      // above. Counts are client reported and already clamped at the route.
+      await recordAiUsage({
+        feature: "scan_live",
+        usage: {
+          provider: activeModel.provider,
+          modelId: activeModel.modelId,
+          inputTokens: input.sessionUsage.promptTokenCount,
+          outputTokens: input.sessionUsage.responseTokenCount,
+          cachedTokens: 0,
+          totalTokens: input.sessionUsage.totalTokenCount,
+        },
+        userId: input.userId,
+        scanId: saved.scan.id,
+        latencyMs: input.sessionDurationMs,
+      })
+    }
 
     return {
       ok: true,

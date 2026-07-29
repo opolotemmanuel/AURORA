@@ -1,7 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import { IconReceipt } from "@tabler/icons-react"
 
+import { DashboardEmptyState } from "@/components/dashboard/dashboard-card"
 import { Button } from "@/components/ui/button"
 import {
   getLedgerDetail,
@@ -82,14 +84,20 @@ export function RecentActivityList({
   const [expanded, setExpanded] = useState(false)
 
   if (entries.length === 0) {
-    return <p className="text-sm text-muted-foreground">No ledger entries yet.</p>
+    return (
+      <DashboardEmptyState
+        icon={IconReceipt}
+        title="No activity yet"
+        description="Scan grants and debits will show up here as you use your allowance."
+      />
+    )
   }
 
   const canExpand = entries.length > PREVIEW_COUNT
   const visibleEntries = expanded ? entries : entries.slice(0, PREVIEW_COUNT)
 
   return (
-    <div className="overflow-hidden rounded-none border border-border">
+    <div className="overflow-hidden rounded-xl border border-border/60">
       <div
         className={cn(
           expanded && "max-h-[min(320px,45vh)] overflow-y-auto",

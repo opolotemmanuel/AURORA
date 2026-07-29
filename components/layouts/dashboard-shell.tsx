@@ -28,7 +28,7 @@ function MobileHeader({ role }: { role: AppRole }) {
     )
   }
 
-  return <span className="font-heading text-sm font-medium">Aura</span>
+  return <span className="font-heading text-sm font-medium">Aurora Organics</span>
 }
 
 export function DashboardShell({

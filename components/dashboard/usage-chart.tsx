@@ -1,7 +1,9 @@
 "use client"
 
+import { IconChartBar } from "@tabler/icons-react"
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts"
 
+import { DashboardEmptyState } from "@/components/dashboard/dashboard-card"
 import {
   ChartContainer,
   ChartTooltip,
@@ -33,9 +35,12 @@ export function UsageBarChart({
 
   if (data.every((d) => d.value === 0)) {
     return (
-      <div className="flex h-48 items-center justify-center rounded-none border border-dashed border-border text-sm text-muted-foreground">
-        No usage data yet
-      </div>
+      <DashboardEmptyState
+        icon={IconChartBar}
+        title="No usage data yet"
+        description="Your daily scan activity will appear here once you save a scan."
+        className="h-48"
+      />
     )
   }
 

@@ -9,6 +9,7 @@ import {
   IconPackage,
   IconUsers,
 } from "@tabler/icons-react"
+import Link from "next/link"
 import type { ComponentType } from "react"
 
 import { FramedPanel } from "@/components/marketing/framed-panel"
@@ -44,6 +45,8 @@ export interface PerformanceOverviewProps {
   accentWord: string
   subtitle: string
   ctaLabel: string
+  /** Preferred over onCtaClick: renders a real anchor so the CTA is crawlable. */
+  ctaHref?: string
   onCtaClick?: () => void
   periods: PeriodData[]
   defaultPeriodId?: string
@@ -64,6 +67,7 @@ export function PerformanceOverview({
   accentWord,
   subtitle,
   ctaLabel,
+  ctaHref,
   onCtaClick,
   periods,
   defaultPeriodId,
@@ -113,12 +117,21 @@ export function PerformanceOverview({
               {subtitle}
             </p>
             <div className="mt-1">
-              <Button
-                onClick={onCtaClick}
-                className="h-10 rounded-full px-6 text-sm font-semibold"
-              >
-                {ctaLabel}
-              </Button>
+              {ctaHref ? (
+                <Button
+                  asChild
+                  className="h-10 rounded-full px-6 text-sm font-semibold"
+                >
+                  <Link href={ctaHref}>{ctaLabel}</Link>
+                </Button>
+              ) : (
+                <Button
+                  onClick={onCtaClick}
+                  className="h-10 rounded-full px-6 text-sm font-semibold"
+                >
+                  {ctaLabel}
+                </Button>
+              )}
             </div>
           </div>
 

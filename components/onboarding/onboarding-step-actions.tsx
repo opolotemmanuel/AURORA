@@ -1,14 +1,14 @@
 "use client"
 
-import { motion } from "motion/react"
-
-import { OnboardingStepItem } from "@/components/onboarding/onboarding-step-panel"
+import {
+  StatefulButton,
+  type ButtonState,
+} from "@/components/motion/button/stateful"
 import { Button } from "@/components/ui/button"
-import { EASE_OUT } from "@/lib/ease"
 
 type OnboardingStepActionsProps = {
   label: string
-  pending: boolean
+  state: ButtonState
   canGoBack: boolean
   showBack?: boolean
   onBack: () => void
@@ -17,9 +17,14 @@ type OnboardingStepActionsProps = {
   onSkip?: () => void
 }
 
+/**
+ * Sticky on mobile so the primary action never falls below the fold on the
+ * longer steps, inline from `sm` up where the card fits on one screen.
+ * Safe-area padding keeps it clear of the iOS home indicator.
+ */
 export function OnboardingStepActions({
   label,
-  pending,
+  state,
   canGoBack,
   showBack = true,
   onBack,
@@ -27,41 +32,47 @@ export function OnboardingStepActions({
   skipLabel = "Skip for now",
   onSkip,
 }: OnboardingStepActionsProps) {
+  const busy = state === "loading"
+
   return (
-    <OnboardingStepItem className="space-y-3 pt-2">
-      <div className="flex flex-wrap gap-2">
+    <div className="border-border/60 bg-background/85 fixed inset-x-0 bottom-0 z-20 border-t px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xl sm:static sm:mt-2 sm:border-0 sm:bg-transparent sm:px-0 sm:pt-2 sm:pb-0 sm:backdrop-blur-none">
+      <div className="mx-auto flex w-full max-w-xl items-center gap-2 sm:max-w-none">
         {showBack && canGoBack ? (
-          <Button type="button" variant="outline" disabled={pending} onClick={onBack}>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={busy}
+            onClick={onBack}
+            className="h-11 rounded-full px-5"
+          >
             Back
           </Button>
         ) : null}
-        <Button
+
+        <StatefulButton
           type="button"
-          disabled={pending}
+          state={state}
           onClick={onContinue}
-          className="min-w-28"
+          loadingText="Saving"
+          successText="Saved"
+          errorText="Try again"
+          className="h-11 flex-1 rounded-full sm:flex-none sm:px-8"
         >
-          <motion.span
-            key={pending ? "loading" : label}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.2, ease: EASE_OUT }}
+          {label}
+        </StatefulButton>
+
+        {onSkip ? (
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={busy}
+            onClick={onSkip}
+            className="text-muted-foreground hover:text-foreground h-11 rounded-full px-4 text-sm"
           >
-            {pending ? "Saving…" : label}
-          </motion.span>
-        </Button>
+            {skipLabel}
+          </Button>
+        ) : null}
       </div>
-      {onSkip ? (
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={pending}
-          onClick={onSkip}
-          className="text-muted-foreground h-auto px-0 py-0 text-sm hover:bg-transparent hover:text-foreground"
-        >
-          {skipLabel}
-        </Button>
-      ) : null}
-    </OnboardingStepItem>
+    </div>
   )
 }

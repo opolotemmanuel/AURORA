@@ -22,7 +22,6 @@ export function ChatProductList({ products, className }: ChatProductListProps) {
     <div className={cn("min-w-0 space-y-2 border-t border-border/60 pt-3", className)}>
       <RecommendationSectionHeader
         title={RECOMMENDATION_SECTIONS.recommendedProducts.title}
-        description={RECOMMENDATION_SECTIONS.recommendedProducts.description}
       />
       <div className="grid grid-cols-2 gap-3">
         {products.map((product) => {

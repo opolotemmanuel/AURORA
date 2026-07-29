@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
 import { transcribeSpeech } from "@/lib/ai/adapter"
+import { recordAiUsage } from "@/lib/ai/usage/record-usage"
 import { requireApiSession } from "@/lib/auth/api-session"
 import { toUserFacingChatError } from "@/lib/chat/errors"
 
@@ -76,6 +77,13 @@ export async function POST(request: Request) {
       audio,
       mimeType: normalizedMimeType || mimeType,
       lang,
+    })
+
+    await recordAiUsage({
+      feature: "transcribe",
+      usage: result.usage,
+      userId: authResult.session.user.id,
+      latencyMs: result.latencyMs,
     })
 
     return NextResponse.json({

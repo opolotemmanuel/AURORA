@@ -8,6 +8,7 @@ import {
   ONBOARDING_STEPS,
   type OnboardingStep,
 } from "@/lib/onboarding/constants"
+import { normalizeStoredStep } from "@/lib/onboarding/steps"
 
 export function parseOnboardingStep(
   value: string | null | undefined,
@@ -18,6 +19,11 @@ export function parseOnboardingStep(
     : null
 }
 
+/**
+ * Clamps a URL step to what the user has actually reached, so `?step=complete`
+ * cannot be typed in to skip the intake. Falls back to the furthest step for
+ * anything unrecognised.
+ */
 export function resolveOnboardingStep(
   urlStep: string | null | undefined,
   furthestStep: OnboardingStep,
@@ -37,9 +43,11 @@ export function useOnboardingStepUrl(
   callbackUrl?: string,
 ) {
   const searchParams = useSearchParams()
-  const [furthestStep, setFurthestStep] = useState(initialStep)
+  // Accounts stored on a pre-restructure step id resume rather than restarting.
+  const normalizedInitial = normalizeStoredStep(initialStep)
+  const [furthestStep, setFurthestStep] = useState(normalizedInitial)
   const [step, setStep] = useState<OnboardingStep>(() =>
-    resolveOnboardingStep(searchParams.get("step"), initialStep),
+    resolveOnboardingStep(searchParams.get("step"), normalizedInitial),
   )
 
   const buildHref = useCallback(
@@ -72,14 +80,14 @@ export function useOnboardingStepUrl(
   const goToStep = useCallback(
     (next: OnboardingStep) => {
       setStep(next)
-      const nextIndex = ONBOARDING_STEPS.indexOf(next)
-      const furthestIndex = ONBOARDING_STEPS.indexOf(furthestStep)
-      if (nextIndex > furthestIndex) {
-        setFurthestStep(next)
-      }
+      setFurthestStep((current) =>
+        ONBOARDING_STEPS.indexOf(next) > ONBOARDING_STEPS.indexOf(current)
+          ? next
+          : current,
+      )
       syncUrl(next, "replace")
     },
-    [furthestStep, syncUrl],
+    [syncUrl],
   )
 
   useEffect(() => {
@@ -94,13 +102,12 @@ export function useOnboardingStepUrl(
   useEffect(() => {
     function onPopState() {
       const params = new URLSearchParams(window.location.search)
-      const resolved = resolveOnboardingStep(params.get("step"), furthestStep)
-      setStep(resolved)
+      setStep(resolveOnboardingStep(params.get("step"), furthestStep))
     }
 
     window.addEventListener("popstate", onPopState)
     return () => window.removeEventListener("popstate", onPopState)
   }, [furthestStep])
 
-  return { step, goToStep }
+  return { step, furthestStep, goToStep }
 }

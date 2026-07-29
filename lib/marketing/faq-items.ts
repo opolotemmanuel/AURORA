@@ -17,7 +17,7 @@ export const MARKETING_FAQ_ITEMS: MarketingFaqItem[] = [
   {
     question: "Is my photo sent to AI?",
     answer:
-      "Yes. Your cropped photo is sent to Google Gemini for cosmetic analysis. Aura does not store your photo by default — only the text assessment and recommendations are saved. On-device quality checks run locally in your browser and are not sent to our servers.",
+      "Yes. Your cropped photo is sent to Google Gemini for cosmetic analysis. Aurora Organics does not store your photo by default. Only the text assessment and recommendations are saved. On-device quality checks run locally in your browser and are not sent to our servers.",
   },
   {
     question: "Do you keep my photos?",
@@ -27,7 +27,7 @@ export const MARKETING_FAQ_ITEMS: MarketingFaqItem[] = [
   {
     question: "What are scan tiers?",
     answer:
-      "Aura offers Starter, Thinking, and Pro tiers. Starter includes still-photo scans — new accounts get three free Starter scans. Thinking adds deeper AI analysis. Pro adds live camera scans with real-time analysis. Each saved analysis uses one scan allowance.",
+      "Aurora Organics offers Starter, Thinking, and Pro tiers. Starter includes still-photo scans, and new accounts get three free Starter scans. Thinking adds deeper AI analysis. Pro adds live camera scans with real-time analysis. Each saved analysis uses one scan allowance.",
   },
   {
     question: "How do scan allowances work?",

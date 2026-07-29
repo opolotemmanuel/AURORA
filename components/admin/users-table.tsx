@@ -59,7 +59,7 @@ export function UsersTable({ initialUsers }: { initialUsers: AdminUser[] }) {
   }
 
   return (
-    <div className="rounded-none border border-border">
+    <div className="rounded-xl border border-border/60">
       <Table>
         <TableHeader>
           <TableRow>

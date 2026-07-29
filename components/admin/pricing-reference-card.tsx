@@ -28,7 +28,7 @@ export async function PricingReferenceCard() {
   ])
 
   return (
-    <section className="space-y-6 rounded-none border border-border p-4">
+    <section className="space-y-6 rounded-xl border border-border/60 p-4">
       <div>
         <h2 className="font-heading text-lg font-medium">Scan packs</h2>
         <p className="text-sm text-muted-foreground">

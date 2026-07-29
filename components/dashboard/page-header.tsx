@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge"
 
-export { StatCard } from "@/components/dashboard/stat-card"
+export { StatCard, type StatTrend } from "@/components/dashboard/stat-card"
 
 export function DashboardPageHeader({
   title,

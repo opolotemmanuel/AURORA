@@ -28,7 +28,7 @@ export async function UsageStats() {
         />
       </div>
 
-      <div className="rounded-none border border-border bg-card p-5">
+      <div className="surface-panel rounded-xl border border-border/60 p-5">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <UsageScanSummary
             lifetimeUsed={stats.lifetimeUsed}
@@ -45,14 +45,14 @@ export async function UsageStats() {
         />
       </div>
 
-      <div className="rounded-none border border-border bg-card p-5">
+      <div className="surface-panel rounded-xl border border-border/60 p-5">
         <h2 className="font-heading text-sm font-medium">Daily scans used</h2>
         <div className="mt-4">
           <UsageBarChart data={stats.dailyUsage} />
         </div>
       </div>
 
-      <div className="rounded-none border border-border bg-card p-5">
+      <div className="surface-panel rounded-xl border border-border/60 p-5">
         <h2 className="font-heading text-sm font-medium">Recent activity</h2>
         <div className="mt-4">
           <RecentActivityList entries={stats.recentActivity} />

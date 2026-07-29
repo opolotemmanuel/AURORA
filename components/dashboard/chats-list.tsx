@@ -1,5 +1,7 @@
 import Link from "next/link"
+import { IconMessageCircle } from "@tabler/icons-react"
 
+import { DashboardEmptyState } from "@/components/dashboard/dashboard-card"
 import { ChatsListClient } from "@/components/dashboard/chats-list-client"
 import type { AdviceChatListItem } from "@/components/dashboard/chats-list-client"
 import { Button } from "@/components/ui/button"
@@ -30,16 +32,16 @@ export async function ChatsList({ page = 1 }: ChatsListProps) {
 
   if (totalCount === 0) {
     return (
-      <div className="rounded-lg border border-border bg-card p-8 text-center">
-        <p className="font-heading text-lg font-semibold">No advice chats yet</p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Start a cosmetic skin guidance chat from the scan flow or open a new
-          conversation below.
-        </p>
-        <Button asChild className="mt-6">
-          <Link href="/scan">Go to scan</Link>
-        </Button>
-      </div>
+      <DashboardEmptyState
+        icon={IconMessageCircle}
+        title="No advice chats yet"
+        description="Ask follow-up questions about your results by voice or text. Start from a scan, or open a new conversation."
+        action={
+          <Button asChild>
+            <Link href="/scan">Go to scan</Link>
+          </Button>
+        }
+      />
     )
   }
 

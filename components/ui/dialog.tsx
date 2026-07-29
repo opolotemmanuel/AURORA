@@ -111,7 +111,7 @@ function DialogContent({
                 key="dialog-content"
                 data-slot="dialog-content"
                 className={cn(
-                  "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] gap-6 rounded-none bg-popover p-6 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-none sm:max-w-md",
+                  "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] gap-6 rounded-xl bg-popover p-6 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-none sm:max-w-md",
                   className,
                 )}
                 style={{ x: "-50%", y: "-50%" }}

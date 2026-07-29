@@ -2,6 +2,7 @@ import type { Prisma } from "@/generated/prisma/client"
 import { revalidatePath } from "next/cache"
 
 import { revalidateScanHistoryContext } from "@/lib/ai/context/cache-tags"
+import { recordAiUsage } from "@/lib/ai/usage/record-usage"
 import type { ScanCaptureMode } from "@/generated/prisma/client"
 import { CONSENT_VERSION } from "@/lib/onboarding/constants"
 import { prisma } from "@/lib/db/client"
@@ -20,6 +21,7 @@ type PersistScanResultInput = {
   assessment: SkinAssessment
   usage: UsageInput
   estimatedCostMicros: number | null
+  marginMicros?: number | null
   latencyMs: number
   captureMode?: ScanCaptureMode
   location: UserLocation | null
@@ -137,7 +139,17 @@ export async function persistScanResult(input: PersistScanResultInput) {
 
       return { scan: created, report }
     }),
-  ).then((saved) => {
+  ).then(async (saved) => {
+    await recordAiUsage({
+      feature: input.captureMode === "live" ? "scan_live" : "scan_analyze",
+      usage: input.usage,
+      userId: input.userId,
+      scanId: saved.scan.id,
+      latencyMs: input.latencyMs,
+      costMicros: input.estimatedCostMicros,
+      marginMicros: input.marginMicros ?? null,
+    })
+
     revalidatePath("/reports")
     revalidatePath("/dashboard")
     revalidatePath("/dashboard/usage")

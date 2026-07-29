@@ -5,11 +5,17 @@ import {
   classifyChatInput,
   type ChatHistoryMessage,
 } from "@/lib/ai/providers/gemini-chat"
+import type { MappedGeminiUsage } from "@/lib/ai/providers/gemini-usage"
 import { MAX_CHAT_MESSAGE_LENGTH } from "@/lib/scans/constants"
 
+export type GuardrailUsage = {
+  usage: MappedGeminiUsage
+  latencyMs: number
+}
+
 export type GuardrailResult =
-  | { allowed: true }
-  | { allowed: false; reason: string }
+  | { allowed: true; classifierUsage?: GuardrailUsage }
+  | { allowed: false; reason: string; classifierUsage?: GuardrailUsage }
 
 const BLOCKLIST_PATTERNS: RegExp[] = [
   /\b(write|generate|debug|fix)\s+(me\s+)?(code|script|program|sql|python|javascript)\b/i,
@@ -23,10 +29,26 @@ const BLOCKLIST_PATTERNS: RegExp[] = [
   /\b(pregnant|pregnancy safe drug)\b/i,
 ]
 
-const MEDICAL_OUTPUT_PATTERNS: RegExp[] = [
-  /\b(you have|you likely have|this is|diagnosed with)\s+[a-z]+ (disease|disorder|condition)\b/i,
-  /\b(prescri(be|ption)|take this medication|antibiotic|steroid)\b/i,
-  /\b(melanoma|carcinoma|basal cell)\b/i,
+/**
+ * Assistant output that must never ship, regardless of how it was prompted.
+ *
+ * These are deliberately narrow. Earlier versions matched any mention of
+ * "melanoma", "steroid" or "prescription", which destroyed correct replies
+ * such as "this scan does not screen for melanoma, please see a dermatologist"
+ * and "we can't advise on prescription treatments". The rule is assertion, not
+ * mention: the model may name a clinical term while declining, but may not
+ * assert a diagnosis or direct the user onto a medication.
+ */
+export const MEDICAL_OUTPUT_PATTERNS: RegExp[] = [
+  // Asserting the user has a named clinical condition.
+  /\b(you|your skin)\s+(have|has|likely\s+ha(?:ve|s)|appear[s]?\s+to\s+have|are\s+showing\s+signs\s+of)\s+[\w\s-]{0,24}\b(disease|disorder|condition|infection|melanoma|carcinoma|eczema|psoriasis|rosacea|dermatitis)\b/i,
+  /\b(you|this)\s+(are|is)\s+diagnosed\s+with\b/i,
+  /\b(?:this|that|it)\s+(?:is|looks\s+like|appears\s+to\s+be)\s+(?:a\s+|an\s+)?(?:case\s+of\s+)?(melanoma|carcinoma|basal\s+cell|squamous\s+cell|psoriasis|eczema|rosacea|dermatitis|fungal\s+infection)\b/i,
+  // Directing the user onto medication.
+  /\b(i|we)\s+(recommend|suggest|advise)\s+(?:that\s+)?(?:you\s+)?(?:take|start|use|apply)\s+[\w\s-]{0,24}\b(antibiotic|steroid|corticosteroid|medication|prescription)\b/i,
+  /\b(you\s+should|you\s+need\s+to|start)\s+(taking|applying)\s+[\w\s-]{0,24}\b(antibiotic|steroid|corticosteroid)\b/i,
+  // Prescription-only actives a cosmetic assistant must not put in a routine.
+  /\b(tretinoin|isotretinoin|accutane|tazarotene|hydroquinone|clindamycin|spironolactone|mupirocin|fluocinonide|triamcinolone)\b/i,
 ]
 
 const GREETING_PATTERN =
@@ -112,12 +134,20 @@ export async function runFullInputGuardrails(
     modelId,
     hasScanContext,
   )
+  const classifierUsage = classification.usage
+    ? {
+        usage: classification.usage,
+        latencyMs: classification.latencyMs ?? 0,
+      }
+    : undefined
+
   if (!classification.allowed) {
     return {
       allowed: false,
       reason: classification.refusalReason ?? "Off-topic request.",
+      classifierUsage,
     }
   }
 
-  return { allowed: true }
+  return { allowed: true, classifierUsage }
 }

@@ -2,7 +2,8 @@ import { cn } from "@/lib/utils"
 
 type RecommendationSectionHeaderProps = {
   title: string
-  description: string
+  /** Omitted in chat, where the surrounding report already prints it. */
+  description?: string
   className?: string
 }
 
@@ -14,9 +15,11 @@ export function RecommendationSectionHeader({
   return (
     <div className={cn("space-y-1", className)}>
       <p className="text-xs font-medium text-foreground">{title}</p>
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
-        {description}
-      </p>
+      {description ? (
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          {description}
+        </p>
+      ) : null}
     </div>
   )
 }

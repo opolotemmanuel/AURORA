@@ -21,7 +21,7 @@ export async function requireApiSession(): Promise<ApiSessionResult> {
         {
           ok: false,
           error:
-            "Aura is reconnecting to the database. Please try again in a few seconds.",
+            "Reconnecting to the database. Please try again in a few seconds.",
           code: "DB_UNAVAILABLE",
         },
         {

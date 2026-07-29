@@ -98,6 +98,14 @@ export async function deleteAllPersonalDataAction() {
   await prisma.$transaction([
     prisma.scan.deleteMany({ where: { userId: session.user.id } }),
     prisma.scanLedger.deleteMany({ where: { userId: session.user.id } }),
+    // Chat transcripts and any images attached to them used to survive this
+    // action entirely, because they hang off userId rather than off a scan.
+    // The UI and the data-deletion page both claimed otherwise.
+    prisma.chatMessage.deleteMany({
+      where: { conversation: { userId: session.user.id } },
+    }),
+    prisma.chatConversation.deleteMany({ where: { userId: session.user.id } }),
+    prisma.scanFeedback.deleteMany({ where: { userId: session.user.id } }),
     prisma.scanBalance.update({
       where: { userId: session.user.id },
       data: { remaining: 0, lifetimeUsed: 0, lifetimeGranted: 0 },
@@ -148,6 +156,23 @@ export async function deleteAllPersonalDataAction() {
   revalidatePath("/reports")
   revalidatePath("/dashboard/privacy")
   revalidateAiUserContext(session.user.id)
+}
+
+/**
+ * Marketing consent used to be settable only during onboarding, and the privacy
+ * policy told people to withdraw it by deleting their profile data. That is a
+ * destructive workaround for a checkbox.
+ */
+export async function setMarketingConsentAction(granted: boolean) {
+  const session = await requireSession()
+
+  await prisma.userProfile.update({
+    where: { userId: session.user.id },
+    data: { marketingConsent: granted },
+  })
+
+  revalidatePath("/dashboard/privacy")
+  revalidatePath("/settings")
 }
 
 export async function deleteAccountAction() {

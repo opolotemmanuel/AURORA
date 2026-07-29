@@ -2,13 +2,15 @@
 
 import { useCallback, useEffect, useState } from "react"
 
-const STORAGE_KEY = "aura:scan-camera-height"
+// v2: the preview baseline grew, so previously stored (smaller) heights are
+// intentionally discarded instead of pinning returning users to the old size.
+const STORAGE_KEY = "aura:scan-camera-height:v2"
 
 export const SCAN_CAMERA_HEIGHT = {
-  min: 200,
-  default: 320,
-  maxPx: 560,
-  maxVh: 0.72,
+  min: 280,
+  default: 520,
+  maxPx: 840,
+  maxVh: 0.82,
 } as const
 
 function getMaxHeight() {
@@ -30,12 +32,12 @@ export function useScanCameraHeight() {
 
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY)
-    if (!stored) return
-
-    const parsed = Number.parseInt(stored, 10)
-    if (Number.isFinite(parsed)) {
-      setHeightState(clampHeight(parsed))
-    }
+    const parsed = stored ? Number.parseInt(stored, 10) : Number.NaN
+    // Also clamps the default, so the taller baseline still fits short viewports.
+    const next = clampHeight(
+      Number.isFinite(parsed) ? parsed : SCAN_CAMERA_HEIGHT.default,
+    )
+    setHeightState((current) => (current === next ? current : next))
   }, [])
 
   const setHeight = useCallback((value: number) => {

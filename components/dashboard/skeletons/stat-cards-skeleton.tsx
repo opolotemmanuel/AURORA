@@ -18,7 +18,7 @@ export function StatCardsSkeleton({
       )}
     >
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="rounded-none border border-border bg-card p-5">
+        <div key={i} className="surface-panel rounded-xl border border-border/60 p-5">
           <Skeleton className="h-3 w-20" />
           <Skeleton className="mt-3 h-8 w-24" />
         </div>

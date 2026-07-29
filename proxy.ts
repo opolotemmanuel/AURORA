@@ -9,10 +9,25 @@ import { getSessionCookie } from "better-auth/cookies"
  *
  * @see node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md
  */
+/**
+ * Routes that only make sense signed out. The landing page is a pitch for an
+ * account the visitor already has, so signed-in users go straight to the
+ * dashboard. Help, privacy and terms stay reachable either way.
+ */
+const SIGNED_OUT_ONLY = new Set(["/"])
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   const sessionCookie = getSessionCookie(request)
+
+  if (SIGNED_OUT_ONLY.has(pathname)) {
+    if (sessionCookie) {
+      return NextResponse.redirect(new URL("/dashboard", request.url))
+    }
+    return NextResponse.next()
+  }
+
   if (!sessionCookie) {
     const loginUrl = new URL("/login", request.url)
     loginUrl.searchParams.set("callbackUrl", pathname)
@@ -24,6 +39,10 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    {
+      source: "/",
+      missing: [{ type: "header", key: "next-router-prefetch" }],
+    },
     {
       source: "/dashboard/:path*",
       missing: [{ type: "header", key: "next-router-prefetch" }],

@@ -1,13 +1,21 @@
 "use client"
 
-import { useState } from "react"
+import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useState } from "react"
+import { motion } from "motion/react"
 
+import {
+  AuthSplitShell,
+  authItemVariants,
+} from "@/components/auth/auth-split-shell"
+import { PasswordInput } from "@/components/auth/password-input"
+import { PasswordStrengthMeter } from "@/components/auth/password-strength"
 import { OTPInput } from "@/components/motion/otp-input"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { authClient } from "@/lib/auth/client"
+import { validate, type FieldErrors } from "@/lib/onboarding/client-validation"
+import { passwordSchema } from "@/lib/onboarding/schemas"
 
 export function ResetPasswordForm() {
   const router = useRouter()
@@ -17,19 +25,22 @@ export function ResetPasswordForm() {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [loading, setLoading] = useState(false)
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault()
     setError(null)
+    setFieldErrors({})
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.")
+    const validation = validate(passwordSchema, { password, confirmPassword })
+    if (!validation.ok) {
+      setFieldErrors(validation.errors)
       return
     }
 
-    if (!email || otp.length !== 6) {
-      setError("Enter the code from your email.")
+    if (otp.length !== 6) {
+      setError("Enter the six-digit code from your email.")
       return
     }
 
@@ -39,10 +50,10 @@ export function ResetPasswordForm() {
       otp,
       password,
     })
-    setLoading(false)
 
     if (resetError) {
-      setError(resetError.message ?? "Could not reset password.")
+      setLoading(false)
+      setError(resetError.message ?? "Could not reset your password.")
       return
     }
 
@@ -51,59 +62,79 @@ export function ResetPasswordForm() {
 
   if (!email) {
     return (
-      <div className="rounded-lg border border-border bg-card p-6 text-center text-sm text-muted-foreground">
-        <a href="/forgot-password" className="underline">
-          Request a reset code first
-        </a>
-      </div>
+      <AuthSplitShell
+        title="Reset your"
+        accent="password"
+        subtitle="We need to send you a code first."
+      >
+        <Button asChild className="h-11 w-full rounded-full">
+          <Link href="/forgot-password">Request a reset code</Link>
+        </Button>
+      </AuthSplitShell>
     )
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6 rounded-lg border border-border bg-card p-6">
-      <div className="space-y-2 text-center">
-        <h1 className="font-heading text-xl font-medium">Reset password</h1>
-        <p className="text-sm text-muted-foreground">For {email}</p>
-      </div>
+    <AuthSplitShell
+      title="Choose a new"
+      accent="password"
+      subtitle={`Enter the code we sent to ${email}.`}
+    >
+      <form onSubmit={onSubmit} className="flex flex-col gap-5">
+        <motion.div variants={authItemVariants}>
+          <OTPInput
+            length={6}
+            value={otp}
+            onChange={setOtp}
+            label="Reset code"
+            disabled={loading}
+            autoFocus
+          />
+        </motion.div>
 
-      <OTPInput
-        length={6}
-        value={otp}
-        onChange={setOtp}
-        label="Reset code"
-        disabled={loading}
-        autoFocus
-      />
+        <motion.div variants={authItemVariants} className="space-y-2">
+          <PasswordInput
+            id="new-password"
+            label="New password"
+            minLength={8}
+            value={password}
+            onChange={setPassword}
+            error={fieldErrors.password}
+            autoComplete="new-password"
+            disabled={loading}
+          />
+          <PasswordStrengthMeter value={password} />
+        </motion.div>
 
-      <div className="space-y-2">
-        <Label htmlFor="password">New password</Label>
-        <Input
-          id="password"
-          type="password"
-          minLength={8}
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-      </div>
+        <motion.div variants={authItemVariants}>
+          <PasswordInput
+            id="confirm-new-password"
+            label="Confirm password"
+            minLength={8}
+            value={confirmPassword}
+            onChange={setConfirmPassword}
+            error={fieldErrors.confirmPassword}
+            autoComplete="new-password"
+            disabled={loading}
+          />
+        </motion.div>
 
-      <div className="space-y-2">
-        <Label htmlFor="confirmPassword">Confirm password</Label>
-        <Input
-          id="confirmPassword"
-          type="password"
-          minLength={8}
-          required
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-        />
-      </div>
+        {error ? (
+          <p role="alert" className="text-destructive text-sm">
+            {error}
+          </p>
+        ) : null}
 
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
-
-      <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? "Saving…" : "Reset password"}
-      </Button>
-    </form>
+        <motion.div variants={authItemVariants}>
+          <Button
+            type="submit"
+            className="h-11 w-full rounded-full"
+            disabled={loading}
+          >
+            {loading ? "Saving" : "Reset password"}
+          </Button>
+        </motion.div>
+      </form>
+    </AuthSplitShell>
   )
 }

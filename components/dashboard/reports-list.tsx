@@ -1,5 +1,7 @@
 import Link from "next/link"
+import { IconCamera } from "@tabler/icons-react"
 
+import { DashboardEmptyState } from "@/components/dashboard/dashboard-card"
 import { ReportsListClient } from "@/components/reports/reports-list-client"
 import type { ReportListItem } from "@/components/reports/reports-list-client"
 import { Button } from "@/components/ui/button"
@@ -101,12 +103,16 @@ export async function ReportsList({ page = 1 }: ReportsListProps) {
 
   if (totalCount === 0) {
     return (
-      <div className="rounded-none border border-dashed border-border p-8 text-center">
-        <p className="text-sm text-muted-foreground">No scans yet.</p>
-        <Button asChild className="mt-4" variant="secondary">
-          <Link href="/scan">Start a scan</Link>
-        </Button>
-      </div>
+      <DashboardEmptyState
+        icon={IconCamera}
+        title="No scans yet"
+        description="Run your first scan to get a skin snapshot, product matches, and a report you can keep."
+        action={
+          <Button asChild variant="secondary">
+            <Link href="/scan">Start a scan</Link>
+          </Button>
+        }
+      />
     )
   }
 

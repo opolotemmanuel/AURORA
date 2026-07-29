@@ -47,7 +47,7 @@ export async function generateSkinReportPdf(scanId: string, userId: string) {
     <SkinReportDocument
       assessment={assessment}
       climateContext={climateContext}
-      userName={scan.user.name ?? "Aura user"}
+      userName={scan.user.name ?? "Aurora Organics user"}
       scanDate={scanDate}
       logoSrc={getBrandLogoDataUri()}
       captureMode={scan.captureMode}

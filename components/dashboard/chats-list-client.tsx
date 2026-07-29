@@ -252,7 +252,7 @@ export function ChatsListClient({
             return (
               <article
                 key={chat.id}
-                className="relative rounded-none border border-border bg-card p-5 transition-colors hover:bg-muted/30"
+                className="relative surface-panel rounded-xl border border-border/60 p-5 transition-colors hover:bg-muted/30"
               >
                 <Link
                   href={`/chats/${chat.id}`}
@@ -290,7 +290,7 @@ export function ChatsListClient({
           })}
         </div>
       ) : (
-        <div className="rounded-none border border-border bg-card">
+        <div className="surface-panel rounded-xl border border-border/60">
           <Table>
             <TableHeader>
               <TableRow>

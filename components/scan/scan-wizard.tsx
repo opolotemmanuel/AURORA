@@ -84,6 +84,7 @@ export function ScanWizard({ scanTier }: { scanTier: ScanTier }) {
       bestFrameBlob: Blob
       previewUrl: string
       sessionDurationMs: number
+      sessionUsage: LiveScanPayload["sessionUsage"]
     }) => {
       trackUrl(result.previewUrl)
       setCroppedPreviewUrl(result.previewUrl)
@@ -91,6 +92,7 @@ export function ScanWizard({ scanTier }: { scanTier: ScanTier }) {
       setLivePayload({
         transcript: result.transcript,
         sessionDurationMs: result.sessionDurationMs,
+        sessionUsage: result.sessionUsage,
       })
       setStep("analyzing")
     },
@@ -141,8 +143,10 @@ export function ScanWizard({ scanTier }: { scanTier: ScanTier }) {
     <div className="relative flex min-h-svh flex-col">
       <div
         className={cn(
-          "flex flex-1 flex-col items-center px-4 py-8",
-          isReportPhase ? "justify-start pt-10 pb-12" : "justify-center py-12",
+          "flex flex-1 flex-col items-center px-4",
+          isReportPhase
+            ? "justify-start pb-12 pt-10"
+            : "justify-center py-6 sm:py-10",
         )}
       >
         <AnimatePresence mode="wait">

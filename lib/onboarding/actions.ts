@@ -19,6 +19,10 @@ import {
   type OnboardingStep,
 } from "@/lib/onboarding/constants"
 import {
+  resolveNextStep,
+  type OnboardingBranchState,
+} from "@/lib/onboarding/steps"
+import {
   basicsSchema,
   consentSchema,
   lifestyleSchema,
@@ -49,6 +53,45 @@ async function advanceStep(userId: string, step: OnboardingStep) {
       data: { onboardingStep: step },
     }),
   )
+}
+
+/** True when the account has no password credential yet. */
+export async function userNeedsPassword(userId: string): Promise<boolean> {
+  const credential = await prisma.account.findFirst({
+    where: { userId, providerId: "credential" },
+    select: { id: true },
+  })
+  return credential === null
+}
+
+/**
+ * Reads the saved profile and works out which steps still apply.
+ *
+ * The step sequence branches on the user's own answers, so the server has to
+ * resolve "next" from stored state rather than each action hardcoding a
+ * successor. That is what keeps a resumed session and a live session in
+ * agreement about where the user belongs.
+ */
+async function loadBranchState(userId: string): Promise<OnboardingBranchState> {
+  const [profile, needsPassword] = await Promise.all([
+    prisma.userProfile.findUnique({
+      where: { userId },
+      select: { primaryConcerns: true, allergies: true },
+    }),
+    userNeedsPassword(userId),
+  ])
+
+  return {
+    primaryConcerns: profile?.primaryConcerns ?? [],
+    hasAllergies: Boolean(profile?.allergies?.trim()),
+    needsPassword,
+  }
+}
+
+/** Moves the stored pointer to the step after `current`, honouring branching. */
+async function advanceToNextStep(userId: string, current: OnboardingStep) {
+  const state = await loadBranchState(userId)
+  await advanceStep(userId, resolveNextStep(current, state))
 }
 
 export async function resolveBrowserLocationAction(
@@ -93,10 +136,10 @@ export async function saveConsentAction(input: {
       marketingConsent: parsed.marketingConsent ?? false,
       consentVersion: CONSENT_VERSION,
       consentAcceptedAt: new Date(),
-      onboardingStep: "basics",
     },
   })
 
+  await advanceToNextStep(session.user.id, "welcome")
 }
 
 export async function saveBasicsAction(input: unknown) {
@@ -115,14 +158,17 @@ export async function saveBasicsAction(input: unknown) {
       dateOfBirth,
       ageBand: deriveAgeBand(dateOfBirth),
       biologicalSex: data.biologicalSex,
-      onboardingStep: "skin",
     },
   })
 
+  await advanceToNextStep(session.user.id, "basics")
   revalidateUserScanContext(session.user.id)
 }
 
-export async function saveSkinAction(input: unknown) {
+export async function saveSkinAction(
+  input: unknown,
+  currentStep: OnboardingStep = "skin_concerns",
+) {
   const session = await requireSession()
   const data = skinSchema.parse(input)
 
@@ -136,10 +182,12 @@ export async function saveSkinAction(input: unknown) {
       skinGoals: data.skinGoals,
       allergies: data.allergies ?? null,
       expertReviewRequested: data.expertReviewRequested ?? false,
-      onboardingStep: "routine",
     },
   })
 
+  // Both skin steps write the same row; the caller passes which one it was so
+  // branching resolves from the correct position.
+  await advanceToNextStep(session.user.id, currentStep)
   revalidateUserScanContext(session.user.id)
 }
 
@@ -153,10 +201,10 @@ export async function saveRoutineAction(input: unknown) {
       currentRoutine: data.currentRoutine,
       previousPrescriptions: data.previousPrescriptions ?? [],
       medications: data.medications ?? [],
-      onboardingStep: "lifestyle",
     },
   })
 
+  await advanceToNextStep(session.user.id, "routine")
   revalidateUserScanContext(session.user.id)
 }
 
@@ -168,10 +216,10 @@ export async function saveLifestyleAction(input: unknown) {
     where: { userId: session.user.id },
     data: {
       lifestyleFactors: data.lifestyleFactors,
-      onboardingStep: "location",
     },
   })
 
+  await advanceToNextStep(session.user.id, "lifestyle")
   revalidateUserScanContext(session.user.id)
 }
 
@@ -231,7 +279,7 @@ export async function saveLocationAction(input: unknown) {
     })
   }
 
-  await advanceStep(session.user.id, "password")
+  await advanceToNextStep(session.user.id, "location")
   revalidateUserScanContext(session.user.id)
 }
 
@@ -312,9 +360,13 @@ export async function completeOnboardingAction() {
   revalidateUserScanContext(session.user.id)
 }
 
+/**
+ * Marks that the user has seen the opening screen. Welcome and consent are one
+ * step now, so this no longer advances the pointer on its own.
+ */
 export async function setWelcomeStepAction() {
   const session = await requireSession()
-  await advanceStep(session.user.id, "consent")
+  await advanceStep(session.user.id, "welcome")
 }
 
 export async function skipToOnboardingStepAction(nextStep: OnboardingStep) {

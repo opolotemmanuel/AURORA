@@ -102,7 +102,7 @@ export function ProfileEditor({ profile }: ProfileFormProps) {
       </TabsList>
 
       <TabsContent value="basics" pending={tabPending === "basics"}>
-        <section className="space-y-4 rounded-none border border-border p-5">
+        <section className="space-y-4 rounded-xl border border-border/60 p-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="name">Name</Label>
@@ -120,7 +120,7 @@ export function ProfileEditor({ profile }: ProfileFormProps) {
       </TabsContent>
 
       <TabsContent value="skin" pending={tabPending === "skin"}>
-        <section className="space-y-4 rounded-none border border-border p-5">
+        <section className="space-y-4 rounded-xl border border-border/60 p-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <Select value={skin.skinType} onValueChange={(v) => setSkin({ ...skin, skinType: v })}>
               <SelectTrigger><SelectValue placeholder="Skin type" /></SelectTrigger>
@@ -187,7 +187,7 @@ export function ProfileEditor({ profile }: ProfileFormProps) {
       </TabsContent>
 
       <TabsContent value="routine" pending={tabPending === "routine"}>
-        <section className="space-y-4 rounded-none border border-border p-5">
+        <section className="space-y-4 rounded-xl border border-border/60 p-5">
           <Textarea value={routine.am} onChange={(e) => setRoutine({ ...routine, am: e.target.value })} placeholder="Morning routine" />
           <Textarea value={routine.pm} onChange={(e) => setRoutine({ ...routine, pm: e.target.value })} placeholder="Evening routine" />
           <Button disabled={savePending} onClick={() => save("Routine", () => updateRoutineAction({ currentRoutine: routine }))}>Save routine</Button>
@@ -195,7 +195,7 @@ export function ProfileEditor({ profile }: ProfileFormProps) {
       </TabsContent>
 
       <TabsContent value="location" pending={tabPending === "location"}>
-        <section className="space-y-4 rounded-none border border-border p-5">
+        <section className="space-y-4 rounded-xl border border-border/60 p-5">
           <div className="grid gap-4 sm:grid-cols-3">
             <Input value={location.city} onChange={(e) => setLocation({ ...location, city: e.target.value })} placeholder="City" />
             <Input value={location.region} onChange={(e) => setLocation({ ...location, region: e.target.value })} placeholder="Region" />

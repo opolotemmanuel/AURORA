@@ -17,9 +17,11 @@ import { cn } from "@/lib/utils"
 
 const PERIODS: { value: UsagePeriod; label: string }[] = [
   { value: "today", label: "Today" },
+  { value: "week", label: "This week" },
   { value: "7d", label: "7 days" },
   { value: "30d", label: "30 days" },
   { value: "month", label: "This month" },
+  { value: "quarter", label: "This quarter" },
   { value: "year", label: "This year" },
   { value: "all", label: "All time" },
 ]
@@ -28,6 +30,8 @@ const SOURCES: { value: UsageSource; label: string }[] = [
   { value: "all", label: "All" },
   { value: "scan", label: "Scans" },
   { value: "chat", label: "Chat" },
+  { value: "guardrail", label: "Guardrail" },
+  { value: "transcribe", label: "Transcription" },
 ]
 
 type AdminUsageFiltersProps = {
@@ -64,7 +68,7 @@ export function AdminUsageFilters({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-end gap-3 rounded-none border border-border bg-card p-4",
+        "flex flex-wrap items-end gap-3 surface-panel rounded-xl border border-border/60 p-4",
         isPending && "opacity-70",
         className,
       )}
@@ -88,7 +92,7 @@ export function AdminUsageFilters({
       <div className="space-y-1.5">
         <p className="text-xs text-muted-foreground">Source</p>
         <Select value={source} onValueChange={(v) => updateParam("source", v)}>
-          <SelectTrigger className="w-[120px]">
+          <SelectTrigger className="w-[150px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

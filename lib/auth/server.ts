@@ -14,7 +14,7 @@ const appleConfigured =
   Boolean(process.env.APPLE_CLIENT_SECRET)
 
 export const auth = betterAuth({
-  appName: "Aura",
+  appName: "Aurora Organics",
   baseURL: process.env.BETTER_AUTH_URL,
   secret: process.env.BETTER_AUTH_SECRET,
   database: prismaAdapter(prisma, {
@@ -22,6 +22,23 @@ export const auth = betterAuth({
   }),
   emailAndPassword: {
     enabled: true,
+  },
+  // Credential and OTP endpoints are otherwise unthrottled, which makes both
+  // password guessing and OTP brute force free. Sign-in and OTP issuance get
+  // tighter windows than the global default.
+  rateLimit: {
+    enabled: true,
+    window: 60,
+    max: 60,
+    customRules: {
+      "/sign-in/email": { window: 60, max: 5 },
+      "/sign-up/email": { window: 60, max: 5 },
+      "/email-otp/send-verification-otp": { window: 60, max: 3 },
+      "/email-otp/verify-email": { window: 60, max: 10 },
+      "/email-otp/reset-password": { window: 60, max: 5 },
+      "/forget-password": { window: 60, max: 3 },
+      "/reset-password": { window: 60, max: 5 },
+    },
   },
   account: {
     accountLinking: {
@@ -52,7 +69,9 @@ export const auth = betterAuth({
   plugins: [
     emailOTP({
       async sendVerificationOTP({ email, otp, type }) {
-        void sendOtpEmail({ email, otp, type })
+        // Awaited so a delivery failure surfaces as an error instead of the
+        // client showing "code sent" for a code that never left the building.
+        await sendOtpEmail({ email, otp, type })
       },
       otpLength: 6,
       expiresIn: 60 * 10,

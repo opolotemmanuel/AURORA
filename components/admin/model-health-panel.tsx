@@ -16,7 +16,7 @@ type ModelHealthPanelProps = {
 
 export function ModelHealthPanel({ summary, className }: ModelHealthPanelProps) {
   return (
-    <div className={cn("rounded-none border border-border bg-card p-5", className)}>
+    <div className={cn("surface-panel rounded-xl border border-border/60 p-5", className)}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="font-heading text-sm font-medium">Model health</h2>

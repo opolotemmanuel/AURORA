@@ -2,12 +2,14 @@ import Link from "next/link"
 import { IconSparkles } from "@tabler/icons-react"
 
 import { Button } from "@/components/ui/button"
+import { DotField } from "@/components/ui/dot-field"
 
 export default function EmbedScanPage() {
   return (
-    <main className="bg-background text-foreground flex min-h-svh items-center justify-center p-6">
+    <main className="bg-background text-foreground relative isolate flex min-h-svh items-center justify-center p-6">
+      <DotField />
       <div className="w-full max-w-md space-y-4 text-center">
-        <p className="font-display text-3xl">Aura</p>
+        <p className="font-display text-3xl">Aurora Organics</p>
         <p className="text-muted-foreground text-sm">
           Cosmetic skin wellness scan for Aurora Organics customers.
         </p>

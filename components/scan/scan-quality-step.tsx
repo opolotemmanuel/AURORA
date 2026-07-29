@@ -1,9 +1,16 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { IconCrop, IconRefresh } from "@tabler/icons-react"
+import {
+  IconAlertTriangle,
+  IconCheck,
+  IconCrop,
+  IconLoader2,
+  IconRefresh,
+} from "@tabler/icons-react"
 
 import { AnimatedBadge } from "@/components/motion/animated-badge"
+import { ScanPhotoFrame } from "@/components/scan/scan-photo-frame"
 import { ScanStepFrame } from "@/components/scan/scan-step-frame"
 import { ScanStepShell } from "@/components/scan/scan-step-shell"
 import { Button } from "@/components/ui/button"
@@ -71,101 +78,151 @@ export function ScanQualityStep({
     }
   }, [imageSrc])
 
+  const checks = [
+    {
+      id: "crop",
+      label: "Face in crop",
+      hint: "A single face fills the cropped area",
+      status: loading
+        ? ("loading" as const)
+        : result?.faceDetected
+          ? ("success" as const)
+          : ("danger" as const),
+    },
+    {
+      id: "lighting",
+      label: "Lighting",
+      hint: "Even light, no blowouts or deep shadow",
+      status: loading
+        ? ("loading" as const)
+        : result?.lightingBand === "ok"
+          ? ("success" as const)
+          : ("warning" as const),
+    },
+    {
+      id: "skin",
+      label: "Skin detail",
+      hint: "Enough texture for a reliable read",
+      status: loading
+        ? ("loading" as const)
+        : result?.isPlausibleSkin
+          ? ("success" as const)
+          : ("warning" as const),
+    },
+  ]
+
+  const notes = [
+    ...(resolutionWarning ? [resolutionWarning] : []),
+    ...(result?.issues ?? []),
+  ]
+
   return (
     <ScanStepFrame>
       <ScanStepShell
+        step="quality"
         title="Checking photo quality"
-        description="We verify lighting on your cropped skin photo"
+        description="We verify the crop and lighting before analyzing your skin"
       >
-      <div className="mx-auto overflow-hidden rounded-[1.5rem] border border-border">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={imageSrc}
-          alt="Photo preview"
-          className="mx-auto aspect-[3/4] h-[min(48svh,20rem)] w-auto max-w-full object-cover"
-        />
-      </div>
+        <ScanPhotoFrame src={imageSrc} alt="Photo preview">
+          {loading ? (
+            <div className="absolute inset-0 grid place-items-center bg-background/40 backdrop-blur-[2px]">
+              <AnimatedBadge status="loading" size="sm">
+                Running checks…
+              </AnimatedBadge>
+            </div>
+          ) : null}
+        </ScanPhotoFrame>
 
-      <div className="flex flex-wrap gap-2">
-        <AnimatedBadge
-          status={
-            loading
-              ? "loading"
-              : result?.faceDetected
-                ? "success"
-                : "danger"
-          }
-          size="sm"
-        >
-          Skin crop
-        </AnimatedBadge>
-        <AnimatedBadge
-          status={
-            loading
-              ? "loading"
-              : result?.lightingBand === "ok"
-                ? "success"
-                : "warning"
-          }
-          size="sm"
-        >
-          Lighting
-        </AnimatedBadge>
-        <AnimatedBadge
-          status={
-            loading
-              ? "loading"
-              : result?.isPlausibleSkin
-                ? "success"
-                : "warning"
-          }
-          size="sm"
-        >
-          Skin photo
-        </AnimatedBadge>
-      </div>
-
-      {!loading && (result?.issues.length || resolutionWarning) ? (
-        <ul className="space-y-1 rounded-xl border border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-          {resolutionWarning ? <li>{resolutionWarning}</li> : null}
-          {result?.issues.map((issue) => (
-            <li key={issue}>{issue}</li>
+        <ul className="grid gap-1.5 sm:grid-cols-3">
+          {checks.map((check) => (
+            <li
+              key={check.id}
+              className={cn(
+                "flex items-start gap-2 rounded-2xl border p-2.5 transition-colors duration-300",
+                check.status === "success"
+                  ? "border-emerald-500/25 bg-emerald-500/5"
+                  : check.status === "danger"
+                    ? "border-destructive/25 bg-destructive/5"
+                    : check.status === "warning"
+                      ? "border-amber-500/25 bg-amber-500/5"
+                      : "border-border/70 bg-muted/20",
+              )}
+            >
+              <span
+                className={cn(
+                  "mt-px grid size-5 shrink-0 place-items-center rounded-full",
+                  check.status === "success"
+                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                    : check.status === "danger"
+                      ? "bg-destructive/15 text-destructive"
+                      : check.status === "warning"
+                        ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                        : "bg-muted text-muted-foreground",
+                )}
+              >
+                {check.status === "loading" ? (
+                  <IconLoader2 className="size-3 animate-spin" aria-hidden />
+                ) : check.status === "success" ? (
+                  <IconCheck className="size-3" aria-hidden />
+                ) : (
+                  <IconAlertTriangle className="size-3" aria-hidden />
+                )}
+              </span>
+              <span className="min-w-0">
+                <span className="block text-xs font-semibold leading-none text-foreground">
+                  {check.label}
+                </span>
+                <span className="mt-1 block text-[11px] leading-snug text-muted-foreground">
+                  {check.hint}
+                </span>
+              </span>
+            </li>
           ))}
         </ul>
-      ) : null}
 
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onReEdit}
-          className="rounded-full"
-        >
-          <IconCrop className="size-3.5" />
-          Adjust crop
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onRetake}
-          className="rounded-full"
-        >
-          <IconRefresh className="size-3.5" />
-          Retake photo
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          disabled={loading || !result?.passed}
-          onClick={onPass}
-          className={cn("ml-auto rounded-full")}
-        >
-          Analyze skin
-        </Button>
-      </div>
-    </ScanStepShell>
+        {!loading && notes.length ? (
+          <ul className="space-y-1.5 rounded-2xl border border-border/70 bg-muted/20 p-3 text-xs leading-relaxed text-muted-foreground">
+            {notes.map((note) => (
+              <li key={note} className="flex gap-2">
+                <span aria-hidden className="mt-1.5 size-1 shrink-0 rounded-full bg-muted-foreground/50" />
+                {note}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+
+        <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onReEdit}
+            className="rounded-full"
+          >
+            <IconCrop className="size-3.5" />
+            Adjust crop
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onRetake}
+            className="rounded-full"
+          >
+            <IconRefresh className="size-3.5" />
+            Retake photo
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            disabled={loading || !result?.passed}
+            onClick={onPass}
+            className="ml-auto rounded-full px-5"
+          >
+            {loading ? "Checking…" : "Analyze skin"}
+          </Button>
+        </div>
+      </ScanStepShell>
     </ScanStepFrame>
   )
 }

@@ -89,6 +89,7 @@ export async function runAnalyzeScan(
       assessment: enrichedAssessment,
       usage: analysis.usage,
       estimatedCostMicros: costEstimate?.costMicros ?? null,
+      marginMicros: costEstimate?.marginMicros ?? null,
       latencyMs: analysis.latencyMs,
       captureMode: "still",
       location,

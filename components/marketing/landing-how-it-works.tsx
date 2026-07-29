@@ -12,19 +12,19 @@ const steps = [
     icon: IconCamera,
     title: "Scan",
     description:
-      "Snap a photo or upload from your gallery. Quick on-screen checks help you get a clear shot before analysis.",
+      "Answer a few questions about your skin, then snap a photo, upload one, or use a live camera scan. On-device checks confirm your lighting and framing before anything is sent.",
   },
   {
     icon: IconSparkles,
     title: "Assess",
     description:
-      "Your scan becomes a simple skin profile with hydration, tone, and texture explained in plain language.",
+      "Your scan becomes a skin profile across six dimensions, each in a plain-language band, alongside an Ayurvedic skin lean. No invented precision scores.",
   },
   {
     icon: IconBottle,
     title: "Recommend",
     description:
-      "Get Aurora Organics matches for your skin, routine, and climate, plus a report you can save or share.",
+      "Get Aurora Organics matches filtered against your allergies and local climate. Keep the PDF report, ask follow-up questions, and scan again later to track how your skin changes.",
   },
 ]
 

@@ -16,6 +16,8 @@ type ScanReportLayoutProps = {
   imageLoading?: boolean
   imageLoadingLabel?: string
   imageOverlay?: ReactNode
+  /** Rendered directly under the photo in the left column. */
+  imageFooter?: ReactNode
   children: ReactNode
   onRescan?: () => void
   onReEdit?: () => void
@@ -29,6 +31,7 @@ export function ScanReportLayout({
   imageLoading = false,
   imageLoadingLabel,
   imageOverlay,
+  imageFooter,
   children,
   onRescan,
   onReEdit,
@@ -83,7 +86,7 @@ export function ScanReportLayout({
         )}
       >
         {showImageColumn ? (
-          <div className="mx-auto w-full max-w-[280px] self-start lg:sticky lg:top-8 lg:mx-0">
+          <div className="mx-auto w-full max-w-[280px] space-y-3 self-start lg:sticky lg:top-8 lg:mx-0">
             <ScanImagePanel
               imageSrc={imageSrc}
               isLoading={imageLoading}
@@ -91,6 +94,7 @@ export function ScanReportLayout({
               overlay={imageOverlay}
               compact
             />
+            {imageFooter}
           </div>
         ) : null}
         <div className="mx-auto min-w-0 w-full max-w-2xl self-start lg:mx-0 lg:max-w-none">

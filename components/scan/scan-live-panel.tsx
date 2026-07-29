@@ -18,7 +18,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { useScanCameraDevices } from "@/hooks/use-scan-camera-devices"
 import { runQualityGate } from "@/lib/scan/quality-gate"
-import type { QualityCheckResult } from "@/lib/scan/types"
+import type { LiveSessionUsage, QualityCheckResult } from "@/lib/scan/types"
 import { cn } from "@/lib/utils"
 
 type ScanLivePanelProps = {
@@ -27,6 +27,7 @@ type ScanLivePanelProps = {
     bestFrameBlob: Blob
     previewUrl: string
     sessionDurationMs: number
+    sessionUsage: LiveSessionUsage | null
   }) => void
   onCancel: () => void
   onErrorChange?: (hasError: boolean) => void
@@ -98,11 +99,11 @@ function getLiveObservationText(
   transcriptPreview: string,
   quality: QualityCheckResult,
 ): string {
-  if (connectingLive) return "Connecting to Aura…"
+  if (connectingLive) return "Connecting…"
   if (transcriptPreview) return transcriptPreview
   if (!quality.faceDetected) return "Keep one face centered in frame"
   if (quality.lightingBand !== "ok") return "Use even, natural lighting when possible"
-  return "Hold still — Aura is observing your skin"
+  return "Hold still while we read your skin"
 }
 
 export function ScanLivePanel({
@@ -117,6 +118,7 @@ export function ScanLivePanel({
   const startedAtRef = useRef<number>(0)
   const frameTimerRef = useRef<number | null>(null)
   const sessionStartedRef = useRef(false)
+  const sessionUsageRef = useRef<LiveSessionUsage | null>(null)
   const finishingRef = useRef(false)
   const qualityCheckingRef = useRef(false)
   const qualityRef = useRef<QualityCheckResult>(INITIAL_QUALITY)
@@ -304,6 +306,15 @@ export function ScanLivePanel({
               startFrameLoop()
             },
             onmessage: (message) => {
+              // Live reports running session totals, so keep the latest.
+              const usage = message.usageMetadata
+              if (usage) {
+                sessionUsageRef.current = {
+                  promptTokenCount: usage.promptTokenCount ?? 0,
+                  responseTokenCount: usage.responseTokenCount ?? 0,
+                  totalTokenCount: usage.totalTokenCount ?? 0,
+                }
+              }
               for (const line of extractLiveMessageText(message)) {
                 appendTranscriptRef.current(line)
               }
@@ -375,6 +386,7 @@ export function ScanLivePanel({
       sessionDurationMs: startedAtRef.current
         ? Date.now() - startedAtRef.current
         : 0,
+      sessionUsage: sessionUsageRef.current,
     })
   }, [captureFrameBlob, onComplete, stopStream, teardownLiveSession])
 

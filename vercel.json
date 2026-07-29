@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/sync-products",
       "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/purge-retention",
+      "schedule": "30 3 * * *"
     }
   ]
 }

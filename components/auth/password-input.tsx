@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useId, useState } from "react"
 import { IconEye, IconEyeOff } from "@tabler/icons-react"
 
 import { Input } from "@/components/ui/input"
@@ -18,6 +18,11 @@ export interface PasswordInputProps {
   minLength?: number
   tabIndex?: number
   className?: string
+  disabled?: boolean
+  /** Helper text under the label, wired up via aria-describedby. */
+  description?: string
+  /** Field-level error, announced via role="alert" and aria-invalid. */
+  error?: string
 }
 
 export function PasswordInput({
@@ -31,23 +36,41 @@ export function PasswordInput({
   minLength,
   tabIndex,
   className,
+  disabled,
+  description,
+  error,
 }: PasswordInputProps) {
   const [visible, setVisible] = useState(false)
+  const reactId = useId()
+  const descriptionId = description ? `${reactId}-description` : undefined
+  const errorId = error ? `${reactId}-error` : undefined
+  const describedBy =
+    [descriptionId, errorId].filter(Boolean).join(" ") || undefined
 
   return (
     <div className={cn("space-y-2", className)}>
-      <Label htmlFor={id}>{label}</Label>
+      <div className="space-y-1">
+        <Label htmlFor={id}>{label}</Label>
+        {description ? (
+          <p id={descriptionId} className="text-muted-foreground text-sm">
+            {description}
+          </p>
+        ) : null}
+      </div>
       <div className="relative">
         <Input
           id={id}
           type={visible ? "text" : "password"}
           required={required}
           minLength={minLength}
+          disabled={disabled}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           autoComplete={autoComplete}
           tabIndex={tabIndex}
+          aria-describedby={describedBy}
+          aria-invalid={error ? true : undefined}
           className="pr-9"
         />
         <button
@@ -64,6 +87,11 @@ export function PasswordInput({
           )}
         </button>
       </div>
+      {error ? (
+        <p id={errorId} role="alert" className="text-destructive text-sm">
+          {error}
+        </p>
+      ) : null}
     </div>
   )
 }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import {
   IconBulb,
-  IconCamera,
+  IconChevronDown,
   IconCrop,
   IconSun,
   IconUpload,
@@ -31,31 +31,25 @@ const HINTS: HintItem[] = [
     id: "distance",
     icon: IconUser,
     title: "Move closer",
-    body: "Face should fill a large part of the oval — aim for 40–60% of frame height.",
+    body: "Fill the oval. Your face should cover 40 to 60% of the frame height.",
   },
   {
     id: "lighting",
     icon: IconSun,
     title: "Improve lighting",
-    body: "Face a window or soft front light. Avoid backlighting and harsh overhead glare.",
+    body: "Face a window or soft front light. Avoid backlight and harsh overhead glare.",
   },
   {
     id: "crop",
     icon: IconCrop,
     title: "On the crop step",
-    body: "Expand the crop box so your face fills most of it — not lots of background.",
+    body: "Expand the crop box so your face fills most of it, not the background.",
   },
   {
     id: "upload",
     icon: IconUpload,
     title: "Try photo upload",
-    body: "A phone photo (often 2–4MP+) usually assesses much better than a laptop webcam.",
-  },
-  {
-    id: "mobile",
-    icon: IconCamera,
-    title: "On mobile",
-    body: "Use the front camera in good light — phone sensors are typically higher resolution.",
+    body: "A phone photo (2 to 4MP+) usually assesses better than a laptop webcam.",
   },
 ]
 
@@ -79,8 +73,12 @@ function persistDismissed() {
 }
 
 type ScanCameraHintsProps = {
-  /** Desktop: to the right of the capture section. Mobile fullscreen: fixed on screen edge. */
-  placement?: "section" | "fullscreen"
+  /**
+   * `section` docks the rail beside the capture card on xl+ screens,
+   * `inline` collapses it under the card below xl, and `fullscreen` pins it
+   * to the screen edge over the mobile camera.
+   */
+  placement?: "section" | "inline" | "fullscreen"
   className?: string
 }
 
@@ -90,6 +88,7 @@ export function ScanCameraHints({
 }: ScanCameraHintsProps) {
   const reduceMotion = useReducedMotion()
   const [visible, setVisible] = useState(false)
+  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
     setVisible(!isHintsDismissed())
@@ -127,6 +126,93 @@ export function ScanCameraHints({
           },
         }
 
+  const hintCards = HINTS.map((hint, index) => {
+    const Icon = hint.icon
+    return (
+      <motion.div
+        key={hint.id}
+        layout={!reduceMotion}
+        {...stagger(index)}
+        className="scan-surface rounded-2xl border border-border/70 p-3 backdrop-blur-xl"
+      >
+        <div className="flex items-start gap-2.5">
+          <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-primary ring-1 ring-inset ring-primary/15">
+            <Icon className="size-3.5" aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1 space-y-1">
+            <p className="text-xs font-semibold leading-none text-foreground">
+              {hint.title}
+            </p>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              {hint.body}
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    )
+  })
+
+  if (placement === "inline") {
+    return (
+      <div
+        className={cn(
+          "w-full max-w-2xl xl:hidden",
+          className,
+        )}
+      >
+        <div className="scan-surface overflow-hidden rounded-2xl border border-border/70 backdrop-blur-xl">
+          <div className="flex items-center gap-2 px-3 py-2.5">
+            <button
+              type="button"
+              onClick={() => setExpanded((open) => !open)}
+              aria-expanded={expanded}
+              className="flex min-w-0 flex-1 items-center gap-2 text-left"
+            >
+              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-primary ring-1 ring-inset ring-primary/15">
+                <IconBulb className="size-3.5" aria-hidden />
+              </span>
+              <span className="truncate text-xs font-semibold text-foreground">
+                {PANEL_TITLE}
+              </span>
+              <IconChevronDown
+                aria-hidden
+                className={cn(
+                  "ml-auto size-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                  expanded && "rotate-180",
+                )}
+              />
+            </button>
+            <button
+              type="button"
+              onClick={dismissAll}
+              aria-label="Dismiss tips"
+              className="grid size-6 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <IconX className="size-3.5" />
+            </button>
+          </div>
+
+          <AnimatePresence initial={false}>
+            {expanded ? (
+              <motion.div
+                key="hints"
+                initial={reduceMotion ? false : { height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={reduceMotion ? undefined : { height: 0, opacity: 0 }}
+                transition={{ duration: 0.24, ease: EASE_OUT }}
+                className="overflow-hidden"
+              >
+                <div className="grid gap-2 border-t border-border/60 p-3 sm:grid-cols-2">
+                  {hintCards}
+                </div>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <motion.aside
       initial={reduceMotion ? false : { opacity: 0, x: 24 }}
@@ -134,19 +220,19 @@ export function ScanCameraHints({
       exit={{ opacity: 0, x: 16 }}
       transition={{ duration: 0.3, ease: EASE_OUT }}
       className={cn(
-        "pointer-events-none z-20 w-[260px]",
+        "pointer-events-none z-20 w-60",
         placement === "section" &&
-          "absolute left-[calc(100%+1rem)] top-10 hidden md:block",
+          "absolute left-[calc(100%+1rem)] top-0 hidden max-h-[calc(100svh-8rem)] overflow-y-auto xl:block",
         placement === "fullscreen" &&
-          "fixed right-3 top-[max(5.5rem,env(safe-area-inset-top))] md:hidden",
+          "fixed right-3 top-[max(5.5rem,env(safe-area-inset-top))] xl:hidden",
         className,
       )}
       aria-label={PANEL_TITLE}
     >
       <div className="pointer-events-auto flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-2 rounded-xl border border-border/80 bg-background/95 px-3 py-2 shadow-md backdrop-blur-sm">
+        <div className="scan-surface flex items-center justify-between gap-2 rounded-2xl border border-border/70 px-3 py-2 backdrop-blur-xl">
           <div className="flex min-w-0 items-center gap-2">
-            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-primary ring-1 ring-inset ring-primary/15">
               <IconBulb className="size-3.5" aria-hidden />
             </span>
             <p className="truncate text-xs font-semibold text-foreground">
@@ -163,33 +249,7 @@ export function ScanCameraHints({
           </button>
         </div>
 
-        <AnimatePresence initial={false}>
-          {HINTS.map((hint, index) => {
-            const Icon = hint.icon
-            return (
-              <motion.div
-                key={hint.id}
-                layout={!reduceMotion}
-                {...stagger(index)}
-                className="rounded-xl border border-border/80 bg-background/90 p-3 shadow-md backdrop-blur-sm"
-              >
-                <div className="flex items-start gap-2.5">
-                  <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-                    <Icon className="size-3.5" aria-hidden />
-                  </span>
-                  <div className="min-w-0 flex-1 space-y-0.5">
-                    <p className="text-xs font-semibold text-foreground">
-                      {hint.title}
-                    </p>
-                    <p className="text-[11px] leading-relaxed text-muted-foreground">
-                      {hint.body}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-            )
-          })}
-        </AnimatePresence>
+        <AnimatePresence initial={false}>{hintCards}</AnimatePresence>
       </div>
     </motion.aside>
   )

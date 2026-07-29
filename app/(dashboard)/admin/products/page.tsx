@@ -6,11 +6,11 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 function ProductsAdminSkeleton() {
   return (
-    <div className="rounded-none border border-border p-5">
+    <div className="rounded-xl border border-border/60 p-5">
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="space-y-3 rounded-none border border-border p-3">
-            <Skeleton className="aspect-square w-full rounded-none" />
+          <div key={i} className="space-y-3 rounded-xl border border-border/60 p-3">
+            <Skeleton className="aspect-square w-full rounded-lg" />
             <Skeleton className="h-4 w-32" />
             <Skeleton className="h-3 w-24" />
           </div>

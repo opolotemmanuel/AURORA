@@ -1,23 +1,19 @@
 // Admin CRUD for the Aurora product catalog, plus the form-data parsing
 // used by the admin product form (parseProductFormData) and the read path
 // the recommendation engine uses (listActiveRecommendationProducts).
-import { RoutineStep, type Prisma } from "@/lib/generated/prisma/client"
+import { Prisma, RoutineStep } from "@/lib/generated/prisma/client"
 import { prisma } from "@/lib/db"
-import type { AuroraProduct, SkinConcern } from "@/lib/recommendations/types"
+import { findIngredientByNameOrAlias } from "@/lib/products/ingredients/parse-inci"
+import { getIngredientVocabulary } from "@/lib/products/ingredients/repository"
+import { SKIN_CONCERNS, type AuroraProduct, type IngredientDetail, type SkinConcern } from "@/lib/recommendations/types"
 
-// Runtime list mirroring the SkinConcern union — needed because form input
-// arrives as plain strings and must be validated against real concern
-// values (see parseConcernList/getConcernArray) rather than trusted as-is.
-const skinConcerns = [
-  "hydration",
-  "texture",
-  "rednessAppearance",
-  "pigmentationAppearance",
-  "oilBalance",
-  "barrierComfort",
-  "radiance",
-  "daytimeProtection",
-] as const satisfies readonly SkinConcern[]
+const skinConcerns = SKIN_CONCERNS
+
+// Eager-loads each product's real Ingredient rows in the same query — no
+// N+1, and it's what lets mapProduct stay a plain sync function below.
+const PRODUCT_INGREDIENTS_INCLUDE = {
+  ingredients: { include: { ingredient: true } },
+} satisfies Prisma.ProductInclude
 
 export type ProductFormInput = {
   id?: string
@@ -40,6 +36,7 @@ export async function listProducts() {
   const products = await prisma.product.findMany({
     orderBy: [{ active: "desc" }, { priority: "desc" }, { name: "asc" }],
     include: {
+      ...PRODUCT_INGREDIENTS_INCLUDE,
       _count: {
         select: {
           recommendations: true,
@@ -66,12 +63,15 @@ export async function listActiveRecommendationProducts() {
   const products = await prisma.product.findMany({
     where: { active: true },
     orderBy: [{ priority: "desc" }, { name: "asc" }],
+    include: PRODUCT_INGREDIENTS_INCLUDE,
   })
 
   return products.map(mapProduct)
 }
 
 export async function createProduct(input: ProductFormInput) {
+  const ingredientNames = await resolveIngredientNames(input.keyIngredients)
+
   return prisma.product.create({
     data: {
       slug: input.slug,
@@ -83,7 +83,12 @@ export async function createProduct(input: ProductFormInput) {
       cosmeticBenefits: input.cosmeticBenefits,
       bestFor: input.bestFor,
       avoidIf: input.avoidIf,
-      keyIngredients: input.keyIngredients,
+      // `ingredients` is the explicit ProductIngredient join (see
+      // prisma/schema.prisma for why), so a nested write creates join rows
+      // rather than a plain connect-by-name. Product.keyIngredients (the
+      // old Json column) is gone as of the Phase 2 migration — this
+      // relation is the sole source of truth now.
+      ingredients: { create: ingredientNames.map((name) => ({ ingredient: { connect: { name } } })) },
       officialUrl: input.officialUrl,
       priority: input.priority,
       active: input.active,
@@ -92,6 +97,8 @@ export async function createProduct(input: ProductFormInput) {
 }
 
 export async function updateProduct(input: ProductFormInput & { id: string }) {
+  const ingredientNames = await resolveIngredientNames(input.keyIngredients)
+
   return prisma.product.update({
     where: { id: input.id },
     data: {
@@ -104,11 +111,40 @@ export async function updateProduct(input: ProductFormInput & { id: string }) {
       cosmeticBenefits: input.cosmeticBenefits,
       bestFor: input.bestFor,
       avoidIf: input.avoidIf,
-      keyIngredients: input.keyIngredients,
+      // Clear existing join rows first so an edit that removes an
+      // ingredient actually disconnects it, then recreate exactly the
+      // resolved set — `create` alone would just pile up duplicates (though
+      // the @@unique([productId, ingredientId]) constraint would reject
+      // an unchanged one anyway).
+      ingredients: {
+        deleteMany: {},
+        create: ingredientNames.map((name) => ({ ingredient: { connect: { name } } })),
+      },
       officialUrl: input.officialUrl,
       priority: input.priority,
       active: input.active,
     },
+  })
+}
+
+// Validates admin-entered ingredient names/aliases against the real
+// Ingredient table, resolving each to its canonical name (so "niacinamide"
+// and "Niacinamide" both connect to the same row) — same controlled-
+// vocabulary discipline as parse-inci.ts's auto-recognition, applied to
+// manual entry too. Throws on an unrecognized name, matching
+// parseConcernList's existing "Unknown cosmetic concern" pattern below,
+// rather than silently dropping what the admin typed.
+async function resolveIngredientNames(rawNames: string[] | undefined): Promise<string[]> {
+  if (!rawNames?.length) return []
+
+  const vocabulary = await getIngredientVocabulary()
+
+  return rawNames.map((rawName) => {
+    const match = findIngredientByNameOrAlias(rawName, vocabulary)
+    if (!match) {
+      throw new Error(`Unknown ingredient: "${rawName}". Add it to the Ingredient table first.`)
+    }
+    return match.name
   })
 }
 
@@ -172,12 +208,26 @@ function mapProduct(product: {
   cosmeticBenefits: Prisma.JsonValue
   bestFor: Prisma.JsonValue
   avoidIf: Prisma.JsonValue | null
-  keyIngredients: Prisma.JsonValue | null
   doshaTags?: Prisma.JsonValue | null
   officialUrl: string | null
   priority: number
   active: boolean
+  // Real Product<->Ingredient relation (see prisma/schema.prisma) — the
+  // read-side source of truth for ingredients now. Product.keyIngredients
+  // (the Json column) still exists and is dual-written on create/update
+  // during Phase 1, but is never read here; `ingredients` reflects it
+  // exactly for every product going through createProduct/updateProduct or
+  // the WooCommerce sync's auto-recognition, and the two were verified
+  // identical for all pre-existing products by scripts/seed-ingredients.ts's
+  // backfill.
+  ingredients: Array<{ ingredient: { name: string; description: string; concerns: string[] } }>
 }): AuroraProduct {
+  const ingredientDetails: IngredientDetail[] = product.ingredients.map(({ ingredient }) => ({
+    name: ingredient.name,
+    description: ingredient.description,
+    concerns: ingredient.concerns.filter(isSkinConcern),
+  }))
+
   return {
     id: product.slug,
     databaseId: product.id,
@@ -189,12 +239,17 @@ function mapProduct(product: {
     cosmeticBenefits: getStringArray(product.cosmeticBenefits),
     bestFor: getConcernArray(product.bestFor),
     avoidIf: product.avoidIf ? getConcernArray(product.avoidIf) : undefined,
-    keyIngredients: product.keyIngredients ? getStringArray(product.keyIngredients) : undefined,
+    keyIngredients: ingredientDetails.length > 0 ? ingredientDetails.map((d) => d.name) : undefined,
+    ingredientDetails: ingredientDetails.length > 0 ? ingredientDetails : undefined,
     doshaTags: product.doshaTags ? getStringArray(product.doshaTags) : undefined,
     officialUrl: product.officialUrl ?? undefined,
     priority: product.priority,
     active: product.active,
   }
+}
+
+function isSkinConcern(value: string): value is SkinConcern {
+  return (SKIN_CONCERNS as readonly string[]).includes(value)
 }
 
 function getRequiredString(formData: FormData, key: string) {

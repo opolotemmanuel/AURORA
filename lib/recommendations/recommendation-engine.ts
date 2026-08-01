@@ -40,6 +40,22 @@ const BAND_WEIGHT: Record<CosmeticBand, number> = {
   not_visible: 0,
 }
 
+// Ingredient-match bonus — turns the previously informational-only
+// ingredient display (lib/products/ingredients.ts) into a real, additive
+// scoring input. +8 per matching ingredient sits below every concern-band
+// match (BAND_WEIGHT.low = 14 is the smallest) and below the primary dosha
+// bonus (+12), on the same order as the climate bonuses (+8 to +14) — a
+// nudge, never a driver. Capped well under a single strong match so a
+// product with several loosely-related actives can't out-rank one with a
+// real concern-band match. See lib/products/ingredients.ts for the
+// human-reviewed ingredient -> concern mapping and its rationale.
+const INGREDIENT_MATCH_BONUS = 8
+const INGREDIENT_BONUS_CAP = 20
+
+function isFlaggedBand(band: CosmeticBand | undefined): boolean {
+  return band === "mild" || band === "moderate" || band === "elevated"
+}
+
 export function recommendAuroraProducts(
   analysis: CosmeticAnalysisInput,
   limit = 3,
@@ -169,6 +185,34 @@ function scoreProduct(
       score += 6
       reasons.push(`Traditionally associated with your ${capitalize(analysis.dosha.secondary)} dosha.`)
     }
+  }
+
+  // Deterministic — no AI call, no DB access. `product.ingredientDetails`
+  // (description + concerns per ingredient) is already resolved once per
+  // product by lib/backend/product-service.ts's mapProduct, from the real
+  // Ingredient table — this function stays pure/self-contained, just
+  // reading data it's handed rather than looking anything up itself. An
+  // ingredient counts once even if it maps to multiple flagged concerns
+  // (e.g. Niacinamide when both pigmentation and oilBalance are flagged),
+  // so a single active can't be double-counted. Only fires for concerns the
+  // CURRENT scan actually flagged as needing attention (mild/moderate/
+  // elevated) — "low"/"balanced"/"not_visible" aren't concerns needing
+  // help. Contributes 0, same as climate/dosha, when the product has no
+  // resolved ingredients or none map to a flagged concern — a clean scan
+  // (no flagged concerns at all) or an ingredient-free product is
+  // completely unaffected.
+  const matchedIngredientConcerns = new Set<SkinConcern>()
+  let matchedIngredientCount = 0
+  for (const ingredient of product.ingredientDetails ?? []) {
+    const matched = ingredient.concerns.filter((concern) => isFlaggedBand(concernSignals[concern]))
+    if (matched.length === 0) continue
+    matchedIngredientCount += 1
+    matched.forEach((concern) => matchedIngredientConcerns.add(concern))
+  }
+  if (matchedIngredientCount > 0) {
+    score += Math.min(matchedIngredientCount * INGREDIENT_MATCH_BONUS, INGREDIENT_BONUS_CAP)
+    const concernLabels = [...matchedIngredientConcerns].map((concern) => CONCERN_LABELS[concern]).join(", ")
+    reasons.push(`Contains ingredients known to support ${concernLabels}.`)
   }
 
   if (reasons.length === 0) {

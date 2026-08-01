@@ -1,5 +1,3 @@
-import { IconUsers } from "@tabler/icons-react"
-
 import { AccessDenied } from "@/components/admin/access-denied"
 import { UsersTable } from "@/components/admin/users-table"
 import { countAdminTierUsers, listUsers } from "@/lib/backend/admin-users"
@@ -35,17 +33,6 @@ export default async function AdminUsersPage() {
 
   return (
     <div className="space-y-5">
-      <section className="border-b border-border pb-5">
-        <p className="flex items-center gap-2 text-xs font-semibold tracking-widest text-primary uppercase">
-          <IconUsers className="size-4" />
-          Users
-        </p>
-        <h1 className="mt-2 text-2xl font-semibold tracking-normal">Registered users</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Every account registered on Aurora SkinSense.
-        </p>
-      </section>
-
       <UsersTable
         initialUsers={users}
         currentUserId={principal.id}

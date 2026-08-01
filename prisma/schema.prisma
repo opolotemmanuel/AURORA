@@ -371,10 +371,9 @@ model Product {
   cosmeticBenefits Json
   bestFor          Json
   avoidIf          Json?
-  keyIngredients   Json?
   // Traditional Ayurvedic dosha relevance ("vata"/"pitta"/"kapha"), same
-  // Json-list convention as bestFor/avoidIf/keyIngredients above rather than
-  // a native String[] — additive input to recommendation-engine.ts's dosha
+  // Json-list convention as bestFor/avoidIf above rather than a native
+  // String[] — additive input to recommendation-engine.ts's dosha
   // bonus (lib/dosha/), never required: absent/empty means no dosha-based
   // scoring bonus for this product, existing concern/climate scoring is
   // unaffected either way.
@@ -382,13 +381,69 @@ model Product {
   officialUrl      String?
   priority         Int
   active           Boolean     @default(true)
+  // Set true only by the WooCommerce ingestion sync (lib/products/ingest/)
+  // when it creates a product WooCommerce doesn't give us enough to
+  // hand-curate — category/routineStep/priority/cosmeticBenefits/bestFor
+  // are placeholders, not real data yet. Cleared manually once someone
+  // reviews and fills in the real values via the admin product form.
+  needsCuration    Boolean     @default(false)
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 
   recommendations Recommendation[]
+  // Real, queryable Product<->Ingredient relation — see Ingredient/
+  // ProductIngredient below. Explicit join model (not an implicit Prisma
+  // m2m) so scripts/sync-catalog.ts, which writes via raw `pg` (not Prisma
+  // Client — see that file's header comment), gets stable, self-documenting
+  // productId/ingredientId columns instead of Prisma's auto-generated
+  // _IngredientToProduct table with opaque A/B columns.
+  ingredients     ProductIngredient[]
 
   @@index([active])
   @@index([routineStep])
+}
+
+model Ingredient {
+  id          String   @id @default(cuid())
+  // Canonical display name (e.g. "Niacinamide") — what UI chips and
+  // parse-inci.ts's matches resolve to, regardless of which alias matched.
+  name        String   @unique
+  // Alternate names/spellings/INCI variants parse-inci.ts should also
+  // recognize (e.g. "Vitamin B3" for Niacinamide). Native String[], not
+  // Json — this is always a flat list of strings, never richer structure.
+  aliases     String[] @default([])
+  // Short, honest, non-medical cosmetic-role description — migrated
+  // verbatim from lib/products/ingredients.ts (see scripts/seed-ingredients.ts).
+  description String
+  // SkinConcern values this ingredient is genuinely associated with (see
+  // lib/recommendations/types.ts's SkinConcern union) — additive input to
+  // recommendation-engine.ts's ingredient-match bonus. Plain String[]
+  // rather than a Prisma enum: SkinConcern is already validated at the TS
+  // layer everywhere it's read, and doshaTags above already establishes
+  // that this schema doesn't force enum usage on small fixed-vocabulary
+  // list fields like this one.
+  concerns    String[] @default([])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products ProductIngredient[]
+}
+
+// Explicit join, not an implicit Prisma many-to-many — see Product.ingredients'
+// comment for why. No per-pairing metadata needed yet beyond createdAt, but
+// this leaves room for one (e.g. a `source: "parser" | "manual"` flag) at
+// near-zero cost later without another migration shaped like this one.
+model ProductIngredient {
+  id           String   @id @default(cuid())
+  productId    String
+  ingredientId String
+  createdAt    DateTime @default(now())
+
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, ingredientId])
+  @@index([ingredientId])
 }
 
 model Recommendation {

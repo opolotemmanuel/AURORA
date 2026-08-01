@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { resolveIngredients } from "@/lib/products/ingredients"
+import type { IngredientDetail } from "@/lib/recommendations/types"
 import type { ReportViewModel } from "@/lib/reports/report-view-model"
 
 const MATCH_LABEL: Record<string, string> = {
@@ -70,7 +70,7 @@ export function RecommendedProducts({ vm }: { vm: ReportViewModel }) {
                   </p>
                 ) : null}
 
-                <IngredientChips keyIngredients={match.product.keyIngredients} />
+                <IngredientChips ingredients={match.product.ingredientDetails} />
 
                 <p className="text-xs text-muted-foreground">
                   <span className="font-medium text-foreground">Recommended usage: </span>
@@ -102,15 +102,15 @@ function capitalize(value: string) {
   return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
-// Hover/tap a chip for the ingredient's cosmetic role — see
-// lib/products/ingredients.ts's disclaimer-consistent, non-medical
-// descriptions. Renders nothing when the product has no recognized
-// ingredient (most products in this catalog don't — see AGENTS.md's "no
-// fabrication" rule extended here), same graceful-omission pattern as the
-// "Why it was selected" block above it.
-function IngredientChips({ keyIngredients }: { keyIngredients: string[] | undefined }) {
-  const ingredients = resolveIngredients(keyIngredients)
-  if (ingredients.length === 0) return null
+// Hover/tap a chip for the ingredient's cosmetic role — already resolved
+// (name + disclaimer-consistent, non-medical description) against the real
+// Ingredient table by lib/backend/product-service.ts's mapProduct. Renders
+// nothing when the product has no recognized ingredient (most products in
+// this catalog don't — see AGENTS.md's "no fabrication" rule extended
+// here), same graceful-omission pattern as the "Why it was selected" block
+// above it.
+function IngredientChips({ ingredients }: { ingredients: IngredientDetail[] | undefined }) {
+  if (!ingredients || ingredients.length === 0) return null
 
   return (
     <div className="space-y-1.5">

@@ -14,6 +14,23 @@ export type SkinConcern =
   | "radiance"
   | "daytimeProtection"
 
+// Runtime-checkable mirror of the SkinConcern union — form input, JSON
+// columns, and Ingredient.concerns all arrive as plain strings that need
+// validating against real concern values rather than trusted as-is. Single
+// shared source (lib/backend/product-service.ts and
+// lib/products/ingredients/repository.ts both import this) instead of each
+// maintaining its own copy that could drift.
+export const SKIN_CONCERNS = [
+  "hydration",
+  "texture",
+  "rednessAppearance",
+  "pigmentationAppearance",
+  "oilBalance",
+  "barrierComfort",
+  "radiance",
+  "daytimeProtection",
+] as const satisfies readonly SkinConcern[]
+
 export type RoutineStep = "cleanse" | "treat" | "moisturize" | "protect"
 
 export type SkinProfile = "dry-feeling" | "balanced" | "oil-prone" | "sensitive-feeling" | "dull-looking"
@@ -71,6 +88,20 @@ export type RecommendationPreferences = {
   limit?: number
 }
 
+// One row from the Ingredient table, resolved for a specific product —
+// populated once by lib/backend/product-service.ts's mapProduct (a single
+// query with the Product<->Ingredient relation included), so every
+// downstream consumer (report card chips, chat cards, recommendation
+// scoring) just reads plain data instead of each doing its own lookup.
+// Notably this is what makes ChatProductCard (a client component, inside a
+// "use client" chat tree) able to show ingredient tooltips without itself
+// touching Prisma or becoming async.
+export type IngredientDetail = {
+  name: string
+  description: string
+  concerns: SkinConcern[]
+}
+
 // `id` is the stable slug (used in URLs/matching logic); `databaseId` is the
 // Prisma row id, only present once the product actually exists in Postgres
 // (see lib/backend/product-service.ts's mapProduct). Keep this distinction
@@ -86,7 +117,16 @@ export type AuroraProduct = {
   cosmeticBenefits: string[]
   bestFor: SkinConcern[]
   avoidIf?: SkinConcern[]
+  // Plain ingredient names — unchanged shape/meaning from before the
+  // Ingredient table existed, so gemini-adapter.ts/chat routes/
+  // match-allergies.ts/the admin product table all keep working exactly as
+  // they did. Derived from `ingredientDetails` below wherever a real
+  // Ingredient relation is available.
   keyIngredients?: string[]
+  // Description + concerns per recognized ingredient — absent (not just
+  // empty) whenever a product's ingredients haven't been resolved against
+  // the Ingredient table (e.g. static fixtures in tests).
+  ingredientDetails?: IngredientDetail[]
   // Traditional Ayurvedic dosha relevance ("vata"/"pitta"/"kapha") — see
   // Product.doshaTags's schema comment. Additive input to the dosha bonus
   // in recommendation-engine.ts; empty/absent just means no bonus applies.

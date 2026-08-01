@@ -1,11 +1,7 @@
 import Link from "next/link"
 import {
-  IconChevronLeft,
-  IconChevronRight,
   IconDotsVertical,
-  IconDownload,
   IconFileAnalytics,
-  IconFilter,
   IconRefresh,
   IconSearch,
 } from "@tabler/icons-react"
@@ -16,21 +12,56 @@ import {
 // between the two call sites (filter form target, refresh/pagination links).
 // Row-level "View Report" links always point at /reports/[id], the one
 // report-detail route both callers share.
+//
+// Console-style redesign: the old dropdown filters are now removable chips
+// and the sort <select> is now clickable column headers, but everything
+// still resolves to the exact same query params this table already
+// supported (search/aiSource/status/scanSource/dateRange/sort/page/
+// pageSize) via the exact same parseReportQuery/getReportOrderBy/
+// listReportsPage server-side pipeline — real pagination and real filtering
+// over the full Report table, never a client-side slice of one page. Kept
+// as a Server Component; the one Client Component island is
+// ExportCsvButton, since building/downloading a CSV needs the browser.
 import {
   REPORT_TABLE_PAGE_SIZE_OPTIONS,
-  REPORT_TABLE_SORT_OPTIONS,
   getQueryString,
 } from "@/lib/backend/report-table-query"
 import type { ReportTableQuery, listReportsPage } from "@/lib/backend/report-store"
 import { cn } from "@/lib/utils"
+import { SingleSelectFilterChips } from "@/components/admin/filter-chip-bar"
+import { PaginationFooter } from "@/components/admin/pagination-footer"
+import { SortableHeader } from "@/components/admin/sortable-header"
+import { ExportCsvButton } from "@/components/report/export-csv-button"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
 type ReportsPageResult = Awaited<ReturnType<typeof listReportsPage>>
 type ReportRow = ReportsPageResult["reports"][number]
+
+const AI_SOURCE_OPTIONS = [
+  { value: "gemini", label: "Gemini" },
+  { value: "fallback", label: "Fallback" },
+]
+
+const STATUS_OPTIONS = [
+  { value: "completed", label: "Completed" },
+  { value: "pending", label: "Pending" },
+  { value: "failed", label: "Failed" },
+  { value: "archived", label: "Archived" },
+]
+
+const SCAN_SOURCE_OPTIONS = [
+  { value: "camera", label: "Camera" },
+  { value: "upload", label: "Upload" },
+]
+
+const DATE_RANGE_OPTIONS = [
+  { value: "today", label: "Today" },
+  { value: "week", label: "This Week" },
+  { value: "month", label: "This Month" },
+]
 
 export function ReportsTable({
   basePath,
@@ -45,60 +76,101 @@ export function ReportsTable({
   const start = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.pageSize + 1
   const end = Math.min(pagination.page * pagination.pageSize, pagination.total)
 
+  // Every filter chip and sort header below resolves to this same
+  // getQueryString/parseReportQuery pair the old dropdowns and pagination
+  // links already used — changing a facet always resets to page 1, same as
+  // the old form submit did.
+  function facetHref(overrides: Partial<ReportTableQuery>) {
+    return `${basePath}?${getQueryString({ ...query, page: 1, ...overrides })}`
+  }
+
+  // Unlike facetHref, Refresh isn't changing any filter/sort, so it must
+  // not reset the current page — it re-requests the exact same view.
+  const refreshHref = `${basePath}?${getQueryString(query)}`
+
+  const createdSortHref = facetHref({ sort: query.sort === "oldest" ? "newest" : "oldest" })
+  const createdSortActive = query.sort === "newest" || query.sort === "oldest"
+  const createdSortDirection = query.sort === "oldest" ? "asc" : "desc"
+
+  const csvHeaders = ["Report ID", "User", "Email", "Scan Source", "AI Source", "Status", "Summary", "Recommendations", "Created", "Updated"]
+  const csvRows = reports.map((report) => [
+    report.shortId,
+    report.user.name ?? "Anonymous User",
+    report.user.email ?? "",
+    formatValue(report.scanSource),
+    formatValue(report.aiSource),
+    formatValue(report.status),
+    report.summary,
+    report.recommendationNames.join("; "),
+    report.createdAt,
+    report.updatedAt,
+  ])
+
   return (
     <div className="space-y-5">
       <Card>
-        <CardContent>
-          <form action={basePath} className="grid gap-3 xl:grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr_0.8fr_0.8fr_auto_auto]">
-            <label className="relative">
-              <IconSearch className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <CardContent className="space-y-4">
+          <form action={basePath} className="flex flex-wrap items-center gap-3">
+            <label className="relative min-w-56 flex-1">
+              <IconSearch className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 name="search"
                 defaultValue={query.search}
                 placeholder="Search report ID, user, product, summary"
-                className="h-10 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm"
+                className="h-10 w-full rounded-md border border-input bg-background pr-3 pl-9 text-sm"
               />
             </label>
-            <Select name="aiSource" label="AI Source" value={query.aiSource} options={[
-              ["", "All AI"],
-              ["gemini", "Gemini"],
-              ["fallback", "Fallback"],
-            ]} />
-            <Select name="status" label="Status" value={query.status} options={[
-              ["", "All status"],
-              ["completed", "Completed"],
-              ["pending", "Pending"],
-              ["failed", "Failed"],
-              ["archived", "Archived"],
-            ]} />
-            <Select name="scanSource" label="Scan Source" value={query.scanSource} options={[
-              ["", "All sources"],
-              ["camera", "Camera"],
-              ["upload", "Upload"],
-            ]} />
-            <Select name="dateRange" label="Date Range" value={query.dateRange} options={[
-              ["", "All dates"],
-              ["today", "Today"],
-              ["week", "This Week"],
-              ["month", "This Month"],
-            ]} />
-            <Select
-              name="sort"
-              label="Sort"
-              value={query.sort}
-              options={REPORT_TABLE_SORT_OPTIONS.map((option) => [option.value, option.label])}
-            />
+            <input type="hidden" name="aiSource" value={query.aiSource ?? ""} />
+            <input type="hidden" name="status" value={query.status ?? ""} />
+            <input type="hidden" name="scanSource" value={query.scanSource ?? ""} />
+            <input type="hidden" name="dateRange" value={query.dateRange ?? ""} />
+            <input type="hidden" name="sort" value={query.sort} />
+            <input type="hidden" name="pageSize" value={query.pageSize} />
             <Button type="submit">
-              <IconFilter className="size-4" />
-              Filter
+              <IconSearch className="size-4" />
+              Search
             </Button>
             <Button asChild variant="outline">
-              <Link href={basePath}>
+              <Link href={refreshHref}>
                 <IconRefresh className="size-4" />
                 Refresh
               </Link>
             </Button>
+            <ExportCsvButton
+              filename={`scans-${new Date().toISOString().slice(0, 10)}.csv`}
+              headers={csvHeaders}
+              rows={csvRows}
+              label="Export CSV (this page)"
+              disabled={reports.length === 0}
+            />
           </form>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <SingleSelectFilterChips
+              value={query.aiSource ?? "all"}
+              options={AI_SOURCE_OPTIONS}
+              getHref={(value) => facetHref({ aiSource: value === "all" ? undefined : (value as ReportTableQuery["aiSource"]) })}
+              addLabel="AI Source"
+            />
+            <SingleSelectFilterChips
+              value={query.status ?? "all"}
+              options={STATUS_OPTIONS}
+              getHref={(value) => facetHref({ status: value === "all" ? undefined : (value as ReportTableQuery["status"]) })}
+              addLabel="Status"
+            />
+            <SingleSelectFilterChips
+              value={query.scanSource ?? "all"}
+              options={SCAN_SOURCE_OPTIONS}
+              getHref={(value) => facetHref({ scanSource: value === "all" ? undefined : (value as ReportTableQuery["scanSource"]) })}
+              addLabel="Scan Source"
+            />
+            <SingleSelectFilterChips
+              value={query.dateRange ?? "all"}
+              options={DATE_RANGE_OPTIONS}
+              getHref={(value) => facetHref({ dateRange: value === "all" ? undefined : (value as ReportTableQuery["dateRange"]) })}
+              addLabel="Date Range"
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -108,17 +180,7 @@ export function ReportsTable({
             <span className="font-medium text-foreground">{pagination.total}</span>
             <span>Total Reports</span>
             <span>·</span>
-            <span>Page {pagination.page} of {pagination.pageCount}</span>
-            <span>·</span>
-            <span>{pagination.pageSize} per page</span>
-          </div>
-          {/* Intentionally non-functional (ToolbarButton always renders
-              disabled) — placeholders for bulk actions that aren't built
-              yet, not broken buttons. */}
-          <div className="flex flex-wrap gap-2">
-            <ToolbarButton label="Export" icon={IconDownload} />
-            <ToolbarButton label="Bulk Archive" />
-            <ToolbarButton label="Bulk Delete" />
+            <span>Last Updated {formatDate(result.lastUpdated)}</span>
           </div>
         </CardContent>
       </Card>
@@ -127,26 +189,29 @@ export function ReportsTable({
         {reports.length ? (
           <>
             <div className="hidden overflow-x-auto lg:block">
-              <Table className="min-w-[1320px]">
+              <Table className="min-w-[1250px]">
                 <TableHeader className="sticky top-0 z-10 bg-muted">
                   <TableRow>
-                    <TableHead><Checkbox aria-label="Select all reports" /></TableHead>
-                    <TableHead>Report ID</TableHead>
+                    <SortableHeader label="Report ID" active={query.sort === "reportId"} href={facetHref({ sort: "reportId" })} />
                     <TableHead>User</TableHead>
                     <TableHead>Scan Source</TableHead>
-                    <TableHead>AI Source</TableHead>
-                    <TableHead>Status</TableHead>
+                    <SortableHeader label="AI Source" active={query.sort === "aiSource"} href={facetHref({ sort: "aiSource" })} />
+                    <SortableHeader label="Status" active={query.sort === "status"} href={facetHref({ sort: "status" })} />
                     <TableHead>Skin Summary</TableHead>
                     <TableHead>Recommendations</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead>Updated</TableHead>
+                    <SortableHeader
+                      label="Created"
+                      active={createdSortActive}
+                      direction={createdSortActive ? createdSortDirection : undefined}
+                      href={createdSortHref}
+                    />
+                    <SortableHeader label="Updated" active={query.sort === "updated"} href={facetHref({ sort: "updated" })} />
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {reports.map((report) => (
                     <TableRow key={report.id}>
-                      <TableCell><Checkbox aria-label={`Select ${report.shortId}`} /></TableCell>
                       <TableCell>
                         <Link href={`/reports/${report.id}`} className="font-medium text-primary hover:underline">
                           {report.shortId}
@@ -198,7 +263,6 @@ export function ReportsTable({
                       </Link>
                       <p className="mt-1 text-xs text-muted-foreground">{formatDate(report.createdAt)}</p>
                     </div>
-                    <Checkbox aria-label={`Select ${report.shortId}`} />
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <Badge variant="secondary">{formatValue(report.scanSource)}</Badge>
@@ -227,51 +291,22 @@ export function ReportsTable({
         )}
       </Card>
 
-      <Card size="sm">
-        <CardContent className="flex flex-col gap-3 text-sm text-muted-foreground lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            Showing {start}-{end} of {pagination.total} reports · Last Updated {formatDate(result.lastUpdated)}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <PageSizeLinks basePath={basePath} query={query} />
-            <PaginationLink basePath={basePath} query={query} page={pagination.page - 1} disabled={pagination.page <= 1}>
-              <IconChevronLeft className="size-4" />
-              Previous
-            </PaginationLink>
-            <span className="rounded-md border border-border bg-muted px-3 py-2 text-xs">
-              {pagination.page}
-            </span>
-            <PaginationLink basePath={basePath} query={query} page={pagination.page + 1} disabled={pagination.page >= pagination.pageCount}>
-              Next
-              <IconChevronRight className="size-4" />
-            </PaginationLink>
-          </div>
-        </CardContent>
-      </Card>
+      <PaginationFooter
+        start={start}
+        end={end}
+        total={pagination.total}
+        itemLabel="reports"
+        page={pagination.page}
+        pageCount={pagination.pageCount}
+        prev={pagination.page > 1 ? { href: `${basePath}?${getQueryString({ ...query, page: pagination.page - 1 })}` } : null}
+        next={
+          pagination.page < pagination.pageCount
+            ? { href: `${basePath}?${getQueryString({ ...query, page: pagination.page + 1 })}` }
+            : null
+        }
+        extra={<PageSizeLinks basePath={basePath} query={query} />}
+      />
     </div>
-  )
-}
-
-function Select({
-  name,
-  label,
-  value,
-  options,
-}: {
-  name: string
-  label: string
-  value?: string
-  options: Array<[string, string]>
-}) {
-  return (
-    <label className="sr-only">
-      {label}
-      <select name={name} defaultValue={value ?? ""} className="not-sr-only h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
-        {options.map(([optionValue, optionLabel]) => (
-          <option key={optionValue || "all"} value={optionValue}>{optionLabel}</option>
-        ))}
-      </select>
-    </label>
   )
 }
 
@@ -350,46 +385,6 @@ function MenuButton({ label, detail }: { label: string; detail: string }) {
       <span>{label}</span>
       <span className="text-xs">{detail}</span>
     </button>
-  )
-}
-
-function ToolbarButton({ label, icon: Icon }: { label: string; icon?: React.ComponentType<{ className?: string }> }) {
-  return (
-    <Button type="button" variant="outline" size="sm" disabled>
-      {Icon ? <Icon className="size-4" /> : null}
-      {label}
-    </Button>
-  )
-}
-
-function PaginationLink({
-  basePath,
-  query,
-  page,
-  disabled,
-  children,
-}: {
-  basePath: string
-  query: ReportTableQuery
-  page: number
-  disabled: boolean
-  children: React.ReactNode
-}) {
-  if (disabled) {
-    return (
-      <span className="inline-flex items-center gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
-        {children}
-      </span>
-    )
-  }
-
-  return (
-    <Link
-      href={`${basePath}?${getQueryString({ ...query, page })}`}
-      className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-xs font-medium hover:bg-accent hover:text-accent-foreground"
-    >
-      {children}
-    </Link>
   )
 }
 

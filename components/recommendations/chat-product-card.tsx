@@ -9,11 +9,14 @@ import { IconExternalLink } from "@tabler/icons-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { resolveIngredients } from "@/lib/products/ingredients"
 import type { AuroraProduct } from "@/lib/recommendations/types"
 
 export function ChatProductCard({ product }: { product: AuroraProduct }) {
-  const ingredients = resolveIngredients(product.keyIngredients)
+  // Already resolved once, server-side, against the real Ingredient table
+  // by lib/backend/product-service.ts's mapProduct — this component is
+  // part of a "use client" chat tree (report-chat-panel.tsx,
+  // skin-advice-chat.tsx), so it can't be async or touch Prisma itself.
+  const ingredients = product.ingredientDetails ?? []
 
   return (
     <div className="flex w-40 shrink-0 flex-col gap-2 rounded-lg border border-border bg-background p-2.5">

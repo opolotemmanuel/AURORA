@@ -1,13 +1,15 @@
+"use client"
+
 // Product Management tab — moved out of app/(dashboard)/settings/page.tsx
 // as part of the tabbed console restructure. Same real PostgreSQL product
 // records and same server actions as before (create/update/activate/
-// deactivate/delete-or-archive); the table now also surfaces key
-// ingredients, cosmetic benefits, and created date — all real Product
-// fields that existed already but weren't shown in the table. Deliberately
-// no brand/skin type/price columns: those fields don't exist on the
-// Product model. Card layout (header card / summary card / table card)
-// mirrors the established pattern in components/report/reports-table.tsx.
+// deactivate/delete-or-archive). Console-style redesign: shared toolbar,
+// removable status filter chip, sortable column headers, and client-side
+// pagination — all operating on the full product array already returned by
+// listProducts() (no new query, no new query params).
 import Image from "next/image"
+import { useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 
 import type {
   activateProductAction,
@@ -17,10 +19,15 @@ import type {
   updateProductAction,
 } from "@/app/(dashboard)/settings/product-actions"
 import type { listProducts } from "@/lib/backend/product-service"
+import { downloadCsv } from "@/lib/csv-export"
 import { cn } from "@/lib/utils"
+import { SingleSelectFilterChips } from "@/components/admin/filter-chip-bar"
+import { PaginationFooter } from "@/components/admin/pagination-footer"
+import { SortableHeader } from "@/components/admin/sortable-header"
+import { ConsoleToolbar } from "@/components/admin/settings/console-toolbar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import {
@@ -43,27 +50,121 @@ type ProductActionHandlers = {
   remove: typeof deleteProductAction
 }
 
+const PAGE_SIZE = 20
+
+type StatusFilter = "active" | "needs-curation" | "inactive"
+
+const STATUS_FILTER_OPTIONS: Array<{ value: StatusFilter; label: string }> = [
+  { value: "active", label: "Active only" },
+  { value: "needs-curation", label: "Needs curation" },
+  { value: "inactive", label: "Inactive" },
+]
+
+// A product "needs curation" when it's active in the recommendation engine
+// but missing catalog fields a shopper-facing product listing should have.
+// Every field checked here is already returned by listProducts() — this is
+// a client-derived label, not a stored Product flag.
+function needsCuration(product: ProductRow) {
+  return product.active && (!product.imagePath || !product.officialUrl || !product.keyIngredients?.length)
+}
+
+type SortKey = "name" | "category" | "priority" | "recommendationCount" | "createdAt" | "updatedAt"
+type SortState = { key: SortKey; direction: "asc" | "desc" } | null
+
 export function ProductPanel({ products, actions }: { products: ProductRow[]; actions: ProductActionHandlers }) {
+  const router = useRouter()
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<StatusFilter | "all">("all")
+  const [sort, setSort] = useState<SortState>(null)
+  const [page, setPage] = useState(1)
+
   const activeCount = products.filter((product) => product.active).length
+
+  const filtered = useMemo(() => {
+    if (statusFilter === "active") return products.filter((product) => product.active)
+    if (statusFilter === "inactive") return products.filter((product) => !product.active)
+    if (statusFilter === "needs-curation") return products.filter(needsCuration)
+    return products
+  }, [products, statusFilter])
+
+  const sorted = useMemo(() => {
+    if (!sort) return filtered
+    const { key, direction } = sort
+    const factor = direction === "asc" ? 1 : -1
+
+    return [...filtered].sort((a, b) => {
+      const aValue = a[key]
+      const bValue = b[key]
+      if (typeof aValue === "number" && typeof bValue === "number") return (aValue - bValue) * factor
+      return String(aValue).localeCompare(String(bValue)) * factor
+    })
+  }, [filtered, sort])
+
+  const pageCount = Math.max(Math.ceil(sorted.length / PAGE_SIZE), 1)
+  const currentPage = Math.min(page, pageCount)
+  const pageStart = (currentPage - 1) * PAGE_SIZE
+  const pageItems = sorted.slice(pageStart, pageStart + PAGE_SIZE)
+
+  function toggleSort(key: SortKey) {
+    setPage(1)
+    setSort((current) => {
+      if (!current || current.key !== key) return { key, direction: "asc" }
+      if (current.direction === "asc") return { key, direction: "desc" }
+      return null
+    })
+  }
+
+  function handleExport() {
+    downloadCsv(
+      `products-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Name", "Category", "Routine", "Status", "Priority", "Recommendations", "Created", "Updated"],
+      sorted.map((product) => [
+        product.name,
+        product.category,
+        product.routineStep,
+        product.active ? "Active" : "Archived",
+        String(product.priority),
+        String(product.recommendationCount),
+        product.createdAt,
+        product.updatedAt,
+      ]),
+    )
+  }
 
   return (
     <div className="space-y-5">
-      <Card>
-        <CardHeader>
-          <p className="flex items-center gap-2 text-xs font-semibold tracking-widest text-primary uppercase">
-            <IconBuildingStore className="size-4" />
-            Product Management
-          </p>
-          <CardTitle className="mt-2">Aurora Products</CardTitle>
-          <CardDescription className="mt-2 max-w-3xl leading-6">
-            Real PostgreSQL product records used by the recommendation engine. If no active products exist,
-            recommendations will return an honest empty result instead of hard-coded live data.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ProductForm title="Add Product" action={actions.create} submitLabel="Add product" />
-        </CardContent>
-      </Card>
+      <ConsoleToolbar
+        icon={IconBuildingStore}
+        eyebrow="Product Management"
+        breadcrumb={[{ label: "Settings", href: "/settings" }, { label: "Products" }]}
+        title="Aurora Products"
+        description="Real PostgreSQL product records used by the recommendation engine. If no active products exist, recommendations will return an honest empty result instead of hard-coded live data."
+        primaryAction={{
+          label: showAddForm ? "Close form" : "Add product",
+          icon: IconPlus,
+          onClick: () => setShowAddForm((value) => !value),
+        }}
+        onRefresh={() => router.refresh()}
+        onExport={handleExport}
+        exportDisabled={sorted.length === 0}
+      >
+        <SingleSelectFilterChips
+          value={statusFilter}
+          options={STATUS_FILTER_OPTIONS}
+          onChange={(value) => {
+            setPage(1)
+            setStatusFilter(value as StatusFilter | "all")
+          }}
+        />
+      </ConsoleToolbar>
+
+      {showAddForm ? (
+        <Card>
+          <CardContent>
+            <ProductForm title="Add Product" action={actions.create} submitLabel="Add product" />
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card size="sm">
         <CardContent className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
@@ -75,7 +176,26 @@ export function ProductPanel({ products, actions }: { products: ProductRow[]; ac
         </CardContent>
       </Card>
 
-      <ProductTable products={products} actions={actions} />
+      <ProductTable
+        products={pageItems}
+        actions={actions}
+        sort={sort}
+        onSort={toggleSort}
+        hasAnyProducts={products.length > 0}
+      />
+
+      {products.length > 0 ? (
+        <PaginationFooter
+          start={sorted.length === 0 ? 0 : pageStart + 1}
+          end={Math.min(pageStart + PAGE_SIZE, sorted.length)}
+          total={sorted.length}
+          itemLabel="products"
+          page={currentPage}
+          pageCount={pageCount}
+          prev={currentPage > 1 ? { onClick: () => setPage(currentPage - 1) } : null}
+          next={currentPage < pageCount ? { onClick: () => setPage(currentPage + 1) } : null}
+        />
+      ) : null}
     </div>
   )
 }
@@ -197,8 +317,20 @@ function ProductForm({
   )
 }
 
-function ProductTable({ products, actions }: { products: ProductRow[]; actions: ProductActionHandlers }) {
-  if (!products.length) {
+function ProductTable({
+  products,
+  actions,
+  sort,
+  onSort,
+  hasAnyProducts,
+}: {
+  products: ProductRow[]
+  actions: ProductActionHandlers
+  sort: SortState
+  onSort: (key: SortKey) => void
+  hasAnyProducts: boolean
+}) {
+  if (!hasAnyProducts) {
     return (
       <Card>
         <CardContent className="text-sm text-muted-foreground">
@@ -208,30 +340,44 @@ function ProductTable({ products, actions }: { products: ProductRow[]; actions: 
     )
   }
 
+  if (products.length === 0) {
+    return (
+      <Card>
+        <CardContent className="text-sm text-muted-foreground">No products match this filter.</CardContent>
+      </Card>
+    )
+  }
+
+  function headerProps(key: SortKey) {
+    return {
+      active: sort?.key === key,
+      direction: sort?.key === key ? sort.direction : undefined,
+      onSort: () => onSort(key),
+    }
+  }
+
   return (
     <Card className="overflow-hidden py-0">
       <div className="hidden overflow-x-auto lg:block">
-        <Table className="min-w-[1300px]">
+        <Table className="min-w-[1250px]">
           <TableHeader className="sticky top-0 z-10 bg-muted">
             <TableRow>
-              <TableHead><Checkbox aria-label="Select all products" /></TableHead>
-              <TableHead>Product</TableHead>
-              <TableHead>Category</TableHead>
+              <SortableHeader label="Product" {...headerProps("name")} />
+              <SortableHeader label="Category" {...headerProps("category")} />
               <TableHead>Routine</TableHead>
               <TableHead>Key ingredients</TableHead>
               <TableHead>Cosmetic benefits</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Priority</TableHead>
-              <TableHead>Recommendations</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead>Updated</TableHead>
+              <SortableHeader label="Priority" {...headerProps("priority")} />
+              <SortableHeader label="Recommendations" {...headerProps("recommendationCount")} />
+              <SortableHeader label="Created" {...headerProps("createdAt")} />
+              <SortableHeader label="Updated" {...headerProps("updatedAt")} />
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {products.map((product) => (
               <TableRow key={product.databaseId}>
-                <TableCell><Checkbox aria-label={`Select ${product.name}`} /></TableCell>
                 <TableCell className="whitespace-normal">
                   <div className="flex min-w-72 gap-3">
                     <ProductImage imagePath={product.imagePath} name={product.name} />
@@ -272,7 +418,6 @@ function ProductTable({ products, actions }: { products: ProductRow[]; actions: 
                 <p className="truncate text-xs text-muted-foreground">{product.id}</p>
                 <p className="mt-2 text-sm text-muted-foreground">{product.shortDescription}</p>
               </div>
-              <Checkbox aria-label={`Select ${product.name}`} />
             </div>
             <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
               <span className="rounded-md border border-border bg-muted px-2 py-1">{product.category}</span>

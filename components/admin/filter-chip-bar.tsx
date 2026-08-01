@@ -79,22 +79,22 @@ export function AddFilterMenu({ label = "Add filter", options }: { label?: strin
   )
 }
 
-// The common shape all four tabs need: a single active facet value ("all"
-// means no filter applied), shown as one removable chip, with the rest of
-// the facet's options offered via AddFilterMenu. Pass `onChange` for
-// client-side state or `getHref` for server-side query-param navigation.
+// The common shape client-filtered tabs need: a single active facet value
+// ("all" means no filter applied), shown as one removable chip, with the
+// rest of the facet's options offered via AddFilterMenu. `onChange` runs in
+// the same client tree as the caller (Products/Users/Audit Logs are all
+// "use client" panels), so a plain closure prop is fine here — nothing
+// crosses a Server/Client boundary.
 export function SingleSelectFilterChips({
   value,
   options,
   onChange,
-  getHref,
   addLabel,
   className,
 }: {
   value: string
   options: Array<{ value: string; label: string }>
-  onChange?: (value: string) => void
-  getHref?: (value: string) => string
+  onChange: (value: string) => void
   addLabel?: string
   className?: string
 }) {
@@ -103,19 +103,38 @@ export function SingleSelectFilterChips({
 
   return (
     <div className={cn("flex flex-wrap items-center gap-2", className)}>
-      {active ? (
-        <FilterChip
-          label={active.label}
-          target={getHref ? { href: getHref("all") } : { onSelect: () => onChange?.("all") }}
-        />
-      ) : null}
+      {active ? <FilterChip label={active.label} target={{ onSelect: () => onChange("all") }} /> : null}
       <AddFilterMenu
         label={addLabel}
-        options={rest.map((option) =>
-          getHref
-            ? { value: option.value, label: option.label, href: getHref(option.value) }
-            : { value: option.value, label: option.label, onSelect: () => onChange?.(option.value) },
-        )}
+        options={rest.map((option) => ({ value: option.value, label: option.label, onSelect: () => onChange(option.value) }))}
+      />
+    </div>
+  )
+}
+
+// The server-driven counterpart for tables like Scans that stay Server
+// Components: a Server Component CANNOT pass a function (e.g. a `getHref`
+// callback) into these Client Components — only serializable data can
+// cross that boundary. So instead of a callback, the caller resolves every
+// href up front (plain string building against the existing query-param
+// helpers) and passes the finished strings down.
+export function SingleSelectFilterLinks({
+  active,
+  options,
+  addLabel,
+  className,
+}: {
+  active?: { label: string; href: string }
+  options: Array<{ value: string; label: string; href: string }>
+  addLabel?: string
+  className?: string
+}) {
+  return (
+    <div className={cn("flex flex-wrap items-center gap-2", className)}>
+      {active ? <FilterChip label={active.label} target={{ href: active.href }} /> : null}
+      <AddFilterMenu
+        label={addLabel}
+        options={options.map((option) => ({ value: option.value, label: option.label, href: option.href }))}
       />
     </div>
   )

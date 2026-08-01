@@ -28,7 +28,7 @@ import {
 } from "@/lib/backend/report-table-query"
 import type { ReportTableQuery, listReportsPage } from "@/lib/backend/report-store"
 import { cn } from "@/lib/utils"
-import { SingleSelectFilterChips } from "@/components/admin/filter-chip-bar"
+import { SingleSelectFilterLinks } from "@/components/admin/filter-chip-bar"
 import { PaginationFooter } from "@/components/admin/pagination-footer"
 import { SortableHeader } from "@/components/admin/sortable-header"
 import { ExportCsvButton } from "@/components/report/export-csv-button"
@@ -40,28 +40,46 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 type ReportsPageResult = Awaited<ReturnType<typeof listReportsPage>>
 type ReportRow = ReportsPageResult["reports"][number]
 
-const AI_SOURCE_OPTIONS = [
+const AI_SOURCE_OPTIONS: Array<{ value: NonNullable<ReportTableQuery["aiSource"]>; label: string }> = [
   { value: "gemini", label: "Gemini" },
   { value: "fallback", label: "Fallback" },
 ]
 
-const STATUS_OPTIONS = [
+const STATUS_OPTIONS: Array<{ value: NonNullable<ReportTableQuery["status"]>; label: string }> = [
   { value: "completed", label: "Completed" },
   { value: "pending", label: "Pending" },
   { value: "failed", label: "Failed" },
   { value: "archived", label: "Archived" },
 ]
 
-const SCAN_SOURCE_OPTIONS = [
+const SCAN_SOURCE_OPTIONS: Array<{ value: NonNullable<ReportTableQuery["scanSource"]>; label: string }> = [
   { value: "camera", label: "Camera" },
   { value: "upload", label: "Upload" },
 ]
 
-const DATE_RANGE_OPTIONS = [
+const DATE_RANGE_OPTIONS: Array<{ value: NonNullable<ReportTableQuery["dateRange"]>; label: string }> = [
   { value: "today", label: "Today" },
   { value: "week", label: "This Week" },
   { value: "month", label: "This Month" },
 ]
+
+// Resolves every option (plus the "remove filter" action for whichever one
+// is currently active) to a plain string href — see the comment at the
+// call site in ReportsTable for why this can't be a callback prop instead.
+function buildFacetLinks<T extends string>(
+  options: Array<{ value: T; label: string }>,
+  current: T | undefined,
+  hrefFor: (value: T | undefined) => string,
+) {
+  const activeOption = options.find((option) => option.value === current)
+
+  return {
+    active: activeOption ? { label: activeOption.label, href: hrefFor(undefined) } : undefined,
+    options: options
+      .filter((option) => option.value !== current)
+      .map((option) => ({ value: option.value, label: option.label, href: hrefFor(option.value) })),
+  }
+}
 
 export function ReportsTable({
   basePath,
@@ -91,6 +109,17 @@ export function ReportsTable({
   const createdSortHref = facetHref({ sort: query.sort === "oldest" ? "newest" : "oldest" })
   const createdSortActive = query.sort === "newest" || query.sort === "oldest"
   const createdSortDirection = query.sort === "oldest" ? "asc" : "desc"
+
+  // SingleSelectFilterLinks is a Client Component, and ReportsTable is a
+  // Server Component — a Server Component can't hand a Client Component a
+  // callback (e.g. a `getHref` function) to invoke later, only plain
+  // serializable data. So every href for every option is resolved to a
+  // finished string right here, still using the same facetHref/
+  // getQueryString helpers as the old dropdown/pagination links did.
+  const aiSourceLinks = buildFacetLinks(AI_SOURCE_OPTIONS, query.aiSource, (value) => facetHref({ aiSource: value }))
+  const statusLinks = buildFacetLinks(STATUS_OPTIONS, query.status, (value) => facetHref({ status: value }))
+  const scanSourceLinks = buildFacetLinks(SCAN_SOURCE_OPTIONS, query.scanSource, (value) => facetHref({ scanSource: value }))
+  const dateRangeLinks = buildFacetLinks(DATE_RANGE_OPTIONS, query.dateRange, (value) => facetHref({ dateRange: value }))
 
   const csvHeaders = ["Report ID", "User", "Email", "Scan Source", "AI Source", "Status", "Summary", "Recommendations", "Created", "Updated"]
   const csvRows = reports.map((report) => [
@@ -146,30 +175,10 @@ export function ReportsTable({
           </form>
 
           <div className="flex flex-wrap items-center gap-2">
-            <SingleSelectFilterChips
-              value={query.aiSource ?? "all"}
-              options={AI_SOURCE_OPTIONS}
-              getHref={(value) => facetHref({ aiSource: value === "all" ? undefined : (value as ReportTableQuery["aiSource"]) })}
-              addLabel="AI Source"
-            />
-            <SingleSelectFilterChips
-              value={query.status ?? "all"}
-              options={STATUS_OPTIONS}
-              getHref={(value) => facetHref({ status: value === "all" ? undefined : (value as ReportTableQuery["status"]) })}
-              addLabel="Status"
-            />
-            <SingleSelectFilterChips
-              value={query.scanSource ?? "all"}
-              options={SCAN_SOURCE_OPTIONS}
-              getHref={(value) => facetHref({ scanSource: value === "all" ? undefined : (value as ReportTableQuery["scanSource"]) })}
-              addLabel="Scan Source"
-            />
-            <SingleSelectFilterChips
-              value={query.dateRange ?? "all"}
-              options={DATE_RANGE_OPTIONS}
-              getHref={(value) => facetHref({ dateRange: value === "all" ? undefined : (value as ReportTableQuery["dateRange"]) })}
-              addLabel="Date Range"
-            />
+            <SingleSelectFilterLinks active={aiSourceLinks.active} options={aiSourceLinks.options} addLabel="AI Source" />
+            <SingleSelectFilterLinks active={statusLinks.active} options={statusLinks.options} addLabel="Status" />
+            <SingleSelectFilterLinks active={scanSourceLinks.active} options={scanSourceLinks.options} addLabel="Scan Source" />
+            <SingleSelectFilterLinks active={dateRangeLinks.active} options={dateRangeLinks.options} addLabel="Date Range" />
           </div>
         </CardContent>
       </Card>

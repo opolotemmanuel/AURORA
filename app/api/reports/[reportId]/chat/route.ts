@@ -121,7 +121,7 @@ export async function POST(request: Request, context: RouteContext) {
     const message =
       error instanceof ReportChatQuestionTooLongError
         ? error.message
-        : "Aura couldn't answer that just now. Try again in a moment."
+        : "Aurora Organics couldn't answer that just now. Try again in a moment."
 
     return NextResponse.json({ userMessage, error: message }, { status: 502 })
   }

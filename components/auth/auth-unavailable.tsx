@@ -21,7 +21,7 @@ export function AuthUnavailable() {
         <CardHeader>
           <CardTitle>Reconnecting</CardTitle>
           <CardDescription>
-            Aura couldn&apos;t reach the database just now. This is usually
+            Aurora Organics couldn&apos;t reach the database just now. This is usually
             temporary — try again in a few seconds.
           </CardDescription>
         </CardHeader>

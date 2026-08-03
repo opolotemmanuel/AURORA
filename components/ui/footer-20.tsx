@@ -1,8 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { IconArrowUpRight, IconLeaf } from "@tabler/icons-react"
+import { IconArrowUpRight } from "@tabler/icons-react"
 import { motion, type Variants } from "motion/react"
+
+import { AuroraLogomark } from "@/components/brand/aurora-logomark"
 
 const staggerContainer: Variants = {
   hidden: { opacity: 0 },
@@ -76,9 +78,7 @@ export function Footer20({
             className="flex flex-col gap-6 md:gap-8 lg:col-span-5 xl:col-span-4"
           >
             <div className="text-foreground flex items-center gap-2.5">
-              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-primary/30 text-primary">
-                <IconLeaf className="size-5" />
-              </span>
+              <AuroraLogomark className="size-8" />
               <span className="font-heading mt-0.5 text-lg font-medium tracking-wide">
                 {brandName}
               </span>

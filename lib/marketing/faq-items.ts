@@ -21,7 +21,7 @@ export const MARKETING_FAQ_ITEMS: MarketingFaqItem[] = [
   {
     question: "Is my photo sent to AI?",
     answer:
-      "Yes. Your photo is sent to Google Gemini for cosmetic analysis. Aura does not store your photo by default — only the text assessment and recommendations are saved.",
+      "Yes. Your photo is sent to Google Gemini for cosmetic analysis. Aurora Organics does not store your photo by default — only the text assessment and recommendations are saved.",
   },
   {
     question: "Do you keep my photos?",

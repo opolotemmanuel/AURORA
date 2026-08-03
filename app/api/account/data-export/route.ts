@@ -31,7 +31,7 @@ export async function GET() {
 
   return new Response(JSON.stringify(data, null, 2), {
     headers: {
-      "Content-Disposition": `attachment; filename="aura-data-export-${session.user.id}.json"`,
+      "Content-Disposition": `attachment; filename="aurora-organics-data-export-${session.user.id}.json"`,
       "Content-Type": "application/json",
     },
   })

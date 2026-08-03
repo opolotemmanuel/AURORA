@@ -48,7 +48,7 @@ export default async function ProfilePage() {
       <Card>
         <CardHeader>
           <CardTitle>Account details</CardTitle>
-          <CardDescription>Name is editable below. Email and account age are managed by Aura and stay read-only.</CardDescription>
+          <CardDescription>Name is editable below. Email and account age are managed by Aurora Organics and stay read-only.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <EditNameForm initialName={profile?.name ?? ""} />

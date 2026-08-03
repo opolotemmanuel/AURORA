@@ -142,7 +142,7 @@ export function UsersTable({
         eyebrow="Users"
         breadcrumb={[{ label: "Admin", href: "/admin" }, { label: "Users" }]}
         title="Registered users"
-        description="Every account registered on Aurora SkinSense."
+        description="Every account registered on Aurora Organics."
         onRefresh={() => router.refresh()}
         onExport={handleExport}
         exportDisabled={sorted.length === 0}

@@ -1,6 +1,6 @@
-# Aurora SkinSense Phase 1 Database Schema
+# Aurora Organics Phase 1 Database Schema
 
-This document is the backend-ready schema plan for Aurora SkinSense Phase 1.
+This document is the backend-ready schema plan for Aurora Organics Phase 1.
 
 Prisma is installed and the Phase 1 schema lives in `prisma/schema.prisma`.
 

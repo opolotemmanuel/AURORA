@@ -19,7 +19,7 @@ export function ConfidenceDonut({ vm }: { vm: ReportViewModel }) {
     <Card className="print:break-inside-avoid">
       <CardHeader>
         <CardTitle>AI Confidence Breakdown</CardTitle>
-        <CardDescription>How confident Aura&apos;s AI is in this scan&apos;s conditions and reading.</CardDescription>
+        <CardDescription>How confident Aurora Organics&apos; AI is in this scan&apos;s conditions and reading.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-8 md:grid-cols-[auto_1fr] md:items-center">
         <div className="grid place-items-center gap-2 justify-self-center">

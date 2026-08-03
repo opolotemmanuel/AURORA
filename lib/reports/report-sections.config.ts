@@ -81,7 +81,7 @@ export const REPORT_SECTIONS: ReportSectionDefinition[] = [
   },
   {
     id: "recommended-products",
-    title: "Recommended AURA Products",
+    title: "Recommended Aurora Organics Products",
     component: RecommendedProducts,
     isEnabled: () => true,
     fullWidth: true,

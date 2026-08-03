@@ -18,7 +18,7 @@ export function SkinAssessmentTable({ vm }: { vm: ReportViewModel }) {
     <Card className="print:break-inside-avoid">
       <CardHeader>
         <CardTitle>Skin Assessment Overview</CardTitle>
-        <CardDescription>A summary of every area Aura&apos;s AI assessed in this scan.</CardDescription>
+        <CardDescription>A summary of every area Aurora Organics&apos; AI assessed in this scan.</CardDescription>
       </CardHeader>
       <CardContent>
         <Table>

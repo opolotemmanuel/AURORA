@@ -91,7 +91,7 @@ export async function renderReportPdf(input: {
       margin: { top: "64px", bottom: "48px", left: "24px", right: "24px" },
       headerTemplate: `
         <div style="font-size: 9px; width: 100%; padding: 0 24px; color: #6b6b6b; display: flex; justify-content: space-between;">
-          <span>Aura — AI Skin Intelligence Report</span>
+          <span>Aurora Organics — AI Skin Intelligence Report</span>
         </div>
       `,
       footerTemplate: `

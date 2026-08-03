@@ -1,6 +1,6 @@
-# Aura
+# Aurora Organics
 
-Web-based AI skin intelligence for Aurora Organics. Users scan their face, receive a cosmetic skin assessment, and get personalized product recommendations.
+Web-based AI skin intelligence from Aurora Organics. Users scan their face, receive a cosmetic skin assessment, and get personalized product recommendations.
 
 Built with Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, and shadcn/ui.
 

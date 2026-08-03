@@ -10,7 +10,7 @@ import type { ClimateSnapshot } from "@/lib/climate/adapter"
 const DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"
 const GEMINI_TIMEOUT_MS = 20000
 const DISCLAIMER =
-  "Aurora SkinSense provides cosmetic wellness guidance only. This is not a medical diagnosis, treatment plan, or substitute for professional medical advice."
+  "Aurora Organics provides cosmetic wellness guidance only. This is not a medical diagnosis, treatment plan, or substitute for professional medical advice."
 // The only bands the app will ever surface — enforces the "coarse, honest
 // output only" rule from AGENTS.md even if the model tries to return
 // something more specific/numeric.
@@ -303,7 +303,7 @@ export async function askAboutReport(
 // doesn't contain.
 function buildReportChatSystemPrompt(context: ReportChatContext): string {
   return [
-    "You are Aurora SkinSense's follow-up assistant for ONE specific user's cosmetic skin scan report.",
+    "You are Aurora Organics' follow-up assistant for ONE specific user's cosmetic skin scan report.",
     "Scope: you may only discuss this report's findings, the recommended products listed below, general skincare education (ingredients, routines, how cosmetic products work), and how to interpret this report's wording.",
     "Never diagnose a medical condition, never claim to identify a disease, never claim to treat or cure anything, and never state anything with medical certainty — this is cosmetic wellness guidance only, matching the rest of the app.",
     "If a question describes something that sounds like a medical concern (pain, bleeding, rapid or unusual changes, anything beyond ordinary cosmetic appearance), say this is outside what you can help with and recommend seeing a dermatologist or doctor — do not speculate about what it might be.",
@@ -397,7 +397,7 @@ export async function askSkinAdviceQuestion(
 // picks) and with the scan context made explicitly optional.
 function buildSkinAdviceSystemPrompt(context: SkinAdviceContext, products: ChatCatalogProduct[]): string {
   return [
-    "You are Aurora SkinSense's general skin-advice assistant.",
+    "You are Aurora Organics' general skin-advice assistant.",
     "Scope: general skincare education (ingredients, routines, how cosmetic products work), and — when a recent scan is provided below — how to interpret that scan's findings.",
     "Never diagnose a medical condition, never claim to identify a disease, never claim to treat or cure anything, and never state anything with medical certainty — this is cosmetic wellness guidance only, matching the rest of the app.",
     "If a question describes something that sounds like a medical concern (pain, bleeding, rapid or unusual changes, anything beyond ordinary cosmetic appearance), say this is outside what you can help with and recommend seeing a dermatologist or doctor — do not speculate about what it might be.",
@@ -656,7 +656,7 @@ function isQuotaMessage(value: string) {
 // to ship.
 function buildCosmeticPrompt(climate?: ClimateSnapshot | null) {
   const lines = [
-    "You are Aurora SkinSense, a cosmetic skin wellness analysis assistant.",
+    "You are Aurora Organics, a cosmetic skin wellness analysis assistant.",
     "Analyze the uploaded face image for visible cosmetic indicators only.",
     "Do not diagnose, identify diseases, mention medical conditions, prescribe treatment, or claim certainty.",
     "Use coarse bands only: low, balanced, mild, moderate, elevated, not_visible.",

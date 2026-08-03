@@ -1,25 +1,12 @@
-// Chrome for the (scan) route group — a minimal header (exit link + step
-// label), not the marketing nav (see AGENTS.md's route-group table). The
-// actual scan flow UI lives in components/scan/ScanFlow.tsx.
-import Link from "next/link"
-
+// Chrome for the (scan) route group — not the marketing nav (see AGENTS.md's
+// route-group table). Deliberately minimal: the pinned header (brand link,
+// Upload/Camera/Advice tabs, Dashboard link) now lives inside
+// components/scan/ScanFlow.tsx instead of here, since its content is driven
+// entirely by ScanFlow's own tab/step state — that state can't flow up into
+// a separate layout-level shell without real cross-boundary plumbing, and
+// ScanShell has exactly one consumer (app/(scan)/scan/page.tsx) today, so
+// there's no shared-across-pages header to keep here. This still exists as
+// the group's one shell per AGENTS.md convention, just with less to do.
 export function ScanShell({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex min-h-svh flex-col">
-      <header className="border-b border-border">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-          <Link href="/" className="text-sm text-muted-foreground transition-colors hover:text-foreground">
-            Exit
-          </Link>
-          <span className="text-xs font-medium tracking-widest text-muted-foreground uppercase">
-            Skin scan
-          </span>
-          <span className="w-10" aria-hidden />
-        </div>
-      </header>
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-8">
-        {children}
-      </main>
-    </div>
-  )
+  return <div className="min-h-svh bg-background">{children}</div>
 }

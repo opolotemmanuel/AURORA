@@ -14,10 +14,10 @@
 // <main>.
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { IconLeaf } from "@tabler/icons-react"
 
 import { cn } from "@/lib/utils"
 import { authClient } from "@/lib/auth/client"
+import { AuroraLogomark } from "@/components/brand/aurora-logomark"
 import { SidebarProfileMenu } from "@/components/layouts/sidebar-profile-menu"
 import {
   SIDEBAR_CATEGORIES,
@@ -68,10 +68,10 @@ export function DashboardSidebar({ pathname, isAdminTier }: { pathname: string; 
         <nav className="flex w-16 shrink-0 flex-col items-center border-r border-sidebar-border bg-sidebar py-3">
           <Link
             href="/dashboard"
-            aria-label="Aura home"
-            className="mb-2 grid size-10 shrink-0 place-items-center rounded-md text-primary transition-colors hover:bg-sidebar-accent"
+            aria-label="Aurora Organics home"
+            className="mb-2 grid size-10 shrink-0 place-items-center rounded-md transition-colors hover:bg-sidebar-accent"
           >
-            <IconLeaf className="size-5" />
+            <AuroraLogomark className="size-7" />
           </Link>
 
           <div className="flex flex-1 flex-col items-center gap-1">
@@ -121,8 +121,8 @@ export function DashboardSidebar({ pathname, isAdminTier }: { pathname: string; 
           console's mobile collapse); selecting an item closes the Sheet
           and navigates. */}
       <header className="sticky top-0 z-20 flex h-14 items-center gap-1 border-b border-border bg-background px-3 lg:hidden">
-        <Link href="/dashboard" aria-label="Aura home" className="mr-1 grid size-9 shrink-0 place-items-center">
-          <IconLeaf className="size-5 text-primary" />
+        <Link href="/dashboard" aria-label="Aurora Organics home" className="mr-1 grid size-9 shrink-0 place-items-center">
+          <AuroraLogomark className="size-6" />
         </Link>
 
         <div className="flex flex-1 items-center gap-1 overflow-x-auto">

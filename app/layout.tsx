@@ -1,10 +1,31 @@
 // Root layout: fonts, global CSS, and the theme provider only — all actual
 // page chrome (nav/sidebar/etc.) lives in each route group's own layout
 // (see AGENTS.md's route-group table).
+import type { Metadata } from "next"
 import "./globals.css"
 import { Cormorant_Garamond, Geist_Mono, Inter, Roboto } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { TooltipProvider } from "@/components/ui/tooltip"
+
+// No metadata existed anywhere in the app before this (verified: no other
+// layout.tsx/page.tsx in the tree exports `metadata` or `generateMetadata`)
+// — this is the first title/description/OG tags the app has ever had, not
+// an edit to something that was previously "Aura"-branded.
+export const metadata: Metadata = {
+  title: {
+    default: "Aurora Organics",
+    template: "%s | Aurora Organics",
+  },
+  description:
+    "AI-powered cosmetic skin intelligence from Aurora Organics — scan your face, get a cosmetic skin assessment, and receive personalized product recommendations.",
+  openGraph: {
+    title: "Aurora Organics",
+    description:
+      "AI-powered cosmetic skin intelligence from Aurora Organics — scan your face, get a cosmetic skin assessment, and receive personalized product recommendations.",
+    siteName: "Aurora Organics",
+    type: "website",
+  },
+}
 
 // Self-hosted via next/font/google (build-time download, no runtime request
 // to Google) — each `variable` name is deliberately matched up with the

@@ -135,7 +135,7 @@ export function evaluateBackground(
       severity: "warning",
       status: "warn",
       label: "Plain background",
-      message: "A plain, uncluttered background helps Aura focus on your skin.",
+      message: "A plain, uncluttered background helps Aurora Organics focus on your skin.",
     }
   }
   return { id: "background", severity: "warning", status: "pass", label: "Plain background", message: "Background looks fine." }

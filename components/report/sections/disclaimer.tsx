@@ -15,7 +15,7 @@ export function Disclaimer({}: { vm: ReportViewModel }) {
       <p>
         This report is generated using artificial intelligence and is intended to provide informational skin
         insights only. It does not constitute a medical diagnosis or replace consultation with a qualified
-        healthcare professional. Aura reports store AI findings only, not the scan image, by default.
+        healthcare professional. Aurora Organics reports store AI findings only, not the scan image, by default.
       </p>
     </div>
   )

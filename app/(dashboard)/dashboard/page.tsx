@@ -100,7 +100,7 @@ export default async function DashboardPage() {
         <div>
           <p className="flex items-center gap-2 text-xs font-semibold tracking-widest text-primary uppercase">
             <IconCamera className="size-4" />
-            Aura
+            Aurora Organics
           </p>
           <h1 className="mt-2 font-heading text-3xl font-semibold tracking-normal">
             Welcome back{session.user.name ? `, ${session.user.name}` : ""}
@@ -167,14 +167,14 @@ export default async function DashboardPage() {
           <Card className="border-warning/30 bg-warning/5">
             <CardContent className="flex h-full flex-col justify-between gap-4">
               <div className="flex items-start gap-3">
-                <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-warning/10 text-warning">
+                <div className="grid size-9 shrink-0 place-items-center rounded-full bg-warning/10 text-warning">
                   <IconAlertTriangle className="size-4" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-foreground">Declare your allergies</p>
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
                     Products with a declared allergen are excluded from your recommendations entirely — add yours
-                    so Aura never suggests one.
+                    so Aurora Organics never suggests one.
                   </p>
                 </div>
               </div>
@@ -197,16 +197,29 @@ export default async function DashboardPage() {
       </section>
 
       {latestClimateReport?.climate ? (
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <IconCloud className="size-4 shrink-0 text-primary" />
-          <span>
-            Your last scan factored in {Math.round(latestClimateReport.climate.temperatureC)}°C,{" "}
-            {Math.round(latestClimateReport.climate.humidityPercent)}% humidity.
-          </span>
-          <Link href="/account?tab=climate" className="font-medium text-primary hover:underline">
-            Check today&apos;s weather
-          </Link>
-        </div>
+        // Same icon-in-circle + heading + description card language as the
+        // allergy nudge above and the /scan Tips panel (components/scan/
+        // ScanCaptureTips.tsx) — this used to be a bare text row with no
+        // card chrome at all; now it reads as the same kind of touchpoint.
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                <IconCloud className="size-4" />
+              </div>
+              <p className="text-sm text-foreground">
+                Your last scan factored in {Math.round(latestClimateReport.climate.temperatureC)}°C,{" "}
+                {Math.round(latestClimateReport.climate.humidityPercent)}% humidity.
+              </p>
+            </div>
+            <Link
+              href="/account?tab=climate"
+              className="shrink-0 text-sm font-medium text-primary hover:underline"
+            >
+              Check today&apos;s weather
+            </Link>
+          </CardContent>
+        </Card>
       ) : null}
 
       <section className="grid gap-4 sm:grid-cols-3">
@@ -214,7 +227,7 @@ export default async function DashboardPage() {
           href="/skin-advice"
           icon={IconSparkles}
           label="Ask about your skin"
-          description="Chat with Aura about your routine, ingredients, or concerns."
+          description="Chat with Aurora Organics about your routine, ingredients, or concerns."
         />
         <EntryPointCard
           href="/skin-history"
@@ -373,7 +386,9 @@ function EntryPointCard({
     <Link href={href} className="group block">
       <Card className="h-full transition-colors group-hover:border-primary/40">
         <CardContent className="flex h-full flex-col gap-3">
-          <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-primary">
+          {/* Same icon-in-circle badge as the allergy/climate nudge cards
+              above and /scan's Tips panel (components/scan/ScanCaptureTips.tsx) */}
+          <div className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
             <Icon className="size-4" />
           </div>
           <div>

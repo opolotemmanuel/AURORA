@@ -1,9 +1,11 @@
-// The scan upload endpoint: validates the image, calls Gemini (falling back
-// to a rule-based report if that fails), then persists everything via
-// scan-service. Two layers of fallback exist so the user always gets a
-// report: analyzeImageWithFallback covers a Gemini-specific failure, and the
-// outer try/catch in POST covers anything else going wrong (bad form data,
-// createScanReport itself throwing, etc).
+// The scan upload endpoint: requires a signed-in, consented session, then
+// validates the image, calls Gemini (falling back to a rule-based report if
+// that fails), then persists everything via scan-service. Two layers of
+// fallback exist so the user always gets a report: analyzeImageWithFallback
+// covers a Gemini-specific failure, and the outer try/catch in POST covers
+// anything else going wrong (bad form data, createScanReport itself
+// throwing, etc) — that fallback path is itself only reachable once the
+// session/consent checks above it have already passed.
 import { NextResponse } from "next/server"
 
 import {
@@ -18,10 +20,11 @@ import { createScanReport } from "@/lib/backend/scan-service"
 import type { ScanAnalysisReport, ScanSource } from "@/lib/backend/types"
 import { getClimateSnapshot, type ClimateSnapshot } from "@/lib/climate/adapter"
 import { getRemainingScans } from "@/lib/scans/balance"
+import { getScanConsentGivenAt } from "@/lib/user/scan-consent-store"
 
 const MAX_IMAGE_SIZE = 8 * 1024 * 1024
 const DISCLAIMER =
-  "Aurora SkinSense provides cosmetic wellness guidance only. This is not a medical diagnosis, treatment plan, or substitute for professional medical advice."
+  "Aurora Organics provides cosmetic wellness guidance only. This is not a medical diagnosis, treatment plan, or substitute for professional medical advice."
 const ALLOWED_IMAGE_TYPES = new Map([
   ["image/jpeg", ["jpg", "jpeg"]],
   ["image/jpg", ["jpg"]],
@@ -33,10 +36,33 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 export async function POST(request: Request) {
-  // Attributes the scan to the signed-in user if there is one — anonymous
-  // (logged-out) scans are still allowed, they just never get a dashboard
-  // history entry or a report chat button (both require a real owner).
+  // A valid session is mandatory, checked first and before any parsing,
+  // Gemini call, or location check — same as every other user-scoped
+  // mutation in this app (app/api/reports/route.ts, data-export, etc). This
+  // route used to accept `session?.user.id` as optional ("anonymous scans
+  // are still allowed"), but that predates both the consent requirement
+  // below and the (scan) route group's own signed-in-only layout gate — the
+  // UI has had no reachable anonymous path to this endpoint for a while, so
+  // the only thing the optional session was still doing was leaving a
+  // direct-request bypass open. Closed here: this is now a hard requirement,
+  // not just a UI nicety.
   const session = await getSession()
+  if (!session) {
+    return jsonError("Sign in required to run a scan.", 401)
+  }
+
+  // Consent (recorded once at signup, or on an existing account's first
+  // /scan visit — see app/(onboarding)/onboarding/consent) is likewise
+  // enforced here, not just at the /scan page's redirect-if-missing check
+  // (app/(scan)/scan/page.tsx) — that check is UX only and, like the
+  // location gate below, can be bypassed by calling this route directly.
+  const consentGivenAt = await getScanConsentGivenAt(session.user.id)
+  if (!consentGivenAt) {
+    return jsonError(
+      "Please complete the one-time scan consent step before running a scan.",
+      403,
+    )
+  }
 
   try {
     const formData = await request.formData()
@@ -98,20 +124,16 @@ export async function POST(request: Request) {
     // after every other request-shape gate above has already passed but
     // before the climate fetch or the Gemini call below, so a blocked user
     // never spends a Gemini call (or an Open-Meteo call) on a request that
-    // was always going to be rejected. Anonymous scans (no session) have no
-    // ScanBalance and are never gated by this — this is a per-user
-    // allowance, not a global one. This is a SEPARATE limit from the shared
-    // Gemini API quota (see lib/ai/gemini-adapter.ts) — a user can pass this
-    // check and still get a fallback report if that shared quota is
-    // exhausted; the two must never be conflated in the response.
-    if (session?.user.id) {
-      const remaining = await getRemainingScans(session.user.id)
-      if (remaining <= 0) {
-        return jsonError(
-          "You've used all 10 of your free scans. We're not offering paid scans yet — check back soon.",
-          402,
-        )
-      }
+    // was always going to be rejected. This is a SEPARATE limit from the
+    // shared Gemini API quota (see lib/ai/gemini-adapter.ts) — a user can
+    // pass this check and still get a fallback report if that shared quota
+    // is exhausted; the two must never be conflated in the response.
+    const remaining = await getRemainingScans(session.user.id)
+    if (remaining <= 0) {
+      return jsonError(
+        "You've used all 10 of your free scans. We're not offering paid scans yet — check back soon.",
+        402,
+      )
     }
 
     // Climate itself stays independent of the Gemini call above — it never
@@ -146,7 +168,7 @@ export async function POST(request: Request) {
       aiProviderReason: geminiResult.aiProviderReason,
       userAgent: request.headers.get("user-agent") ?? undefined,
       aiDurationMs: geminiResult.durationMs,
-      userId: session?.user.id,
+      userId: session.user.id,
       climate,
     })
 
@@ -188,7 +210,7 @@ export async function POST(request: Request) {
           ? "Scan analysis failed, so a cosmetic fallback report was returned."
           : "Scan analysis was unavailable, so a cosmetic fallback report was returned.",
       userAgent: request.headers.get("user-agent") ?? undefined,
-      userId: session?.user.id,
+      userId: session.user.id,
     })
 
     return NextResponse.json(

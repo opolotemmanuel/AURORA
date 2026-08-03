@@ -4,7 +4,8 @@
 // HeroMockup/HeroSection) so the login experience reads as the same product,
 // not a one-off design.
 import Image from "next/image"
-import { IconLeaf } from "@tabler/icons-react"
+
+import { AuroraLogomark } from "@/components/brand/aurora-logomark"
 
 // Fixed positions/delays (not random) so server and client render identically
 // and the layout doesn't shift on hydration.
@@ -21,7 +22,7 @@ export function HeroPanel() {
     <div className="relative min-h-56 overflow-hidden lg:min-h-full">
       <Image
         src="/Pasted image (3).png"
-        alt="AI-analyzed portrait representing Aura's skin intelligence"
+        alt="AI-analyzed portrait representing Aurora Organics' skin intelligence"
         fill
         priority
         sizes="(min-width: 1024px) 48vw, 100vw"
@@ -48,9 +49,9 @@ export function HeroPanel() {
 
       <div className="absolute inset-x-0 bottom-0 space-y-3 bg-background/90 p-6 backdrop-blur-sm lg:p-10">
         <div className="flex items-center gap-2">
-          <IconLeaf className="size-5 text-primary" />
+          <AuroraLogomark />
           <span className="font-heading text-sm font-medium tracking-wide text-foreground">
-            Aura
+            Aurora Organics
           </span>
         </div>
         <h2 className="font-display text-3xl font-semibold leading-tight text-foreground lg:text-4xl">

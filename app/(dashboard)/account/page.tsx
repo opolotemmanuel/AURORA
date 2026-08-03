@@ -5,7 +5,7 @@
 // signed-in user's own row via getSession(), same pattern as /profile.
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { IconCalendar, IconCloud, IconSettings, IconUserCircle } from "@tabler/icons-react"
+import { IconCalendar, IconCloud, IconLock, IconMapPin, IconSettings, IconUserCircle } from "@tabler/icons-react"
 
 import { AllergiesForm } from "@/components/account/allergies-form"
 import { ChangePasswordForm } from "@/components/account/change-password-form"
@@ -15,6 +15,7 @@ import { EditNameForm } from "@/components/profile/edit-name-form"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { TrustSignalRow } from "@/components/ui/trust-signal-row"
 import { getSession } from "@/lib/auth/session"
 import { getYourDataSummary } from "@/lib/backend/account-data"
 import { findReportOwner, listReportsForUser } from "@/lib/backend/report-store"
@@ -147,11 +148,24 @@ export default async function AccountSettingsPage({ searchParams }: AccountSetti
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm leading-6 text-muted-foreground">
-                Each time you take a scan, Aura asks for your location for that scan only — it&apos;s never saved as
+                Each time you take a scan, Aurora Organics asks for your location for that scan only — it&apos;s never saved as
                 an ongoing preference. It&apos;s used once to fetch live local weather (temperature, humidity, UV
                 index), which factors into that scan&apos;s product recommendations and its Comfort Score. Only the
                 resulting weather reading is kept, tied to that one report — your location itself is never stored.
               </p>
+
+              {/* Same trust-signal footer style as /scan's dropzone
+                  (components/scan/ScanFlow.tsx) — reused here since this
+                  paragraph is making the exact same kind of privacy
+                  assurance about location/climate data. */}
+              <TrustSignalRow
+                items={[
+                  { icon: IconMapPin, label: "This scan only, never an ongoing preference" },
+                  { icon: IconCloud, label: "Weather reading only — no raw location stored" },
+                  { icon: IconLock, label: "Tied to one report, never a saved profile setting" },
+                ]}
+                className="justify-start"
+              />
 
               <LiveClimateCheck />
 
@@ -161,7 +175,9 @@ export default async function AccountSettingsPage({ searchParams }: AccountSetti
               {latestClimateReport?.climate ? (
                 <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted p-4">
                   <div className="flex items-center gap-3">
-                    <IconCloud className="size-5 shrink-0 text-muted-foreground" />
+                    <div className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                      <IconCloud className="size-4" />
+                    </div>
                     <div>
                       <p className="text-sm font-medium text-foreground">
                         Your last scan factored in {Math.round(latestClimateReport.climate.temperatureC)}°C,{" "}
@@ -182,7 +198,9 @@ export default async function AccountSettingsPage({ searchParams }: AccountSetti
                 </div>
               ) : (
                 <div className="flex items-center gap-3 rounded-lg border border-border bg-muted p-4">
-                  <IconCloud className="size-5 shrink-0 text-muted-foreground" />
+                  <div className="grid size-9 shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                    <IconCloud className="size-4" />
+                  </div>
                   <p className="text-sm text-muted-foreground">
                     No climate data yet — take a scan and share your location to see how local weather shapes your
                     results.

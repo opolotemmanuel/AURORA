@@ -9,7 +9,7 @@ export default function OnboardingPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h1 className="text-2xl font-medium">Welcome to Aura</h1>
+        <h1 className="text-2xl font-medium">Welcome to Aurora Organics</h1>
         <p className="text-sm text-muted-foreground">Let&apos;s get you set up.</p>
       </div>
       <Button asChild>

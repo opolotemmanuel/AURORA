@@ -102,7 +102,7 @@ export function LoginForm() {
       <div className="space-y-2 text-center">
         <h1 className="text-xl font-medium">Welcome back</h1>
         <p className="text-sm text-muted-foreground">
-          Sign in to your Aura account.
+          Sign in to your Aurora Organics account.
         </p>
       </div>
 

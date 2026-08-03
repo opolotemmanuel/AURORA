@@ -118,7 +118,7 @@ export function ReportChatPanel({ reportId }: { reportId: string }) {
       </SheetTrigger>
       <SheetContent className="flex w-full flex-col sm:max-w-md">
         <SheetHeader>
-          <SheetTitle>Ask Aura</SheetTitle>
+          <SheetTitle>Ask Aurora Organics</SheetTitle>
           <SheetDescription>
             Follow-up questions about this scan&apos;s findings and recommendations — not a substitute for medical
             advice.

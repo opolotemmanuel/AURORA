@@ -2,16 +2,15 @@
 // privacy rule: "store the report, not the photo, by default") — that fact
 // is covered once, in the closing disclaimer (see disclaimer.tsx), rather
 // than called out again here with a placeholder panel.
-import { IconLeaf } from "@tabler/icons-react"
-
+import { AuroraLogomark } from "@/components/brand/aurora-logomark"
 import type { ReportViewModel } from "@/lib/reports/report-view-model"
 
 export function CoverHeader({ vm }: { vm: ReportViewModel }) {
   return (
     <div className="space-y-6 rounded-2xl border border-border bg-card p-8 shadow-sm print:break-inside-avoid">
       <div className="flex items-center gap-2">
-        <IconLeaf className="size-5 text-primary" />
-        <span className="font-heading text-sm font-medium tracking-wide">Aura</span>
+        <AuroraLogomark />
+        <span className="font-heading text-sm font-medium tracking-wide">Aurora Organics</span>
       </div>
 
       <div>

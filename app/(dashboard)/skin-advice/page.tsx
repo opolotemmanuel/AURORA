@@ -31,7 +31,7 @@ export default async function SkinAdvicePage() {
           <IconSparkles className="size-4" />
           Skin advice
         </p>
-        <h1 className="text-3xl font-semibold tracking-normal">Ask Aura</h1>
+        <h1 className="text-3xl font-semibold tracking-normal">Ask Aurora Organics</h1>
         <p className="max-w-xl text-sm leading-6 text-muted-foreground">
           General skincare guidance — cosmetic and wellness only, not a medical
           diagnosis.
@@ -53,7 +53,7 @@ export default async function SkinAdvicePage() {
         </div>
       ) : (
         <div className="rounded-lg border border-border bg-muted/40 px-5 py-4 text-sm text-muted-foreground">
-          No scan yet — Aura can still answer general skincare questions.{" "}
+          No scan yet — Aurora Organics can still answer general skincare questions.{" "}
           <Link
             href="/scan"
             className="font-medium text-primary hover:underline"

@@ -5,7 +5,7 @@
 import { Resend } from "resend"
 
 const FROM_ADDRESS =
-  process.env.RESEND_FROM_EMAIL || "Aura <onboarding@resend.dev>"
+  process.env.RESEND_FROM_EMAIL || "Aurora Organics <onboarding@resend.dev>"
 
 export class EmailSendError extends Error {
   constructor(
@@ -32,9 +32,9 @@ export async function sendVerificationEmail(
 ): Promise<void> {
   await send({
     to,
-    subject: "Verify your Aura email address",
-    text: `Confirm your email to finish setting up your Aura account: ${url}\n\nIf you didn't create an account, you can ignore this email.`,
-    html: `<p>Confirm your email to finish setting up your Aura account:</p><p><a href="${url}">${url}</a></p><p>If you didn't create an account, you can ignore this email.</p>`,
+    subject: "Verify your Aurora Organics email address",
+    text: `Confirm your email to finish setting up your Aurora Organics account: ${url}\n\nIf you didn't create an account, you can ignore this email.`,
+    html: `<p>Confirm your email to finish setting up your Aurora Organics account:</p><p><a href="${url}">${url}</a></p><p>If you didn't create an account, you can ignore this email.</p>`,
     devFallbackLabel: "verification link",
     devFallbackValue: url,
   })
@@ -46,9 +46,9 @@ export async function sendPasswordResetEmail(
 ): Promise<void> {
   await send({
     to,
-    subject: "Reset your Aura password",
-    text: `Reset your Aura password: ${url}\n\nThis link expires in 1 hour. If you didn't request this, you can ignore this email.`,
-    html: `<p>Reset your Aura password:</p><p><a href="${url}">${url}</a></p><p>This link expires in 1 hour. If you didn't request this, you can ignore this email.</p>`,
+    subject: "Reset your Aurora Organics password",
+    text: `Reset your Aurora Organics password: ${url}\n\nThis link expires in 1 hour. If you didn't request this, you can ignore this email.`,
+    html: `<p>Reset your Aurora Organics password:</p><p><a href="${url}">${url}</a></p><p>This link expires in 1 hour. If you didn't request this, you can ignore this email.</p>`,
     devFallbackLabel: "reset link",
     devFallbackValue: url,
   })

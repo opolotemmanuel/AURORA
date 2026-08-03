@@ -4,7 +4,8 @@
 // verification is currently OFF (see lib/auth/auth.ts's
 // requireEmailVerification TODO — temporary, until a verified sending
 // domain exists in Resend), so a successful sign-up already comes back
-// signed in (autoSignIn: true) and this redirects straight to /dashboard.
+// signed in (autoSignIn: true) and this redirects to the one-time scan
+// consent + location screen (/onboarding/consent) before /dashboard.
 // The "check your email" state below is kept but currently unreachable —
 // intentionally not deleted, so re-enabling verification later is just
 // flipping the config back, not rebuilding this screen.
@@ -77,7 +78,11 @@ export function RegisterForm() {
       return
     }
 
-    router.push("/dashboard")
+    // One-time consent + location request now lives at /onboarding/consent
+    // (see app/(onboarding)/onboarding/consent/page.tsx) — it finishes by
+    // sending the user on to /dashboard itself, so this redirect no longer
+    // goes there directly.
+    router.push("/onboarding/consent")
     // Server components (e.g. anything reading getSession()) won't know
     // the session exists until the router cache is invalidated.
     router.refresh()

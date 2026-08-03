@@ -132,7 +132,7 @@ export function SidebarProfileMenu({
         onMouseLeave={closeSoon}
       >
         <DropdownMenuLabel className="normal-case">
-          <p className="truncate text-sm font-medium text-foreground">{user.name || "Aura user"}</p>
+          <p className="truncate text-sm font-medium text-foreground">{user.name || "Aurora Organics user"}</p>
           <p className="truncate text-xs font-normal text-muted-foreground">{user.email}</p>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

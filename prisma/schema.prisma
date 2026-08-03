@@ -86,6 +86,14 @@ model User {
   updatedAt     DateTime  @updatedAt
   lastLoginAt   DateTime?
 
+  // One-time acknowledgment covering all future cosmetic skin scans on
+  // this account — null means not yet given (same "absent means not
+  // done" pattern as allergies/doshaProfile below), non-null is the
+  // timestamp it was recorded. Given once at signup (or on first /scan
+  // visit for an account that predates this field) via
+  // app/(onboarding)/onboarding/consent, never re-asked after.
+  scanConsentGivenAt DateTime?
+
   // Free-text, comma/semicolon-separated allergen list the user declares
   // themselves (e.g. "fragrance, lanolin") — parsed by
   // lib/products/match-allergies.ts's parseAllergyTokens. Optional and

@@ -131,7 +131,7 @@ export function buildReportViewModel(input: {
     reportShortId: shortenReportId(report.id),
     createdAt,
     owner: {
-      name: owner?.name?.trim() || "Aura user",
+      name: owner?.name?.trim() || "Aurora Organics user",
       email: owner?.email,
       userId: owner?.id,
     },

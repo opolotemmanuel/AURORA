@@ -44,7 +44,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
         </p>
         <h1 className="mt-2 text-2xl font-semibold tracking-normal">Reports</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Manage, search and export all Aurora SkinSense reports.
+          Manage, search and export all Aurora Organics reports.
         </p>
       </section>
 

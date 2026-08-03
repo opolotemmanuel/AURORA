@@ -70,7 +70,7 @@ export default async function SettingsPage() {
         </p>
         <h1 className="text-3xl font-semibold tracking-normal">Settings</h1>
         <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-          Platform configuration console for Aurora SkinSense. Every value across these tabs comes from a real
+          Platform configuration console for Aurora Organics. Every value across these tabs comes from a real
           server check or a real PostgreSQL record — tabs for capabilities that don&apos;t exist yet say so
           honestly instead of showing a fake control.
         </p>

@@ -11,6 +11,7 @@ import {
   IconCamera,
   IconCheck,
   IconChevronLeft,
+  IconCloudUpload,
   IconCrop,
   IconDownload,
   IconFlipHorizontal,
@@ -180,10 +181,16 @@ const steps: Array<{ id: ScanStep; label: string }> = [
 ]
 
 const stepCopy: Record<ScanStep, { title: string; description: string }> = {
+  // Reference copy exactly ("Scan your skin" / "Clear photo, personalized
+  // guidance & product picks") — the medical-framing disclaimer that used
+  // to live in this description isn't lost, just relocated: it's the
+  // actual, authoritative disclaimer text already shown on every generated
+  // report (see ResultsStep's analysis.disclaimer block below), so nothing
+  // here silently drops that non-negotiable, it's just no longer duplicated
+  // on the pre-capture landing blurb too.
   capture: {
-    title: "Start your free cosmetic skin scan",
-    description:
-      "Use your camera or upload an existing image. Keep your face centered with even lighting for the clearest cosmetic skin review. This provides cosmetic wellness insights and product recommendations only — not a medical diagnosis.",
+    title: "Scan your skin",
+    description: "Clear photo, personalized guidance & product picks",
   },
   processing: {
     title: "Reviewing visible cosmetic indicators",
@@ -494,7 +501,7 @@ function UploadPanel({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          "grid min-h-64 place-items-center rounded-2xl border border-dashed p-6 text-center transition-colors",
+          "grid min-h-64 place-items-center rounded-2xl border border-dashed p-8 text-center transition-colors",
           isDragging
             ? "border-primary bg-primary/5"
             : "border-border bg-muted/40",
@@ -502,7 +509,9 @@ function UploadPanel({
         )}
       >
         <div>
-          <IconUpload className="mx-auto size-10 text-primary" />
+          <div className="mx-auto grid size-16 place-items-center rounded-full bg-muted">
+            <IconCloudUpload className="size-7 text-muted-foreground" />
+          </div>
           <p className="mt-4 text-sm font-medium">Drop your photo here</p>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">
             A clear, well-lit photo with your face fully visible
@@ -1574,7 +1583,7 @@ export function ScanFlow({
             </span>
           </Link>
 
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1 rounded-full bg-muted p-1">
             <TabButton
               active={activeTab === "upload"}
               onClick={() => selectTab("upload")}
@@ -1798,6 +1807,10 @@ export function ScanFlow({
   )
 }
 
+// Pill-style segmented control (reference: rounded container, active tab
+// filled with the primary color and white text, inactive tabs plain text +
+// icon) — previously an underline-tab style that never matched the
+// reference at all, not something a stale dev server would explain.
 function TabButton({
   active,
   onClick,
@@ -1812,10 +1825,10 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-medium transition-colors",
+        "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
         active
-          ? "border-primary text-foreground"
-          : "border-transparent text-muted-foreground hover:text-foreground"
+          ? "bg-primary text-primary-foreground shadow-sm"
+          : "text-muted-foreground hover:text-foreground"
       )}
     >
       {children}

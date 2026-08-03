@@ -1,9 +1,14 @@
+"use client"
+
+import { useState } from "react"
+
 import {
   IconBulb,
   IconCrop,
   IconSun,
   IconUpload,
   IconUser,
+  IconX,
 } from "@tabler/icons-react"
 
 import { IconTipCard } from "@/components/ui/icon-tip-card"
@@ -26,9 +31,13 @@ import { IconTipCard } from "@/components/ui/icon-tip-card"
 //     Reworded to describe what actually happens here: the pan/zoom/
 //     rotate/flip editor (ReviewStep) that appears in place after a photo
 //     is captured or uploaded, still within the same "capture" step.
-// Not adopting review's dismiss-forever-via-localStorage behavior: the
-// brief calls for an ALWAYS-VISIBLE panel, which a one-time dismissal
-// would contradict on repeat visits.
+// Still not adopting review's dismiss-forever-via-localStorage behavior —
+// the brief calls for an ALWAYS-VISIBLE panel, which a one-time persisted
+// dismissal would contradict on repeat visits. The reference layout does
+// show a close (X) affordance in the header row though, so this now has a
+// real dismiss button that hides the panel for the current render only —
+// plain useState, nothing written to storage — so a fresh page load (a new
+// visit, or even just a manual refresh) always shows it again.
 const TIPS = [
   {
     id: "distance",
@@ -57,15 +66,29 @@ const TIPS = [
 ] as const
 
 export function ScanCaptureTips() {
+  const [dismissed, setDismissed] = useState(false)
+
+  if (dismissed) return null
+
   return (
     <aside
       aria-label="Tips for better scans"
       className="grid content-start gap-3"
     >
-      <p className="flex items-center gap-2 text-xs font-semibold tracking-widest text-primary uppercase">
-        <IconBulb className="size-4" />
-        Tips for better scans
-      </p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="flex items-center gap-2 text-xs font-semibold tracking-widest text-primary uppercase">
+          <IconBulb className="size-4" />
+          Tips for better scans
+        </p>
+        <button
+          type="button"
+          onClick={() => setDismissed(true)}
+          aria-label="Dismiss tips"
+          className="text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <IconX className="size-4" />
+        </button>
+      </div>
       {TIPS.map((tip) => (
         <IconTipCard
           key={tip.id}

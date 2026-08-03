@@ -9,7 +9,9 @@ import { IconCalendar, IconCloud, IconSettings, IconUserCircle } from "@tabler/i
 
 import { AllergiesForm } from "@/components/account/allergies-form"
 import { ChangePasswordForm } from "@/components/account/change-password-form"
+import { LiveClimateCheck } from "@/components/account/live-climate-check"
 import { ManageYourDataCard } from "@/components/account/manage-your-data-card"
+import { EditNameForm } from "@/components/profile/edit-name-form"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -30,8 +32,14 @@ export const dynamic = "force-dynamic"
 // a climate-enabled report for any reasonably active user without an
 // unbounded query.
 const CLIMATE_LOOKBACK_REPORT_COUNT = 20
+const ACCOUNT_TAB_VALUES = ["account", "climate", "your-data"] as const
+type AccountTabValue = (typeof ACCOUNT_TAB_VALUES)[number]
 
-export default async function AccountSettingsPage() {
+type AccountSettingsPageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}
+
+export default async function AccountSettingsPage({ searchParams }: AccountSettingsPageProps) {
   const session = await getSession()
   if (!session) {
     // (dashboard)/layout.tsx already redirects when there's no session, but
@@ -48,6 +56,16 @@ export default async function AccountSettingsPage() {
   const yourDataSummary = await getYourDataSummary(session.user.id)
   const allergies = await getUserAllergies(session.user.id)
 
+  // Lets other pages (the dashboard Overview's climate touchpoint) deep-
+  // link straight to a specific tab, e.g. /account?tab=climate — purely
+  // additive: an absent or unrecognized value falls back to the exact
+  // same "account" default this page always had.
+  const requestedTab = (await searchParams).tab
+  const initialTab: AccountTabValue =
+    typeof requestedTab === "string" && ACCOUNT_TAB_VALUES.includes(requestedTab as AccountTabValue)
+      ? (requestedTab as AccountTabValue)
+      : "account"
+
   return (
     <div className="max-w-2xl space-y-8">
       <section className="space-y-2">
@@ -61,7 +79,7 @@ export default async function AccountSettingsPage() {
         </p>
       </section>
 
-      <Tabs defaultValue="account">
+      <Tabs defaultValue={initialTab}>
         <TabsList>
           <TabsTrigger value="account">Account</TabsTrigger>
           <TabsTrigger value="climate">Climate</TabsTrigger>
@@ -71,22 +89,26 @@ export default async function AccountSettingsPage() {
         <TabsContent value="account" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Account details</CardTitle>
-              <CardDescription>Name and email are read-only for now</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between gap-4">
-                <ProfileRow icon={IconUserCircle} label="Name" value={profile?.name ?? "Not set"} />
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <CardTitle>Account details</CardTitle>
+                  <CardDescription>Email is read-only for now</CardDescription>
+                </div>
                 {profile?.role ? (
                   <Badge variant={profile.role === "USER" ? "secondary" : "default"}>{profile.role}</Badge>
                 ) : null}
               </div>
-              <ProfileRow icon={IconUserCircle} label="Email" value={email} />
-              <ProfileRow
-                icon={IconCalendar}
-                label="Account created"
-                value={formatDate(profile?.createdAt ?? session.user.createdAt)}
-              />
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <EditNameForm initialName={profile?.name ?? ""} />
+              <div className="space-y-4 border-t border-border pt-4">
+                <ProfileRow icon={IconUserCircle} label="Email" value={email} />
+                <ProfileRow
+                  icon={IconCalendar}
+                  label="Account created"
+                  value={formatDate(profile?.createdAt ?? session.user.createdAt)}
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -129,6 +151,12 @@ export default async function AccountSettingsPage() {
                 an ongoing preference. It&apos;s used once to fetch live local weather (temperature, humidity, UV
                 index), which factors into that scan&apos;s product recommendations and its Comfort Score. Only the
                 resulting weather reading is kept, tied to that one report — your location itself is never stored.
+              </p>
+
+              <LiveClimateCheck />
+
+              <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+                Your most recent scan
               </p>
               {latestClimateReport?.climate ? (
                 <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted p-4">

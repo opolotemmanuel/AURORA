@@ -28,20 +28,29 @@ import {
   IconZoomOut,
 } from "@tabler/icons-react"
 
-// The entire scan flow as one client component: a linear four-step wizard
-// (capture -> review -> processing -> results) with its own local state
-// machine (`currentStep`) rather than separate routes per step, so captured
-// image / camera stream state doesn't have to survive a navigation. The
-// former standalone "intro" step is merged into "capture" as a two-column
-// layout (consent left, capture controls right — see the capture-step
-// render below and the consentGiven gate) rather than its own page, since
-// consent and capture are both required before anything else can happen and
-// splitting them across a page boundary was pure friction.
+// The entire scan flow as one client component: a linear three-step wizard
+// (capture -> processing -> results) with its own local state machine
+// (`currentStep`) rather than separate routes per step, so captured image /
+// camera stream state doesn't have to survive a navigation. The former
+// standalone "intro" step is merged into "capture" as a two-column layout
+// (consent left, capture controls right — see the capture-step render below
+// and the consentGiven gate) rather than its own page, since consent and
+// capture are both required before anything else can happen and splitting
+// them across a page boundary was pure friction. The former standalone
+// "review" step (crop/pan/zoom/rotate/flip) is merged into "capture" too,
+// the same way: once selectedImage is set, the capture step's own content
+// swaps in place from the live camera/upload picker to the ReviewStep
+// editor — no step/currentStep change, just a `selectedImage` branch within
+// the same "capture" step (see the capture-step render below). This also
+// means the sidebar's decorative ScanPreview panel — already dropped from
+// the pre-image capture UI as redundant — naturally stays dropped for the
+// editing UI too, since ScanPreview only ever renders for `currentStep !==
+// "capture"`, which editing never leaves.
 // A top-level `activeTab` sits above that: "Upload" and "Camera" are the two
-// capture methods (each drives the same shared capture -> review ->
-// processing -> results sequence, just showing one panel instead of the old
-// side-by-side choice), and "Advice" is the general skin-advice chat, shared
-// with /skin-advice. Switching between Upload and Camera mid-scan restarts
+// capture methods (each drives the same shared capture -> processing ->
+// results sequence, just showing one panel instead of the old side-by-side
+// choice), and "Advice" is the general skin-advice chat, shared with
+// /skin-advice. Switching between Upload and Camera mid-scan restarts
 // capture with the new method (see selectTab below); switching to/from
 // Advice never resets wizard state, only pauses an active camera stream.
 import { Button } from "@/components/ui/button"
@@ -67,7 +76,7 @@ import {
 import { computeInitialImageEdit } from "@/lib/scan/face-crop"
 import { SkinAdviceChat } from "@/components/skin-advice/skin-advice-chat"
 
-type ScanStep = "capture" | "review" | "processing" | "results"
+type ScanStep = "capture" | "processing" | "results"
 type ScanInputMethod = "camera" | "upload" | null
 type ScanAnalysis = {
   summary: string
@@ -149,8 +158,7 @@ const defaultImageEdit: ImageEditState = {
 }
 
 const steps: Array<{ id: ScanStep; label: string }> = [
-  { id: "capture", label: "Consent & Capture" },
-  { id: "review", label: "Review" },
+  { id: "capture", label: "Capture & Review" },
   { id: "processing", label: "Processing" },
   { id: "results", label: "Results" },
 ]
@@ -160,11 +168,6 @@ const stepCopy: Record<ScanStep, { title: string; description: string }> = {
     title: "Start your free cosmetic skin scan",
     description:
       "Aurora SkinSense keeps this flow privacy-first: review the notice and give consent, then use your camera or upload an existing image. Keep your face centered with even lighting for the clearest cosmetic skin review.",
-  },
-  review: {
-    title: "Review your selected image",
-    description:
-      "Make sure the image is clear before continuing. You can retake, replace, or remove it before processing.",
   },
   processing: {
     title: "Reviewing visible cosmetic indicators",
@@ -627,6 +630,7 @@ function ReviewStep({
   onResetEdit,
   onRetake,
   onRemove,
+  onContinue,
 }: {
   selectedImage: string
   inputMethod: ScanInputMethod
@@ -636,6 +640,7 @@ function ReviewStep({
   onResetEdit: () => void
   onRetake: () => void
   onRemove: () => void
+  onContinue: () => void
 }) {
   const [dragState, setDragState] = useState<DragState>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -811,6 +816,9 @@ function ReviewStep({
         </div>
       </div>
       <div className="flex flex-col gap-3 sm:flex-row">
+        <Button type="button" onClick={onContinue}>
+          Continue to Processing
+        </Button>
         <Button type="button" variant="outline" onClick={onRetake}>
           <IconRefresh className="size-4" />
           Retake or Replace
@@ -876,7 +884,7 @@ function ResultsStep({
   if (!analysis) {
     return (
       <div className="rounded-lg border border-border bg-muted p-4 text-sm text-muted-foreground">
-        No cosmetic report is available yet. Return to review and try again.
+        No cosmetic report is available yet. Go back and try again.
       </div>
     )
   }
@@ -1301,7 +1309,6 @@ export function ScanFlow({
     setClimateUsed(null)
     setInputMethod("camera")
     stopCamera()
-    setCurrentStep("review")
   }
 
   function uploadImage(event: React.ChangeEvent<HTMLInputElement>) {
@@ -1332,7 +1339,6 @@ export function ScanFlow({
         setClimateUsed(null)
         setInputMethod("upload")
         stopCamera()
-        setCurrentStep("review")
       }
     }
     reader.readAsDataURL(file)
@@ -1366,17 +1372,21 @@ export function ScanFlow({
   }
 
   function goBack() {
-    // No "capture" branch: capture (merged with consent) is the first step
-    // now, so there's nowhere to go back to from it — the Back button is
-    // hidden for this step (see the nav render below) rather than this
-    // function needing a no-op case.
-    if (currentStep === "review") setCurrentStep("capture")
-    if (currentStep === "processing") setCurrentStep("review")
+    // No "capture" branch: capture (merged with consent, and now also with
+    // review/editing) is the first step, so there's nowhere to go back to
+    // from it — the Back button is hidden for this step (see the nav
+    // render below) rather than this function needing a no-op case.
+    // Processing -> capture deliberately leaves selectedImage untouched
+    // (only retakeImage/removeImage clear it), so landing back on
+    // "capture" with an image still set shows the editor again, not the
+    // live camera/upload picker — the same effective destination the old
+    // processing -> review transition landed on.
+    if (currentStep === "processing") setCurrentStep("capture")
     if (currentStep === "results") setCurrentStep("processing")
   }
 
   async function goNext() {
-    if (currentStep === "review" && selectedImage) await analyzeSelectedImage()
+    if (currentStep === "capture" && selectedImage) await analyzeSelectedImage()
     if (currentStep === "processing") setCurrentStep("results")
   }
 
@@ -1542,7 +1552,12 @@ export function ScanFlow({
             )}
           >
             <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-              {currentStep !== "capture" ? (
+              {/* Also shown once an image exists on the capture step
+                  (editing) — same header the processing/results steps use,
+                  reused rather than duplicated, so the merged capture+
+                  review step reads as a continuation of one page instead of
+                  a jump to a different screen. */}
+              {currentStep !== "capture" || selectedImage ? (
                 <>
                   <p className="mb-3 flex items-center gap-2 text-xs font-semibold tracking-widest text-primary uppercase">
                     <IconSparkles className="size-4" />
@@ -1557,8 +1572,8 @@ export function ScanFlow({
                 </>
               ) : null}
 
-              <div className={currentStep !== "capture" ? "mt-8" : undefined}>
-                {currentStep === "capture" ? (
+              <div className={currentStep !== "capture" || selectedImage ? "mt-8" : undefined}>
+                {currentStep === "capture" && !selectedImage ? (
                   // Former standalone "intro" (consent) step merged with
                   // "capture" as a two-column layout — left is the intro
                   // copy + privacy notice + consent checkbox, right is the
@@ -1628,7 +1643,7 @@ export function ScanFlow({
                     </div>
                   </div>
                 ) : null}
-                {currentStep === "review" && selectedImage ? (
+                {currentStep === "capture" && selectedImage ? (
                   <ReviewStep
                     selectedImage={selectedImage}
                     inputMethod={inputMethod}
@@ -1638,6 +1653,7 @@ export function ScanFlow({
                     onResetEdit={() => setImageEdit(defaultImageEdit)}
                     onRetake={retakeImage}
                     onRemove={removeImage}
+                    onContinue={() => void goNext()}
                   />
                 ) : null}
                 {currentStep === "processing" ? (
@@ -1700,20 +1716,17 @@ export function ScanFlow({
                     </Button>
                   </>
                 ) : currentStep === "capture" ? null : (
+                  // Only "processing" ever reaches this branch now (capture
+                  // and results are both handled above) — the button always
+                  // means "advance to Results" here, never "advance to
+                  // Processing" (that transition now happens from
+                  // ReviewStep's own Continue button once an image exists).
                   <Button
                     type="button"
                     onClick={() => void goNext()}
-                    disabled={
-                      (currentStep === "review" && !selectedImage) ||
-                      (currentStep === "processing" &&
-                        (isAnalyzing || !analysisResult))
-                    }
+                    disabled={isAnalyzing || !analysisResult}
                   >
-                    {currentStep === "processing"
-                      ? isAnalyzing
-                        ? "Analyzing..."
-                        : "View Results"
-                      : "Continue to Processing"}
+                    {isAnalyzing ? "Analyzing..." : "View Results"}
                   </Button>
                 )}
               </div>

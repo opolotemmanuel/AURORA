@@ -6,7 +6,9 @@
 // (Low, Mild, Moderate, ...), never a plotted number.
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import type { ConcernTrend } from "@/lib/reports/skin-history"
-import { BAND_SCALE } from "@/lib/reports/skin-history"
+import { BAND_SCALE, MIN_TREND_POINTS } from "@/lib/reports/skin-history"
+
+import { ConcernTrendEmptyState } from "./concern-trend-empty-state"
 
 const WIDTH = 400
 const HEIGHT = 140
@@ -19,19 +21,8 @@ const MAX_VALUE = Math.max(...Object.values(BAND_SCALE).filter((v): v is number 
 export function ConcernTrendChart({ trend }: { trend: ConcernTrend }) {
   const { label, points } = trend
 
-  if (points.length < 2) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>{label}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="rounded-lg border border-border bg-muted p-4 text-sm text-muted-foreground">
-            Take a few more scans to see your {label.toLowerCase()} trend.
-          </p>
-        </CardContent>
-      </Card>
-    )
+  if (points.length < MIN_TREND_POINTS) {
+    return <ConcernTrendEmptyState label={label} pointsCount={points.length} />
   }
 
   const range = MAX_VALUE - MIN_VALUE || 1

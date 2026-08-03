@@ -16,7 +16,10 @@ import type { BadgeVariant } from "@/lib/reports/band-visuals"
 import type { ComfortBand } from "@/lib/reports/comfort-score"
 import type { ReportViewModel } from "@/lib/reports/report-view-model"
 
-const COMFORT_BAND_BADGE_VARIANT: Record<ComfortBand, BadgeVariant> = {
+// Exported so components/account/live-climate-check.tsx's standalone live
+// weather check (Settings > Climate tab) can render the same Comfort Score
+// badge styling instead of a second, drifting copy of this mapping.
+export const COMFORT_BAND_BADGE_VARIANT: Record<ComfortBand, BadgeVariant> = {
   Excellent: "secondary",
   Good: "outline",
   Moderate: "default",

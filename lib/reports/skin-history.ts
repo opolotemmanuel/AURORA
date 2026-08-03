@@ -44,6 +44,11 @@ export const BAND_SCALE: Partial<Record<CosmeticBand, number>> = {
   elevated: 4,
 }
 
+// The trend line needs at least 2 points to draw a line at all. Shared
+// constant so ConcernTrendChart's real-vs-empty gate and the empty state's
+// "X of N scans needed" copy can never drift apart.
+export const MIN_TREND_POINTS = 2
+
 export type ConcernTrendPoint = {
   date: string
   value: number

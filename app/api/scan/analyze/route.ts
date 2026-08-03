@@ -16,7 +16,7 @@ import { readImageDimensions } from "@/lib/backend/image-dimensions"
 import { checkImageLighting } from "@/lib/backend/image-lighting"
 import { createScanReport } from "@/lib/backend/scan-service"
 import type { ScanAnalysisReport, ScanSource } from "@/lib/backend/types"
-import { getClimateSnapshot } from "@/lib/climate/adapter"
+import { getClimateSnapshot, type ClimateSnapshot } from "@/lib/climate/adapter"
 import { getRemainingScans } from "@/lib/scans/balance"
 
 const MAX_IMAGE_SIZE = 8 * 1024 * 1024
@@ -127,7 +127,7 @@ export async function POST(request: Request) {
     // lib/backend/scan-service.ts, which already handles a null climate).
     const climate = await getClimateSnapshot(coordsResult.lat, coordsResult.lon)
 
-    const geminiResult = await analyzeImageWithFallback(image)
+    const geminiResult = await analyzeImageWithFallback(image, climate)
     const dimensions = readImageDimensions(imageBuffer, normalizedType)
     // `stored: false` always — per AGENTS.md's privacy rule, the photo
     // itself is never persisted, only its metadata and the resulting report.
@@ -288,7 +288,7 @@ function parseScanCoordinates(
 // Wraps the Gemini call so a provider failure (quota, timeout, invalid
 // response, etc.) degrades to a rule-based report instead of failing the
 // whole request — the user still gets a usable (if generic) cosmetic report.
-async function analyzeImageWithFallback(image: File): Promise<{
+async function analyzeImageWithFallback(image: File, climate: ClimateSnapshot | null): Promise<{
   analysis: ScanAnalysisReport
   fallback: boolean
   fallbackReason?: string
@@ -298,7 +298,7 @@ async function analyzeImageWithFallback(image: File): Promise<{
   const startedAt = Date.now()
   try {
     return {
-      analysis: await analyzeSkinWithGemini(image),
+      analysis: await analyzeSkinWithGemini(image, climate),
       fallback: false,
       durationMs: Date.now() - startedAt,
     }

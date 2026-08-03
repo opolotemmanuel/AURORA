@@ -10,14 +10,30 @@
 // Density pass (2026-07-23): added a stat-card row + a real usage-over-time
 // chart + a recent-activity feed, matching wyasyn/review's dashboard
 // layout density — see components/dashboard/{stat-card,usage-chart,
-// recent-activity-list}.tsx. Every number here is real (ScanBalance,
-// ScanLedger, DoshaProfile, listReportsForUser) — nothing fabricated.
-// Everything below the stat row/chart/activity feed (the latest-scan
-// banner, "Recommended for you", "Scan history") is unchanged functionality
-// from before this pass, just reflowed underneath the new density.
+// recent-activity-list}.tsx.
+//
+// Nudges/touchpoints pass: added an allergy nudge (only when
+// user.allergies is unset — reuses lib/user/allergies-store.ts's
+// getUserAllergies, the same read /account's Allergies form uses) and a
+// climate touchpoint (only when a real ClimateReading exists — reused
+// directly from the `reports` array already fetched below for the scan-
+// history table, the exact same "most recent report with a climate
+// reading" lookup app/(dashboard)/account/page.tsx's Climate tab uses, no
+// second query) and three entry-point cards to the chat/history/latest-
+// report routes. Every number/condition on this page is real — nothing
+// fabricated, nothing shown with no real feature behind it.
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { IconArrowUpRight, IconCamera, IconFlower } from "@tabler/icons-react"
+import {
+  IconAlertTriangle,
+  IconArrowUpRight,
+  IconCamera,
+  IconChartLine,
+  IconCloud,
+  IconFlower,
+  IconReportAnalytics,
+  IconSparkles,
+} from "@tabler/icons-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -39,6 +55,7 @@ import { getDoshaProfile } from "@/lib/dosha/dosha-store"
 import { buildDailyScanSeries, getStartOfDayNDaysAgo } from "@/lib/dashboard/usage-series"
 import { worstBandVisual } from "@/lib/reports/band-visuals"
 import { getOrCreateScanBalance, getRecentLedgerForUser } from "@/lib/scans/balance"
+import { getUserAllergies } from "@/lib/user/allergies-store"
 
 export const dynamic = "force-dynamic"
 
@@ -57,17 +74,25 @@ export default async function DashboardPage() {
   const userId = session.user.id
   const since = getStartOfDayNDaysAgo(USAGE_WINDOW_DAYS)
 
-  const [reports, balance, doshaProfile, recentLedger, scanCountsByDay] = await Promise.all([
+  const [reports, balance, doshaProfile, recentLedger, scanCountsByDay, allergies] = await Promise.all([
     listReportsForUser(userId, 6),
     getOrCreateScanBalance(userId),
     getDoshaProfile(userId),
     getRecentLedgerForUser(userId, 8),
     getScanCountsByDayForUser(userId, since),
+    getUserAllergies(userId),
   ])
 
   const latest = reports[0] ?? null
   const latestVisual = latest ? worstBandVisual(latest.analysis.cosmeticFindings) : null
   const usageSeries = buildDailyScanSeries(scanCountsByDay, USAGE_WINDOW_DAYS)
+  const needsAllergyNudge = !allergies?.trim()
+  // Same lookup app/(dashboard)/account/page.tsx's Climate tab runs
+  // (find the newest report that actually has a saved reading, since a
+  // weather-fetch failure on the newest scan shouldn't hide real climate
+  // data from an earlier one) — reused against the `reports` array
+  // already fetched above instead of a second query.
+  const latestClimateReport = reports.find((report) => report.climate) ?? null
 
   return (
     <div className="space-y-10">
@@ -133,15 +158,78 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent activity</CardTitle>
-            <CardDescription>Your scan credit history</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <RecentActivityList entries={recentLedger} />
-          </CardContent>
-        </Card>
+        {/* Right column shows whichever is more useful right now: the
+            allergy nudge when it's genuinely unset (a real safety gap —
+            declared allergens are excluded from recommendations
+            entirely, not just ranked lower), or Recent activity when
+            there's nothing to nudge about. Never both, never neither. */}
+        {needsAllergyNudge ? (
+          <Card className="border-warning/30 bg-warning/5">
+            <CardContent className="flex h-full flex-col justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-warning/10 text-warning">
+                  <IconAlertTriangle className="size-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">Declare your allergies</p>
+                  <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                    Products with a declared allergen are excluded from your recommendations entirely — add yours
+                    so Aura never suggests one.
+                  </p>
+                </div>
+              </div>
+              <Button asChild size="sm" variant="outline" className="self-start">
+                <Link href="/account">Add allergies</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent activity</CardTitle>
+              <CardDescription>Your scan credit history</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <RecentActivityList entries={recentLedger} />
+            </CardContent>
+          </Card>
+        )}
+      </section>
+
+      {latestClimateReport?.climate ? (
+        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <IconCloud className="size-4 shrink-0 text-primary" />
+          <span>
+            Your last scan factored in {Math.round(latestClimateReport.climate.temperatureC)}°C,{" "}
+            {Math.round(latestClimateReport.climate.humidityPercent)}% humidity.
+          </span>
+          <Link href="/account?tab=climate" className="font-medium text-primary hover:underline">
+            Check today&apos;s weather
+          </Link>
+        </div>
+      ) : null}
+
+      <section className="grid gap-4 sm:grid-cols-3">
+        <EntryPointCard
+          href="/skin-advice"
+          icon={IconSparkles}
+          label="Ask about your skin"
+          description="Chat with Aura about your routine, ingredients, or concerns."
+        />
+        <EntryPointCard
+          href="/skin-history"
+          icon={IconChartLine}
+          label="See your trends"
+          description="How your cosmetic readings have moved across scans."
+        />
+        <EntryPointCard
+          href={latest ? `/reports/${latest.id}` : "/scan"}
+          icon={IconReportAnalytics}
+          label="Latest recommendations"
+          description={
+            latest ? "Products matched to your most recent scan." : "Take a scan to get your first matches."
+          }
+        />
       </section>
 
       {latest && latestVisual ? (
@@ -268,4 +356,32 @@ function EmptyState({ label }: { label: string }) {
 
 function formatDate(value: string) {
   return new Date(value).toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" })
+}
+
+function EntryPointCard({
+  href,
+  icon: Icon,
+  label,
+  description,
+}: {
+  href: string
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  description: string
+}) {
+  return (
+    <Link href={href} className="group block">
+      <Card className="h-full transition-colors group-hover:border-primary/40">
+        <CardContent className="flex h-full flex-col gap-3">
+          <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-primary">
+            <Icon className="size-4" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-foreground">{label}</p>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  )
 }

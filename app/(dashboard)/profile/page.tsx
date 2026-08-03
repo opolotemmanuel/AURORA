@@ -14,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { EditNameForm } from "@/components/profile/edit-name-form"
 import { getSession } from "@/lib/auth/session"
 import { findReportOwner } from "@/lib/backend/report-store"
 
@@ -47,16 +48,18 @@ export default async function ProfilePage() {
       <Card>
         <CardHeader>
           <CardTitle>Account details</CardTitle>
-          <CardDescription>Read-only for now</CardDescription>
+          <CardDescription>Name is editable below. Email and account age are managed by Aura and stay read-only.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <ProfileRow icon={IconUserCircle} label="Name" value={profile?.name ?? "Not set"} />
-          <ProfileRow icon={IconMail} label="Email" value={profile?.email ?? session.user.email} />
-          <ProfileRow
-            icon={IconCalendar}
-            label="Member since"
-            value={formatDate(profile?.createdAt ?? session.user.createdAt)}
-          />
+        <CardContent className="space-y-6">
+          <EditNameForm initialName={profile?.name ?? ""} />
+          <div className="space-y-4 border-t border-border pt-4">
+            <ProfileRow icon={IconMail} label="Email" value={profile?.email ?? session.user.email} />
+            <ProfileRow
+              icon={IconCalendar}
+              label="Member since"
+              value={formatDate(profile?.createdAt ?? session.user.createdAt)}
+            />
+          </div>
         </CardContent>
       </Card>
 

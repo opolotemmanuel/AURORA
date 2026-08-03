@@ -3,6 +3,7 @@
 // (no SDK dependency) and normalizes whatever comes back into the app's own
 // ScanAnalysisReport shape, so callers never see Gemini-specific types.
 import type { ScanAnalysisReport } from "@/lib/backend/types"
+import type { ClimateSnapshot } from "@/lib/climate/adapter"
 
 // Overridable via GEMINI_MODEL env var (see .env.local) without a code
 // change — lets the model be bumped without redeploying the adapter itself.
@@ -83,7 +84,8 @@ export class GeminiAnalysisError extends Error {
 // for askAboutReport, see further down) instead of duplicating the
 // fetch/timeout/error-classification logic a second time.
 export async function analyzeSkinWithGemini(
-  image: File
+  image: File,
+  climate?: ClimateSnapshot | null
 ): Promise<ScanAnalysisReport> {
   const apiKey = process.env.GEMINI_API_KEY
   const model = getGeminiModel()
@@ -93,6 +95,7 @@ export async function analyzeSkinWithGemini(
     model,
     imageMimeType: image.type || "image/jpeg",
     imageSizeBytes: image.size,
+    hasClimateContext: Boolean(climate),
   })
 
   if (!apiKey) {
@@ -109,7 +112,7 @@ export async function analyzeSkinWithGemini(
       {
         role: "user",
         parts: [
-          { text: buildCosmeticPrompt() },
+          { text: buildCosmeticPrompt(climate) },
           {
             inlineData: {
               mimeType: image.type || "image/jpeg",
@@ -633,18 +636,54 @@ function isQuotaMessage(value: string) {
 // rule (AGENTS.md Non-Negotiables) actually gets enforced on the model side
 // — normalizeGeminiAnalysis below is the second, code-level enforcement of
 // the same rule in case the model doesn't comply.
-function buildCosmeticPrompt() {
-  return [
+//
+// Climate/routineTips boundary: this stays ONE prompt/ONE call (no second
+// API call — routine-tip generation and finding generation cannot be
+// separated into two model calls without doubling Gemini spend per scan),
+// but the two instruction sets are still structurally separated within it,
+// not just appended as an afterthought:
+//   1. Every cosmeticFindings instruction is given first, complete on its
+//      own, with a hard rule stated before climate is ever mentioned.
+//   2. Climate — if present — only appears afterward, in its own clearly
+//      labeled block that explicitly scopes it to routineTips only.
+//   3. The no-influence rule is restated immediately after the climate
+//      block too, right before the JSON-shape instruction, so it's the
+//      last thing read before the model must commit to an answer, not
+//      just the first.
+// This is a prompt-engineering mitigation, not a guarantee — see this
+// feature's isolation test (same image, varying climate context, comparing
+// cosmeticFindings across runs) before treating climate-aware tips as safe
+// to ship.
+function buildCosmeticPrompt(climate?: ClimateSnapshot | null) {
+  const lines = [
     "You are Aurora SkinSense, a cosmetic skin wellness analysis assistant.",
     "Analyze the uploaded face image for visible cosmetic indicators only.",
     "Do not diagnose, identify diseases, mention medical conditions, prescribe treatment, or claim certainty.",
     "Use coarse bands only: low, balanced, mild, moderate, elevated, not_visible.",
-    "Return strict JSON only. No markdown, no code fence, no extra commentary.",
-    "JSON shape:",
-    '{ "summary": string, "cosmeticFindings": [{ "label": string, "band": "low|balanced|mild|moderate|elevated|not_visible", "observation": string }], "routineTips": string[], "quality": { "lighting": "low|balanced|mild|moderate|elevated|not_visible", "framing": "clear|usable|unclear", "confidence": "low|medium|high" } }',
+    "",
+    "HARD RULE for cosmeticFindings: every cosmeticFindings band and observation must be based SOLELY on what is visibly present in the uploaded image. Nothing else described anywhere in this prompt — including any weather/climate context that may appear below — may ever influence a cosmeticFindings band or observation, for any reason.",
     "Include 4 cosmeticFindings using labels from: Visible texture, Hydration signs, Redness appearance, Pigmentation appearance, Radiance.",
     "Keep observations short, cosmetic-only, and privacy-first.",
-  ].join("\n")
+  ]
+
+  if (climate) {
+    lines.push(
+      "",
+      "ADDITIONAL CONTEXT — for routineTips ONLY, never for cosmeticFindings:",
+      `Today's local weather where this scan was taken: ${Math.round(climate.temperatureC)}°C, ${Math.round(climate.humidityPercent)}% relative humidity, UV index ${Math.round(climate.uvIndex)}.`,
+      "You may use this weather context only to make routineTips more practically useful — for example, suggest daytime SPF emphasis if UV is high, lightweight/oil-controlling products if humidity is high, or a richer moisturizer if it is cold or dry. Keep tips general cosmetic wellness habits, never a medical claim.",
+      "REMINDER: this weather context must NEVER change a cosmeticFindings band or observation. Write cosmeticFindings exactly as you would if this weather context were not provided at all."
+    )
+  }
+
+  lines.push(
+    "",
+    "Return strict JSON only. No markdown, no code fence, no extra commentary.",
+    "JSON shape:",
+    '{ "summary": string, "cosmeticFindings": [{ "label": string, "band": "low|balanced|mild|moderate|elevated|not_visible", "observation": string }], "routineTips": string[], "quality": { "lighting": "low|balanced|mild|moderate|elevated|not_visible", "framing": "clear|usable|unclear", "confidence": "low|medium|high" } }'
+  )
+
+  return lines.join("\n")
 }
 
 function parseGeminiJson(

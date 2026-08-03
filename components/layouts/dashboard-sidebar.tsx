@@ -1,186 +1,205 @@
 "use client"
 
-import Image from "next/image"
+// Main app sidebar — icon rail (bar 1) → contextual item list (bar 2) →
+// page content (bar 3, rendered by dashboard-shell.tsx as {children}),
+// same 3-column pattern already built and verified for the Enterprise
+// Settings console (components/admin/settings/settings-tabs.tsx). One key
+// difference from that console: there's no client-side Tabs/TabsContent
+// here, because bar 3 across this whole app is real Next.js routing, not
+// one page's client-switched panels — every item below is a genuine
+// <Link>, and every href/label/icon/admin-gating rule is copied unchanged
+// from the pre-restructure NAV_SECTIONS/ADMINISTRATION_SECTION (now in
+// sidebar-nav-config.ts). This file owns both the desktop layout and the
+// mobile header/Sheet — dashboard-shell.tsx just renders this once plus
+// <main>.
+import { useEffect, useState } from "react"
 import Link from "next/link"
-import {
-  IconChartBar,
-  IconChartLine,
-  IconFileAnalytics,
-  IconFlower,
-  IconLayoutDashboard,
-  IconLeaf,
-  IconPhotoScan,
-  IconReportAnalytics,
-  IconSettings,
-  IconShieldCheck,
-  IconSparkles,
-  IconUserCircle,
-  IconUsers,
-} from "@tabler/icons-react"
+import { IconLeaf } from "@tabler/icons-react"
 
 import { cn } from "@/lib/utils"
 import { authClient } from "@/lib/auth/client"
+import { SidebarProfileMenu } from "@/components/layouts/sidebar-profile-menu"
+import {
+  SIDEBAR_CATEGORIES,
+  findActiveCategory,
+  isNavItemActive,
+  type SidebarCategoryId,
+  type SidebarNavItem,
+} from "@/components/layouts/sidebar-nav-config"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
-type NavItem = { href: string; label: string; icon: typeof IconLayoutDashboard }
-type NavSection = { label: string; items: NavItem[] }
-
-// Shown to every signed-in user regardless of role. Grouped to match the
-// Overview / Your Data / Account structure from the product's sidebar design.
-const NAV_SECTIONS: NavSection[] = [
-  {
-    label: "Overview",
-    items: [
-      { href: "/dashboard", label: "Home", icon: IconLayoutDashboard },
-      { href: "/usage", label: "Usage", icon: IconChartBar },
-    ],
-  },
-  {
-    label: "Your Data",
-    items: [
-      { href: "/profile", label: "Profile", icon: IconUserCircle },
-      { href: "/reports", label: "Reports", icon: IconReportAnalytics },
-      { href: "/skin-history", label: "Skin History", icon: IconChartLine },
-      { href: "/skin-advice", label: "Skin advice", icon: IconSparkles },
-      { href: "/dosha-assessment", label: "Dosha Assessment", icon: IconFlower },
-      { href: "/privacy", label: "Privacy", icon: IconShieldCheck },
-    ],
-  },
-  {
-    label: "Account",
-    // Labeled "Settings" to match the product design, but routes to
-    // /account — /settings is a separate, pre-existing admin-only page
-    // (product catalog / enterprise settings, see ADMINISTRATION_SECTION
-    // below) and reusing that route here would re-create the exact bug it
-    // was split off to fix (see ADMINISTRATION_SECTION's comment).
-    items: [{ href: "/account", label: "Settings", icon: IconSettings }],
-  },
-]
-
-// `/settings` is the admin product-catalog/enterprise-settings page (see
-// app/(dashboard)/settings/page.tsx's requireAdminAccess("settings:manage")
-// gate) — not a user account-settings page — so it's admin-only nav, same
-// tier as the rest of this group. Previously shown to every user, which
-// meant every regular USER saw a "Settings" link that only ever dead-ended
-// in Access Denied. Labeled "Enterprise Settings" here (rather than plain
-// "Settings") so it doesn't collide with the user-facing "Settings" link
-// above for admins, who see both.
-//
-// /admin used to be a single link to one page holding analytics, a scan/
-// report table, and system status all at once — split into three admin/*
-// routes (Analytics/Users/Scans) so each is its own focused page, same
-// admin-gating (admin/layout.tsx's requireAdminAccess) either way.
-const ADMINISTRATION_SECTION: NavSection = {
-  label: "Administration",
-  items: [
-    { href: "/admin/analytics", label: "Analytics", icon: IconChartBar },
-    { href: "/admin/users", label: "Users", icon: IconUsers },
-    { href: "/admin/scans", label: "Scans", icon: IconPhotoScan },
-    { href: "/settings", label: "Enterprise Settings", icon: IconFileAnalytics },
-  ],
-}
-
-// The actual nav markup (brand row, sections, user footer) — no positioning
-// or `<aside>` wrapper of its own, so the exact same content can be
-// rendered two different ways: fixed in place for desktop (DashboardSidebar
-// below) and inside a Sheet drawer for mobile (see components/layouts/
-// dashboard-shell.tsx's MobileNav). One nav definition, one place that can
-// go stale, instead of two copies drifting apart.
-//
-// `pathname` is passed in (rather than read here via usePathname) so this
-// stays a plain component the parent shell controls, matching-prefix logic
-// below keeps e.g. /reports/123 highlighting the /reports nav item.
-// `isAdminTier` hides admin-only links for plain USER accounts — the real
-// route protection is still lib/auth/admin.ts's requireAdminAccess, this
-// just avoids showing a link they can't follow. `onNavigate` fires after a
-// link is clicked — the mobile drawer uses it to close itself; the desktop
-// sidebar (which has nothing to close) leaves it undefined.
-export function SidebarNavContent({
-  pathname,
-  isAdminTier,
-  onNavigate,
-}: {
-  pathname: string
-  isAdminTier: boolean
-  onNavigate?: () => void
-}) {
-  const sections = isAdminTier ? [...NAV_SECTIONS, ADMINISTRATION_SECTION] : NAV_SECTIONS
+// `isAdminTier` hides the Administration category for plain USER accounts
+// — the real route protection is still each /admin/* and /settings page's
+// own requireAdminAccess call; this only avoids showing links a plain
+// user can't follow, same purpose (and same source data) the old
+// conditional `[...NAV_SECTIONS, ADMINISTRATION_SECTION]` spread served.
+export function DashboardSidebar({ pathname, isAdminTier }: { pathname: string; isAdminTier: boolean }) {
   const { data: session } = authClient.useSession()
+  const visibleCategories = isAdminTier ? SIDEBAR_CATEGORIES : SIDEBAR_CATEGORIES.filter((category) => !category.adminOnly)
+
+  // Which category's item list bar 2 (and the mobile Sheet) currently
+  // shows. Clicking a rail icon browses a category without navigating —
+  // manualCategory holds that override. Actually navigating (pathname
+  // changing) always wins: the effect below clears the override so the
+  // list snaps back to reflect wherever the user actually landed, per
+  // this task's "don't always reset to Overview" requirement.
+  const [manualCategory, setManualCategory] = useState<SidebarCategoryId | null>(null)
+  const [mobileListOpen, setMobileListOpen] = useState(false)
+
+  useEffect(() => {
+    setManualCategory(null)
+  }, [pathname])
+
+  const routeCategory = findActiveCategory(pathname, visibleCategories)
+  const displayedCategory = manualCategory ?? routeCategory
+  const displayedCategoryMeta = visibleCategories.find((category) => category.id === displayedCategory)
+  const displayedItems = displayedCategoryMeta?.items ?? []
+
+  function openCategoryOnMobile(category: SidebarCategoryId) {
+    setManualCategory(category)
+    setMobileListOpen(true)
+  }
 
   return (
     <>
-      <div className="flex h-14 items-center gap-2 border-b border-sidebar-border px-6">
-        <IconLeaf className="size-5 text-primary" />
-        <Link href="/dashboard" className="font-heading text-sm font-medium tracking-wide" onClick={onNavigate}>
-          Aura
-        </Link>
-      </div>
+      {/* Desktop: fixed rail + contextual list, hidden below lg (see the
+          mobile header below for the lg:hidden equivalent). */}
+      <aside className="fixed inset-y-0 left-0 z-30 hidden lg:flex">
+        <nav className="flex w-16 shrink-0 flex-col items-center border-r border-sidebar-border bg-sidebar py-3">
+          <Link
+            href="/dashboard"
+            aria-label="Aura home"
+            className="mb-2 grid size-10 shrink-0 place-items-center rounded-md text-primary transition-colors hover:bg-sidebar-accent"
+          >
+            <IconLeaf className="size-5" />
+          </Link>
 
-      <nav className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
-        {sections.map((section) => (
-          <div key={section.label} className="space-y-1">
-            <p className="px-3 text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-              {section.label}
-            </p>
-            {section.items.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`)
-              const Icon = item.icon
+          <div className="flex flex-1 flex-col items-center gap-1">
+            {visibleCategories.map((category) => {
+              const Icon = category.icon
+              const isActive = category.id === displayedCategory
 
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={onNavigate}
+                <button
+                  key={category.id}
+                  type="button"
+                  title={category.label}
+                  aria-label={category.label}
+                  aria-pressed={isActive}
+                  onClick={() => setManualCategory(category.id)}
                   className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+                    "grid size-10 shrink-0 place-items-center rounded-md transition-colors",
                     isActive
                       ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                   )}
                 >
-                  <Icon className="size-4" />
-                  {item.label}
-                </Link>
+                  <Icon className="size-5" />
+                </button>
               )
             })}
           </div>
-        ))}
-      </nav>
 
-      {session ? (
-        <div className="flex items-center gap-3 border-t border-sidebar-border px-4 py-4">
-          {session.user.image ? (
-            <Image
-              src={session.user.image}
-              alt=""
-              width={32}
-              height={32}
-              className="size-8 shrink-0 rounded-full object-cover"
-            />
-          ) : (
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted">
-              <IconUserCircle className="size-5 text-muted-foreground" />
-            </div>
-          )}
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-sidebar-foreground">
-              {session.user.name || "Aura user"}
+          {session ? <SidebarProfileMenu user={session.user} popoutSide="top" /> : null}
+        </nav>
+
+        <div className="flex w-56 flex-col border-r border-border bg-background">
+          <div className="flex h-14 shrink-0 items-center border-b border-border px-4">
+            <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+              {displayedCategoryMeta?.label}
             </p>
-            <p className="truncate text-xs text-muted-foreground">{session.user.email}</p>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            <CategoryItemList items={displayedItems} pathname={pathname} />
           </div>
         </div>
-      ) : null}
+      </aside>
+
+      {/* Mobile: sticky header with the same rail icons laid out
+          horizontally — tapping one opens a Sheet with that category's
+          items (same Sheet primitive already used for the Settings
+          console's mobile collapse); selecting an item closes the Sheet
+          and navigates. */}
+      <header className="sticky top-0 z-20 flex h-14 items-center gap-1 border-b border-border bg-background px-3 lg:hidden">
+        <Link href="/dashboard" aria-label="Aura home" className="mr-1 grid size-9 shrink-0 place-items-center">
+          <IconLeaf className="size-5 text-primary" />
+        </Link>
+
+        <div className="flex flex-1 items-center gap-1 overflow-x-auto">
+          {visibleCategories.map((category) => {
+            const Icon = category.icon
+            const isActive = category.id === displayedCategory
+
+            return (
+              <button
+                key={category.id}
+                type="button"
+                aria-label={category.label}
+                onClick={() => openCategoryOnMobile(category.id)}
+                className={cn(
+                  "grid size-10 shrink-0 place-items-center rounded-md transition-colors",
+                  isActive ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Icon className="size-5" />
+              </button>
+            )
+          })}
+        </div>
+
+        {session ? <SidebarProfileMenu user={session.user} popoutSide="bottom" /> : null}
+      </header>
+
+      <Sheet open={mobileListOpen} onOpenChange={setMobileListOpen}>
+        <SheetContent side="left" className="w-72 max-w-[85vw] gap-0 bg-sidebar p-0 text-sidebar-foreground">
+          <SheetHeader className="border-b border-sidebar-border px-4 py-3 text-left">
+            <SheetTitle className="text-sm">{displayedCategoryMeta?.label}</SheetTitle>
+          </SheetHeader>
+          <CategoryItemList items={displayedItems} pathname={pathname} onSelect={() => setMobileListOpen(false)} />
+        </SheetContent>
+      </Sheet>
     </>
   )
 }
 
-// Desktop-only fixed sidebar — hidden below `lg` (see dashboard-shell.tsx's
-// MobileNav for the equivalent under `lg`), unchanged in every other way
-// from before mobile support existed: same fixed positioning, same width,
-// same content via SidebarNavContent above.
-export function DashboardSidebar({ pathname, isAdminTier }: { pathname: string; isAdminTier: boolean }) {
+// Shared vertical item list — desktop's bar 2 and the mobile Sheet both
+// render this against whichever category is currently displayed, so the
+// two surfaces can't drift into different labels/hrefs/active-styling.
+// Same active-highlight rule and classNames the old flat single-list
+// sidebar used per item — only the surrounding structure (grouped by
+// category, shown one category at a time) changed.
+function CategoryItemList({
+  items,
+  pathname,
+  onSelect,
+}: {
+  items: SidebarNavItem[]
+  pathname: string
+  onSelect?: () => void
+}) {
   return (
-    <aside className="fixed inset-y-0 left-0 z-30 hidden w-56 shrink-0 flex-col border-r border-border bg-sidebar lg:flex">
-      <SidebarNavContent pathname={pathname} isAdminTier={isAdminTier} />
-    </aside>
+    <nav className="flex flex-col gap-1 p-2">
+      {items.map((item) => {
+        const isActive = isNavItemActive(pathname, item.href)
+        const Icon = item.icon
+
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={onSelect}
+            className={cn(
+              "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
+              isActive
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            )}
+          >
+            <Icon className="size-4" />
+            {item.label}
+          </Link>
+        )
+      })}
+    </nav>
   )
 }

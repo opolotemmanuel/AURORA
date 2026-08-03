@@ -1,8 +1,7 @@
 // Shared small-icon + label trust-signal footer row, extracted from
-// components/scan/ScanFlow.tsx's dropzone footer (JPG/PNG/WEBP limits,
-// lighting tip, "analyzed in memory" privacy line) so any other page
-// stating similar quick assurances reuses the same wrapped, centered strip
-// instead of a bespoke <ul> per page.
+// components/scan/ScanFlow.tsx's dropzone footer. Wrapper spacing/type size
+// pulled verbatim from wyasyn/review's components/scan/scan-upload-panel.tsx
+// QUALITY_NOTES list.
 import { cn } from "@/lib/utils"
 
 export type TrustSignalItem = {
@@ -20,7 +19,7 @@ export function TrustSignalRow({
   return (
     <ul
       className={cn(
-        "flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 px-1 text-xs text-muted-foreground",
+        "flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 px-1 pb-0.5 text-[11px] text-muted-foreground",
         className
       )}
     >

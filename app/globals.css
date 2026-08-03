@@ -258,6 +258,27 @@
     }
 }
 
+/* Ported verbatim from wyasyn/review's app/globals.css for the /scan capture
+   page's tips panel — a subtle top-to-bottom gradient card background, built
+   entirely from this app's own --card/--background tokens (color-mix, no new
+   palette), same "reuse existing tokens" approach as .report-print-surface
+   above. Outside any @layer for the same cascade-order reason noted there. */
+.scan-surface {
+    background-image: linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--card) 96%, transparent) 0%,
+        color-mix(in oklab, var(--background) 92%, transparent) 100%
+    );
+}
+
+.dark .scan-surface {
+    background-image: linear-gradient(
+        180deg,
+        color-mix(in oklab, var(--card) 88%, transparent) 0%,
+        color-mix(in oklab, var(--background) 94%, transparent) 100%
+    );
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

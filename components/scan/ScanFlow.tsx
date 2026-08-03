@@ -5,7 +5,11 @@ import Link from "next/link"
 import { useEffect, useRef, useState } from "react"
 
 import { AuroraLogomark } from "@/components/brand/aurora-logomark"
+import { CaptureTabTooltip } from "@/components/scan/capture-tab-tooltip"
+import { Tabs, TabsList, TabsTrigger } from "@/components/motion/tabs"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { TrustSignalRow } from "@/components/ui/trust-signal-row"
+import { CAPTURE_TAB_TOOLTIPS } from "@/lib/scan/capture-copy"
 import {
   IconArrowsMove,
   IconCamera,
@@ -19,7 +23,6 @@ import {
   IconLoader2,
   IconLock,
   IconMapPin,
-  IconMessageCircle,
   IconPhoto,
   IconPhotoScan,
   IconRefresh,
@@ -27,7 +30,6 @@ import {
   IconRotate,
   IconRotateClockwise,
   IconSparkles,
-  IconSun,
   IconTrash,
   IconUpload,
   IconZoomIn,
@@ -496,71 +498,82 @@ function UploadPanel({
 
   return (
     <div className="space-y-3">
+      {/* Dropzone: review's scan-upload-panel.tsx centered-variant FileUpload
+          treatment, applied to our own dropzone element — same drag/drop +
+          browse wiring (handleDragOver/handleDragLeave/handleDrop/onUpload,
+          all unchanged) and our own location/scan-limit messaging below the
+          button, which review's simpler version has no equivalent of at all
+          (it doesn't gate on either). Not a literal port of review's
+          FileUpload component: that component's queue/progress/retry UI
+          (~500 of its 612 lines) never renders in review's own usage either
+          — defaultValue={[]} is never populated, onImageSelected hands off
+          immediately — so porting it would only add unused complexity, not
+          visual fidelity. */}
       <div
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          "grid min-h-64 place-items-center rounded-2xl border border-dashed p-8 text-center transition-colors",
-          isDragging
-            ? "border-primary bg-primary/5"
-            : "border-border bg-muted/40",
+          "group relative flex min-h-56 w-full flex-col items-center justify-center gap-3 overflow-hidden rounded-3xl border border-dashed border-border bg-background p-7 text-center transition-[border-color,transform] duration-200",
+          "hover:border-foreground/40",
+          isDragging && "border-foreground",
           !canUpload && "opacity-70"
         )}
       >
-        <div>
-          <div className="mx-auto grid size-16 place-items-center rounded-full bg-muted">
-            <IconCloudUpload className="size-7 text-muted-foreground" />
-          </div>
-          <p className="mt-4 text-sm font-medium">Drop your photo here</p>
-          <p className="mt-2 text-xs leading-5 text-muted-foreground">
+        <span
+          className={cn(
+            "grid h-16 w-16 shrink-0 place-items-center rounded-[1.35rem] border border-border bg-muted text-foreground transition-transform duration-150",
+            isDragging && "-translate-y-0.5"
+          )}
+        >
+          <IconCloudUpload className="size-7" />
+        </span>
+        <span className="max-w-xs min-w-0">
+          <span className="block text-base font-semibold text-foreground">Drop your photo here</span>
+          <span className="mt-1 block text-xs leading-5 text-muted-foreground">
             A clear, well-lit photo with your face fully visible
+          </span>
+        </span>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          disabled={!canUpload}
+          onChange={onUpload}
+        />
+        <button
+          type="button"
+          disabled={!canUpload}
+          onClick={() => fileInputRef.current?.click()}
+          className="mt-1 shrink-0 rounded-full border border-border px-4 py-2 text-xs font-medium text-foreground transition-colors duration-150 group-hover:bg-muted disabled:pointer-events-none"
+        >
+          Browse photos
+        </button>
+        {scansExhausted ? (
+          <p className="text-xs font-medium text-foreground">
+            You&apos;ve used all 10 of your free scans. We&apos;re not
+            offering paid scans yet — check back soon.
           </p>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            disabled={!canUpload}
-            onChange={onUpload}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            className="mt-5"
-            disabled={!canUpload}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <IconUpload className="size-4" />
-            Browse photos
-          </Button>
-          {scansExhausted ? (
-            <p className="mt-3 text-xs font-medium text-foreground">
-              You&apos;ve used all 10 of your free scans. We&apos;re not
-              offering paid scans yet — check back soon.
-            </p>
-          ) : !locationGranted ? (
-            <p className="mt-3 text-xs text-muted-foreground">
-              Confirming location access — upload enables automatically once that&apos;s ready.
-            </p>
-          ) : null}
-        </div>
+        ) : !locationGranted ? (
+          <p className="text-xs text-muted-foreground">
+            Confirming location access — upload enables automatically once that&apos;s ready.
+          </p>
+        ) : null}
       </div>
 
-      {/* Trust-signal footer: our real accepted formats and 8MB limit
-          (app/api/scan/analyze/route.ts's ALLOWED_IMAGE_TYPES/
-          MAX_IMAGE_SIZE — the limit was already server-enforced but never
-          shown to the user until now), the same lighting guidance used
-          elsewhere in this flow, and the verified-true privacy claim from
-          the prior audit (traced the real pipeline end to end: the image
-          is only ever held in memory — Buffer/sharp/base64-to-Gemini —
-          and createScanReport's image param is metadata-only, so this
-          replaces, not duplicates, the old "Images are not stored in the
-          system" sentence with a more precise true statement). */}
+      {/* Trust-signal footer copy pulled verbatim from review's
+          scan-upload-panel.tsx QUALITY_NOTES — including "JPG or PNG,
+          1024px+", which doesn't describe our actual server validation
+          (app/api/scan/analyze/route.ts's ALLOWED_IMAGE_TYPES also accepts
+          WEBP, and enforces an 8MB max, not a 1024px minimum). Shipping
+          verbatim per this task's explicit "no accuracy-adaptation" brief —
+          same category of intentional inaccuracy as ScanCaptureTips.tsx's
+          two reverted tips, now also present here. */}
       <TrustSignalRow
         items={[
-          { icon: IconPhoto, label: "JPG, PNG, or WEBP · up to 8MB" },
-          { icon: IconSun, label: "Soft, even lighting works best" },
+          { icon: IconPhoto, label: "JPG or PNG, 1024px+" },
+          { icon: IconSparkles, label: "Soft, even front light" },
           { icon: IconLock, label: "Analyzed in memory, never stored" },
         ]}
       />
@@ -1575,44 +1588,73 @@ export function ScanFlow({
         <div className="mx-auto flex h-14 max-w-[1340px] items-center justify-between gap-3 px-8">
           <Link
             href="/dashboard"
-            className="flex min-w-0 shrink items-center gap-2 text-foreground transition-colors hover:text-muted-foreground"
+            className="flex min-w-0 shrink items-center gap-2.5 text-foreground transition-colors hover:text-muted-foreground"
           >
+            {/* Our own AuroraLogomark (not review's raster app/icon.png) —
+                every other header/nav in this app uses this same brand
+                asset; swapping just this one page to a different icon
+                would be a real internal-consistency regression, not a
+                presentation-fidelity win. */}
             <AuroraLogomark className="size-5 shrink-0" />
             <span className="truncate font-heading text-sm font-medium tracking-wide">
               Aurora Organics
             </span>
           </Link>
 
-          <div className="flex shrink-0 items-center gap-1 rounded-full bg-muted p-1">
-            <TabButton
-              active={activeTab === "upload"}
-              onClick={() => selectTab("upload")}
-            >
-              <IconUpload className="size-4" />
-              <span className="hidden sm:inline">Upload</span>
-            </TabButton>
-            <TabButton
-              active={activeTab === "camera"}
-              onClick={() => selectTab("camera")}
-            >
-              <IconCamera className="size-4" />
-              <span className="hidden sm:inline">Camera</span>
-            </TabButton>
-            <TabButton
-              active={activeTab === "advice"}
-              onClick={() => selectTab("advice")}
-            >
-              <IconMessageCircle className="size-4" />
-              <span className="hidden sm:inline">Advice</span>
-            </TabButton>
-          </div>
+          {/* Tab control: ported verbatim from review's components/motion/tabs.tsx
+              (Tabs/TabsList/TabsTrigger, "pill" variant) + capture-tab-tooltip.tsx,
+              wired to our existing activeTab/selectTab state — same behavior,
+              review's exact visual treatment (including the animated sliding
+              active-pill indicator). */}
+          <Tabs
+            value={activeTab}
+            onValueChange={(next) => selectTab(next as "upload" | "camera" | "advice")}
+            variant="pill"
+          >
+            <TabsList className="w-fit border border-border">
+              <CaptureTabTooltip label={CAPTURE_TAB_TOOLTIPS.upload}>
+                <TabsTrigger value="upload" className="gap-1.5 px-3">
+                  <IconUpload className="size-3.5" />
+                  <span className="hidden sm:inline">Upload</span>
+                </TabsTrigger>
+              </CaptureTabTooltip>
+              <CaptureTabTooltip label={CAPTURE_TAB_TOOLTIPS.camera}>
+                <TabsTrigger value="camera" className="gap-1.5 px-3">
+                  <IconCamera className="size-3.5" />
+                  <span className="hidden sm:inline">Camera</span>
+                </TabsTrigger>
+              </CaptureTabTooltip>
+              <CaptureTabTooltip label={CAPTURE_TAB_TOOLTIPS.advice}>
+                <TabsTrigger value="advice" className="gap-1.5 px-3">
+                  <IconSparkles className="size-3.5" />
+                  <span className="hidden sm:inline">Advice</span>
+                </TabsTrigger>
+              </CaptureTabTooltip>
+            </TabsList>
+          </Tabs>
 
-          <Button asChild variant="outline" size="sm" className="shrink-0">
-            <Link href="/dashboard">
-              <IconLayoutDashboard className="size-4" />
-              <span className="hidden sm:inline">Dashboard</span>
-            </Link>
-          </Button>
+          {/* Dashboard button: review's scanHeaderActionClassName treatment
+              (icon-only below sm, icon+label at sm+) + tooltip. */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex shrink-0">
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="h-9 w-9 shrink-0 gap-0 rounded-lg p-0 sm:h-9 sm:w-auto sm:gap-1.5 sm:px-3"
+                >
+                  <Link href="/dashboard" aria-label="Dashboard">
+                    <IconLayoutDashboard className="size-3.5" />
+                    <span className="hidden sm:inline">Dashboard</span>
+                  </Link>
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" sideOffset={6}>
+              {CAPTURE_TAB_TOOLTIPS.dashboard}
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -1661,7 +1703,11 @@ export function ScanFlow({
                     {copy.description}
                   </p>
 
-                  <div className="mt-8">
+                  {/* Tightened from mt-8: at a 768-800px viewport the
+                      previous gap pushed the dropzone/Browse button below
+                      the fold — see this file's git history for the
+                      before/after scroll verification. */}
+                  <div className="mt-5">
                     {currentStep === "capture" && !selectedImage ? (
                       // Single centered column now that consent (moved to
                       // signup, see app/(onboarding)/onboarding/consent)
@@ -1807,34 +1853,6 @@ export function ScanFlow({
   )
 }
 
-// Pill-style segmented control (reference: rounded container, active tab
-// filled with the primary color and white text, inactive tabs plain text +
-// icon) — previously an underline-tab style that never matched the
-// reference at all, not something a stale dev server would explain.
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
-        active
-          ? "bg-primary text-primary-foreground shadow-sm"
-          : "text-muted-foreground hover:text-foreground"
-      )}
-    >
-      {children}
-    </button>
-  )
-}
 
 async function dataUrlToFile(dataUrl: string, fileName: string) {
   const response = await fetch(dataUrl)

@@ -17,20 +17,17 @@ import { IconTipCard } from "@/components/ui/icon-tip-card"
 // triggered "Tips for a clear scan" Tooltip in ScanFlow.tsx, which hid its
 // (generic) content until a user found and hovered/focused a small text
 // button. Adapted from wyasyn/review's components/scan/scan-camera-hints.tsx
-// (git fetched and read in full, not typed from memory), with two
-// corrections so every claim here stays true to THIS app's real
-// implementation rather than review's:
-//   - "Move closer" originally cited "40 to 60%" of frame height — that
-//     number doesn't match our own gate. This app's real, exported
-//     thresholds (lib/scan/quality/checks.ts's FACE_HEIGHT_MIN/MAX, the
-//     same constants FacePositionOverlay draws its live guide oval from)
-//     are 50-85%, so that's the number used below.
-//   - The "On the crop step" tip described review's separate standalone
-//     crop step, which doesn't exist in this app (Capture and Review were
-//     already merged into one step — see ScanFlow.tsx's top comment).
-//     Reworded to describe what actually happens here: the pan/zoom/
-//     rotate/flip editor (ReviewStep) that appears in place after a photo
-//     is captured or uploaded, still within the same "capture" step.
+// (git fetched and read in full, not typed from memory).
+//
+// The "Move closer" and "On the crop step" tips below are review's exact
+// original wording, verbatim — a deliberate, confirmed reversal of an
+// earlier accuracy-based adaptation that had reworded them to match this
+// app's real 50-85% face-height gate (lib/scan/quality/checks.ts's
+// FACE_HEIGHT_MIN/MAX) and its merged capture+review step (no standalone
+// crop step exists here — see ScanFlow.tsx's top comment). That earlier
+// version was more accurate to this app's actual implementation; shipping
+// review's original text instead is an intentional product decision, not
+// an oversight to fix back.
 // Still not adopting review's dismiss-forever-via-localStorage behavior —
 // the brief calls for an ALWAYS-VISIBLE panel, which a one-time persisted
 // dismissal would contradict on repeat visits. The reference layout does
@@ -43,7 +40,7 @@ const TIPS = [
     id: "distance",
     icon: IconUser,
     title: "Move closer",
-    body: "Fill the guide oval — aim for your face taking up roughly 50 to 85% of the frame height.",
+    body: "Fill the oval. Your face should cover 40 to 60% of the frame height.",
   },
   {
     id: "lighting",
@@ -54,8 +51,8 @@ const TIPS = [
   {
     id: "adjust",
     icon: IconCrop,
-    title: "Adjust before continuing",
-    body: "After you capture or upload, use the pan, zoom, and rotate controls to fill the frame with your face.",
+    title: "On the crop step",
+    body: "Expand the crop box so your face fills most of it, not the background.",
   },
   {
     id: "upload",
@@ -73,20 +70,25 @@ export function ScanCaptureTips() {
   return (
     <aside
       aria-label="Tips for better scans"
-      className="grid content-start gap-3"
+      className="grid content-start gap-2"
     >
-      <div className="flex items-center justify-between gap-2">
-        <p className="flex items-center gap-2 text-xs font-semibold tracking-widest text-primary uppercase">
-          <IconBulb className="size-4" />
-          Tips for better scans
-        </p>
+      {/* Header row card: same scan-surface treatment as the tip cards
+          below, matching review's scan-camera-hints.tsx exactly (icon
+          badge, not an uppercase eyebrow label). */}
+      <div className="scan-surface flex items-center justify-between gap-2 rounded-2xl border border-border/70 px-3 py-2 backdrop-blur-xl">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="grid size-7 shrink-0 place-items-center rounded-full bg-primary/10 text-primary ring-1 ring-inset ring-primary/15">
+            <IconBulb className="size-3.5" aria-hidden />
+          </span>
+          <p className="truncate text-xs font-semibold text-foreground">Tips for better scans</p>
+        </div>
         <button
           type="button"
           onClick={() => setDismissed(true)}
           aria-label="Dismiss tips"
-          className="text-muted-foreground transition-colors hover:text-foreground"
+          className="grid size-6 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
-          <IconX className="size-4" />
+          <IconX className="size-3.5" />
         </button>
       </div>
       {TIPS.map((tip) => (

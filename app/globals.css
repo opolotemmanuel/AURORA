@@ -276,6 +276,34 @@
     opacity: 0.28;
   }
 
+  /* Marketing device mockup. The titanium rail, black bezel and screen glare
+     describe hardware, so they hold the same colors in both themes while the
+     screen content follows the app palette. */
+  .device-rail {
+    background-image: linear-gradient(
+      152deg,
+      oklch(0.84 0.004 60) 0%,
+      oklch(0.6 0.005 60) 16%,
+      oklch(0.38 0.004 60) 40%,
+      oklch(0.72 0.005 60) 66%,
+      oklch(0.42 0.004 60) 100%
+    );
+  }
+
+  .device-bezel {
+    background-color: oklch(0.08 0 0);
+  }
+
+  .device-glare {
+    background-image: linear-gradient(
+      118deg,
+      oklch(1 0 0 / 0.16) 0%,
+      oklch(1 0 0 / 0.05) 20%,
+      transparent 36%,
+      transparent 100%
+    );
+  }
+
   /* Viewport chrome for camera / image previews. */
   .scan-viewport {
     box-shadow:

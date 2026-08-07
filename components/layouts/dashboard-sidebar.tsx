@@ -224,7 +224,7 @@ export function DashboardSidebar({
               tooltip={collapsed ? "Expand sidebar" : "Aurora Organics"}
             >
               <Link
-                href="/"
+                href="/dashboard"
                 className="text-sidebar-foreground transition-colors hover:text-sidebar-accent-foreground"
                 onClick={(event) => {
                   if (collapsed && !isMobile) {

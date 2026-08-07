@@ -39,10 +39,10 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    {
-      source: "/",
-      missing: [{ type: "header", key: "next-router-prefetch" }],
-    },
+    // Unlike the protected routes below, "/" runs on prefetches too. Skipping
+    // them would let the router cache a prefetched landing page for a signed-in
+    // user, and the click would then never reach this redirect.
+    "/",
     {
       source: "/dashboard/:path*",
       missing: [{ type: "header", key: "next-router-prefetch" }],

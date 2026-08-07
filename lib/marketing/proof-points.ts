@@ -60,4 +60,6 @@ export const PROOF_POINTS: ProofPoint[] = [
 export const PROOF_SECTION = {
   badge: "What you get",
   heading: "Everything built into your scan",
+  subheading:
+    "No tiers to compare and nothing held back. Every scan runs the same checks and returns the same report.",
 }

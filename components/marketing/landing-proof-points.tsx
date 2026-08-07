@@ -1,9 +1,10 @@
 "use client"
 
+import Link from "next/link"
 import type { ComponentType } from "react"
+import { IconArrowRight } from "@tabler/icons-react"
 import { motion, type Variants } from "motion/react"
 
-import { FramedPanel } from "@/components/marketing/framed-panel"
 import {
   AllergyVisual,
   BandsVisual,
@@ -32,7 +33,7 @@ const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { staggerChildren: 0.1 },
+    transition: { staggerChildren: 0.08 },
   },
 }
 
@@ -58,44 +59,61 @@ export function LandingProofPoints() {
       />
 
       <div className="relative mx-auto max-w-6xl px-6">
-        <div className="mb-12 text-center">
+        <div className="mx-auto mb-14 max-w-xl text-center">
           <p className="text-muted-foreground mb-3 text-sm font-medium tracking-wide uppercase">
             {PROOF_SECTION.badge}
           </p>
           <h2 className="font-heading text-foreground text-3xl leading-tight font-medium tracking-tight text-balance md:text-4xl">
             {PROOF_SECTION.heading}
           </h2>
+          <p className="text-muted-foreground mt-4 text-sm leading-relaxed sm:text-base">
+            {PROOF_SECTION.subheading}
+          </p>
         </div>
 
+        {/* Six separate cards read as clutter. One panel split by hairlines
+            keeps the set calm and lets each cell stay dense. */}
         <motion.div
           variants={containerVariants}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-80px" }}
-          className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+          className="bg-border/60 border-border/60 grid gap-px overflow-hidden rounded-2xl border shadow-sm sm:grid-cols-2 lg:grid-cols-3"
         >
           {PROOF_POINTS.map((point) => {
             const Visual = VISUALS[point.visual]
-            return (
-              <motion.div key={point.title} variants={itemVariants}>
-                <FramedPanel className="border-border/60 bg-muted/25 h-full">
-                  <div className="bg-card/50 flex h-full flex-col gap-4 p-3 sm:p-4">
-                    <Visual />
 
-                    <div className="space-y-2 px-2 pb-3 sm:px-3 sm:pb-4">
-                      <h3 className="font-heading text-foreground text-lg font-semibold">
-                        {point.title}
-                      </h3>
-                      <p className="text-muted-foreground text-sm leading-relaxed">
-                        {point.description}
-                      </p>
-                    </div>
-                  </div>
-                </FramedPanel>
+            return (
+              <motion.div
+                key={point.title}
+                variants={itemVariants}
+                className="bg-card/70 hover:bg-card flex flex-col gap-4 p-5 transition-colors duration-300"
+              >
+                <Visual />
+
+                <div className="space-y-2">
+                  <h3 className="font-heading text-foreground text-lg font-semibold">
+                    {point.title}
+                  </h3>
+                  <p className="text-muted-foreground text-sm leading-relaxed">
+                    {point.description}
+                  </p>
+                </div>
               </motion.div>
             )
           })}
         </motion.div>
+
+        <p className="text-muted-foreground mt-8 text-center text-sm">
+          All six in every report.{" "}
+          <Link
+            href="/scan"
+            className="text-foreground hover:text-primary inline-flex items-center gap-1 font-medium transition-colors"
+          >
+            Start your free scan
+            <IconArrowRight className="size-3.5" aria-hidden />
+          </Link>
+        </p>
       </div>
     </section>
   )

@@ -4,7 +4,6 @@ import Image from "next/image"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-  useCallback,
   useEffect,
   useState,
   useSyncExternalStore,
@@ -34,6 +33,32 @@ import { cn } from "@/lib/utils"
 
 /** Past this point the bar is over page content and needs its frosted layer. */
 const BLUR_BELOW_Y = 8
+
+/**
+ * Reading line for the active section, as a fraction of the viewport height.
+ * A section becomes current once its top crosses this line.
+ */
+const ACTIVE_LINE_RATIO = 0.3
+
+/**
+ * The last section to have crossed the reading line is the one being read.
+ * Resolving from scroll position rather than intersection events keeps the
+ * answer correct at any offset, including after a jump link or a page reload
+ * partway down.
+ */
+function resolveActiveSection(): SectionId {
+  const line = window.innerHeight * ACTIVE_LINE_RATIO
+  let current: SectionId = SECTIONS[0].id
+
+  for (const { id } of SECTIONS) {
+    const element = document.getElementById(id)
+    if (element && element.getBoundingClientRect().top <= line) {
+      current = id
+    }
+  }
+
+  return current
+}
 
 function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme()
@@ -76,55 +101,30 @@ export function MarketingNavbar() {
   useEffect(() => {
     let ticking = false
 
+    const update = () => {
+      setScrolled(window.scrollY > BLUR_BELOW_Y)
+      if (isLanding) {
+        setActiveSection(resolveActiveSection())
+      }
+    }
+
     const onScroll = () => {
       if (ticking) return
       ticking = true
       requestAnimationFrame(() => {
-        setScrolled(window.scrollY > BLUR_BELOW_Y)
+        update()
         ticking = false
       })
     }
 
     onScroll()
     window.addEventListener("scroll", onScroll, { passive: true })
-    return () => window.removeEventListener("scroll", onScroll)
-  }, [])
-
-  const observeSections = useCallback(() => {
-    if (!isLanding) return
-
-    const elements = SECTIONS.map(({ id }) =>
-      document.getElementById(id)
-    ).filter(Boolean) as HTMLElement[]
-
-    if (elements.length === 0) return
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)
-
-        if (visible[0]?.target.id) {
-          setActiveSection(visible[0].target.id as SectionId)
-        }
-      },
-      {
-        rootMargin: "-40% 0px -45% 0px",
-        threshold: [0, 0.25, 0.5, 0.75, 1],
-      }
-    )
-
-    for (const element of elements) {
-      observer.observe(element)
+    window.addEventListener("resize", onScroll)
+    return () => {
+      window.removeEventListener("scroll", onScroll)
+      window.removeEventListener("resize", onScroll)
     }
-
-    return () => observer.disconnect()
   }, [isLanding])
-
-  useEffect(() => {
-    return observeSections()
-  }, [observeSections])
 
   // Section links stay real anchors so they can be opened in a new tab or
   // copied; only a plain left-click on the landing page is taken over to

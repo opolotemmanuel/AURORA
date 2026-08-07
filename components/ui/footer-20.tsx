@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { IconArrowUpRight } from "@tabler/icons-react"
+import { IconArrowUp, IconArrowUpRight } from "@tabler/icons-react"
 import { motion, type Variants } from "motion/react"
 
 import brandIcon from "@/app/icon.png"
@@ -35,21 +35,65 @@ const giantTextVariant: Variants = {
   },
 }
 
+type FooterLink = { label: string; href: string }
+
 export interface Footer20Props {
   brandName?: string
   description?: string
   email?: string
+  /**
+   * Copyright year, resolved by the server. Reading the clock in here would
+   * make the footer unprerenderable, so the caller supplies it.
+   */
+  year: number
+  /** Small print shown beside the copyright line. */
+  note?: string
   links?: {
-    good: { label: string; href: string }[]
-    boring: { label: string; href: string }[]
-    cool: { label: string; href: string }[]
+    good: FooterLink[]
+    boring: FooterLink[]
+    cool: FooterLink[]
   }
+}
+
+/** Off-site and mail links get an outbound marker; in-app routes stay plain. */
+function isExternal(href: string) {
+  return href.startsWith("http") || href.startsWith("mailto:")
+}
+
+function LinkColumn({ title, links }: { title: string; links: FooterLink[] }) {
+  return (
+    <motion.div variants={riseItem} className="flex flex-col gap-5">
+      <h4 className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+        {title}
+      </h4>
+      <ul className="flex flex-col gap-3">
+        {links.map((link) => (
+          <li key={link.href + link.label}>
+            <Link
+              href={link.href}
+              className="text-muted-foreground hover:text-foreground group inline-flex items-center gap-1 text-[15px] transition-colors"
+            >
+              {link.label}
+              {isExternal(link.href) ? (
+                <IconArrowUpRight
+                  className="size-3.5 opacity-0 transition-opacity group-hover:opacity-100"
+                  aria-hidden
+                />
+              ) : null}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </motion.div>
+  )
 }
 
 export function Footer20({
   brandName = "Aurora Organics",
   description = "Clear skin insights, routines built for you, and product matches you can act on. Thoughtful skincare, made personal.",
   email = "info@auroraorganics.co",
+  year,
+  note = "Cosmetic and wellness guidance only. Not a medical diagnosis.",
   links = {
     good: [
       { label: "Home", href: "/" },
@@ -75,13 +119,18 @@ export function Footer20({
       initial="hidden"
       whileInView="visible"
       viewport={{ once: true, amount: 0.15 }}
-      className="bg-muted/30 text-muted-foreground relative flex w-full flex-col justify-between overflow-hidden border-t border-border font-sans transition-colors duration-300"
+      className="bg-background border-border text-muted-foreground relative w-full overflow-hidden border-t font-sans"
     >
-      <div className="border-border relative z-10 mx-auto flex w-full max-w-[1400px] flex-col border-x border-dashed px-6 pt-20 md:px-12 md:pt-32 lg:px-16">
-        <div className="mb-10 grid grid-cols-1 gap-16 md:mb-16 lg:mb-24 lg:grid-cols-12 lg:gap-8">
+      <div
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_100%,var(--primary)_0%,transparent_60%)] opacity-[0.05]"
+        aria-hidden
+      />
+
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col px-6 pt-20 md:pt-28">
+        <div className="grid grid-cols-1 gap-14 lg:grid-cols-12 lg:gap-8">
           <motion.div
             variants={riseItem}
-            className="flex flex-col gap-6 md:gap-8 lg:col-span-5 xl:col-span-4"
+            className="flex flex-col gap-6 lg:col-span-5 xl:col-span-4"
           >
             <div className="text-foreground flex items-center gap-2.5">
               <Image
@@ -96,82 +145,63 @@ export function Footer20({
                 {brandName}
               </span>
             </div>
+
             <p className="max-w-[320px] text-[15px] leading-relaxed">
               {description}
             </p>
+
             <a
               href={`mailto:${email}`}
-              className="text-foreground group mt-2 inline-flex items-center gap-2 text-[17px] transition-colors hover:text-primary"
+              className="text-foreground hover:text-primary group inline-flex w-fit items-center gap-2 text-[17px] transition-colors"
             >
               {email}
               <IconArrowUpRight
-                className="size-[18px] transition-colors group-hover:text-primary"
+                className="size-[18px] transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
                 aria-hidden
               />
             </a>
           </motion.div>
 
-          <div className="grid grid-cols-2 gap-12 sm:grid-cols-3 lg:col-span-7 lg:gap-8 xl:col-span-8">
-            <motion.div variants={riseItem} className="flex flex-col gap-6">
-              <h4 className="text-foreground font-medium">Product</h4>
-              <ul className="flex flex-col gap-3">
-                {links.good.map((link) => (
-                  <li key={link.href + link.label}>
-                    <Link
-                      href={link.href}
-                      className="text-[15px] transition-colors hover:text-foreground"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
-
-            <motion.div variants={riseItem} className="flex flex-col gap-6">
-              <h4 className="text-foreground font-medium">Legal</h4>
-              <ul className="flex flex-col gap-3">
-                {links.boring.map((link) => (
-                  <li key={link.href + link.label}>
-                    <Link
-                      href={link.href}
-                      className="text-[15px] transition-colors hover:text-foreground"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
-
-            <motion.div variants={riseItem} className="flex flex-col gap-6">
-              <h4 className="text-foreground font-medium">Company</h4>
-              <ul className="flex flex-col gap-3">
-                {links.cool.map((link) => (
-                  <li key={link.href + link.label}>
-                    <Link
-                      href={link.href}
-                      className="text-[15px] transition-colors hover:text-foreground"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </motion.div>
+          <div className="grid grid-cols-2 gap-10 sm:grid-cols-3 lg:col-span-7 lg:gap-8 xl:col-span-8">
+            <LinkColumn title="Product" links={links.good} />
+            <LinkColumn title="Legal" links={links.boring} />
+            <LinkColumn title="Company" links={links.cool} />
           </div>
         </div>
 
+        {/* Oversized wordmark as a closing flourish. It fades into the page
+            rather than sitting as a solid block above the fine print. */}
         <motion.div
           variants={giantTextVariant}
-          className="flex w-full justify-center pb-0 md:mt-auto"
+          className="mt-16 flex w-full justify-center md:mt-24"
         >
           <span
             aria-hidden
-            className="font-display text-primary/15 pointer-events-none w-full select-none text-center text-[clamp(3rem,18vw,9rem)] leading-none tracking-tighter"
+            className="font-display text-primary/20 pointer-events-none w-full translate-y-[0.12em] text-center text-[clamp(3rem,17vw,8.5rem)] leading-none tracking-tighter select-none mask-[linear-gradient(to_bottom,black_35%,transparent_100%)]"
           >
             {brandName}
           </span>
+        </motion.div>
+
+        <motion.div
+          variants={riseItem}
+          className="border-border/60 flex flex-col-reverse items-center gap-4 border-t py-8 text-sm sm:flex-row sm:justify-between"
+        >
+          <p className="text-center sm:text-left">
+            &copy; {year} {brandName}. All rights reserved.
+          </p>
+
+          <div className="flex flex-col items-center gap-4 sm:flex-row">
+            <p className="text-center text-xs sm:text-right">{note}</p>
+            <button
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="border-border/60 text-muted-foreground hover:text-foreground hover:border-border focus-visible:ring-ring flex size-9 shrink-0 items-center justify-center rounded-full border transition-colors focus-visible:ring-2 focus-visible:outline-none"
+              aria-label="Back to top"
+            >
+              <IconArrowUp className="size-4" aria-hidden />
+            </button>
+          </div>
         </motion.div>
       </div>
     </motion.footer>

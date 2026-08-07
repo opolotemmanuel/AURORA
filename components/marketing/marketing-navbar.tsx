@@ -2,15 +2,16 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import {
   useCallback,
   useEffect,
-  useRef,
   useState,
   useSyncExternalStore,
+  type MouseEvent,
 } from "react"
 import { IconMenu2, IconMoon, IconSun } from "@tabler/icons-react"
+import { motion, useReducedMotion } from "motion/react"
 import { useTheme } from "next-themes"
 
 import brandIcon from "@/app/icon.png"
@@ -23,6 +24,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
+import { SPRING_LAYOUT } from "@/lib/ease"
 import {
   SECTIONS,
   scrollToSection,
@@ -30,17 +32,15 @@ import {
 } from "@/lib/marketing/sections"
 import { cn } from "@/lib/utils"
 
-/** Ignore sub-pixel and momentum jitter so the bar does not flicker mid-scroll. */
-const SCROLL_DELTA_THRESHOLD = 8
-/** Keep the bar pinned over the top of the page, where hiding it feels abrupt. */
-const REVEAL_ABOVE_Y = 80
+/** Past this point the bar is over page content and needs its frosted layer. */
+const BLUR_BELOW_Y = 8
 
 function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme()
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
-    () => false,
+    () => false
   )
 
   if (!mounted) {
@@ -67,55 +67,34 @@ function ThemeToggle() {
 
 export function MarketingNavbar() {
   const pathname = usePathname()
-  const router = useRouter()
+  const reducedMotion = useReducedMotion()
   const isLanding = pathname === "/"
   const [activeSection, setActiveSection] = useState<SectionId>("top")
-  const [hidden, setHidden] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const lastScrollY = useRef(0)
 
   useEffect(() => {
     let ticking = false
-    lastScrollY.current = window.scrollY
 
     const onScroll = () => {
       if (ticking) return
       ticking = true
       requestAnimationFrame(() => {
-        const y = window.scrollY
-        const delta = y - lastScrollY.current
-
-        setScrolled(y > 8)
-
-        if (y <= REVEAL_ABOVE_Y) {
-          setHidden(false)
-        } else if (delta > SCROLL_DELTA_THRESHOLD) {
-          setHidden(true)
-        } else if (delta < -SCROLL_DELTA_THRESHOLD) {
-          setHidden(false)
-        }
-
-        lastScrollY.current = y
+        setScrolled(window.scrollY > BLUR_BELOW_Y)
         ticking = false
       })
     }
 
+    onScroll()
     window.addEventListener("scroll", onScroll, { passive: true })
     return () => window.removeEventListener("scroll", onScroll)
   }, [])
-
-  // An open menu must not be able to scroll itself out of view.
-  const handleMenuOpenChange = (open: boolean) => {
-    setMenuOpen(open)
-    if (open) setHidden(false)
-  }
 
   const observeSections = useCallback(() => {
     if (!isLanding) return
 
     const elements = SECTIONS.map(({ id }) =>
-      document.getElementById(id),
+      document.getElementById(id)
     ).filter(Boolean) as HTMLElement[]
 
     if (elements.length === 0) return
@@ -133,7 +112,7 @@ export function MarketingNavbar() {
       {
         rootMargin: "-40% 0px -45% 0px",
         threshold: [0, 0.25, 0.5, 0.75, 1],
-      },
+      }
     )
 
     for (const element of elements) {
@@ -147,27 +126,32 @@ export function MarketingNavbar() {
     return observeSections()
   }, [observeSections])
 
-  const handleSectionNav = (id: SectionId) => {
-    setMenuOpen(false)
+  // Section links stay real anchors so they can be opened in a new tab or
+  // copied; only a plain left-click on the landing page is taken over to
+  // scroll smoothly instead of jumping.
+  const handleSectionNav = (
+    event: MouseEvent<HTMLAnchorElement>,
+    id: SectionId
+  ) => {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
 
-    if (!scrollToSection(id)) {
-      router.push(`/#${id}`)
-    }
+    setMenuOpen(false)
+    if (!isLanding) return
+
+    event.preventDefault()
+    scrollToSection(id)
   }
 
   return (
-    <header
-      className={cn(
-        "fixed inset-x-0 top-0 z-50 transition-transform duration-300 ease-out motion-reduce:transition-none",
-        hidden ? "-translate-y-full" : "translate-y-0",
-      )}
-    >
+    <header className="fixed inset-x-0 top-0 z-50">
+      {/* Transparent over the top of the page; once scrolling starts, a frosted
+          layer fades in so the nav stays legible over whatever is behind it. */}
       <div
         className={cn(
-          "border-b transition-colors duration-300",
+          "border-b transition-colors duration-300 motion-reduce:transition-none",
           scrolled
-            ? "border-border bg-background/80 backdrop-blur-xl"
-            : "border-transparent bg-transparent",
+            ? "border-border bg-background/60 backdrop-blur-xl"
+            : "border-transparent bg-transparent"
         )}
       >
         <nav
@@ -176,7 +160,7 @@ export function MarketingNavbar() {
         >
           <Link
             href="/"
-            className="text-foreground flex min-w-0 shrink items-center gap-2.5 transition-colors hover:text-muted-foreground"
+            className="flex min-w-0 shrink items-center gap-2.5 text-foreground transition-colors hover:text-muted-foreground"
           >
             <Image
               src={brandIcon}
@@ -186,7 +170,7 @@ export function MarketingNavbar() {
               className="size-7 shrink-0 rounded-md"
               style={{ width: "auto", height: "auto" }}
             />
-            <span className="font-heading truncate text-sm font-medium tracking-wide">
+            <span className="truncate font-heading text-sm font-medium tracking-wide">
               Aurora Organics
             </span>
           </Link>
@@ -197,20 +181,30 @@ export function MarketingNavbar() {
 
               return (
                 <li key={id}>
-                  <button
-                    type="button"
-                    onClick={() => handleSectionNav(id)}
+                  <Link
+                    href={`/#${id}`}
+                    onClick={(event) => handleSectionNav(event, id)}
                     aria-current={isActive ? "true" : undefined}
                     className={cn(
-                      "rounded-full px-3 py-1.5 text-sm transition-colors outline-none",
+                      "relative block rounded-full px-3 py-1.5 text-sm transition-colors outline-none",
                       "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                       isActive
-                        ? "text-foreground bg-muted"
-                        : "text-muted-foreground hover:text-foreground",
+                        ? "text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    {label}
-                  </button>
+                    {isActive ? (
+                      <motion.span
+                        layoutId="marketing-nav-pill"
+                        transition={
+                          reducedMotion ? { duration: 0 } : SPRING_LAYOUT
+                        }
+                        className="absolute inset-0 rounded-full bg-muted"
+                        aria-hidden
+                      />
+                    ) : null}
+                    <span className="relative">{label}</span>
+                  </Link>
                 </li>
               )
             })}
@@ -219,11 +213,16 @@ export function MarketingNavbar() {
           <div className="flex shrink-0 items-center gap-1">
             <ThemeToggle />
 
-            <Button asChild size="sm" className="hidden sm:inline-flex">
-              <Link href="/scan">Start free scan</Link>
+            <Button
+              asChild
+              variant="ghost"
+              size="sm"
+              className="hidden md:inline-flex"
+            >
+              <Link href="/login">Sign in</Link>
             </Button>
 
-            <Sheet open={menuOpen} onOpenChange={handleMenuOpenChange}>
+            <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
               <SheetTrigger asChild>
                 <Button
                   variant="ghost"
@@ -234,32 +233,58 @@ export function MarketingNavbar() {
                   <IconMenu2 className="size-5" aria-hidden />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-72">
-                <SheetHeader>
+              <SheetContent
+                side="bottom"
+                showCloseButton={false}
+                className="rounded-t-2xl p-0 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+              >
+                <div
+                  aria-hidden
+                  className="mx-auto mt-3 h-1 w-10 shrink-0 rounded-full bg-border"
+                />
+                <SheetHeader className="sr-only">
                   <SheetTitle>Menu</SheetTitle>
                 </SheetHeader>
-                <nav aria-label="Mobile" className="flex flex-col gap-1 px-4">
-                  {SECTIONS.map(({ id, label }) => (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => handleSectionNav(id)}
-                      className={cn(
-                        "rounded-md px-3 py-2 text-left text-sm transition-colors outline-none",
-                        "focus-visible:ring-2 focus-visible:ring-ring",
-                        isLanding && activeSection === id
-                          ? "text-foreground bg-muted"
-                          : "text-muted-foreground hover:text-foreground",
-                      )}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                  <SheetClose asChild>
-                    <Button asChild className="mt-3">
-                      <Link href="/scan">Start free scan</Link>
-                    </Button>
-                  </SheetClose>
+
+                <nav
+                  aria-label="Mobile"
+                  className="flex flex-col gap-1 px-4 pt-4"
+                >
+                  {SECTIONS.map(({ id, label }) => {
+                    const isActive = isLanding && activeSection === id
+
+                    return (
+                      <Link
+                        key={id}
+                        href={`/#${id}`}
+                        onClick={(event) => handleSectionNav(event, id)}
+                        aria-current={isActive ? "true" : undefined}
+                        className={cn(
+                          "flex items-center justify-between rounded-lg px-3 py-3 text-base transition-colors outline-none",
+                          "focus-visible:ring-2 focus-visible:ring-ring",
+                          isActive
+                            ? "bg-muted text-foreground"
+                            : "text-muted-foreground"
+                        )}
+                      >
+                        {label}
+                        {isActive ? (
+                          <span
+                            aria-hidden
+                            className="size-1.5 rounded-full bg-primary"
+                          />
+                        ) : null}
+                      </Link>
+                    )
+                  })}
+
+                  <div className="mt-4 grid gap-2 border-t border-border pt-4">
+                    <SheetClose asChild>
+                      <Button asChild variant="outline" size="lg">
+                        <Link href="/login">Sign in</Link>
+                      </Button>
+                    </SheetClose>
+                  </div>
                 </nav>
               </SheetContent>
             </Sheet>

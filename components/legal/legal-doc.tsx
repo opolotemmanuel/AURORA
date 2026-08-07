@@ -28,19 +28,19 @@ export function LegalPage({
 }) {
   return (
     <>
-      <article className="mx-auto max-w-3xl px-6 py-16">
+      <article className="mx-auto max-w-3xl px-6 pt-32 pb-16">
         <header className="mb-10 space-y-3">
-          <p className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
+          <p className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
             {eyebrow}
           </p>
-          <h1 className="font-heading text-foreground text-3xl font-semibold tracking-tight md:text-4xl">
+          <h1 className="font-heading text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
             {title}
           </h1>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             Version {version}. Last updated {updated}.
           </p>
           {intro ? (
-            <div className="text-muted-foreground pt-2 text-sm leading-relaxed">
+            <div className="pt-2 text-sm leading-relaxed text-muted-foreground">
               {intro}
             </div>
           ) : null}
@@ -48,15 +48,15 @@ export function LegalPage({
 
         <nav
           aria-label="Contents"
-          className="border-border/60 bg-card/40 mb-12 rounded-2xl border p-5"
+          className="mb-12 rounded-2xl border border-border/60 bg-card/40 p-5"
         >
-          <p className="text-foreground mb-3 text-sm font-medium">Contents</p>
-          <ol className="text-muted-foreground grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
+          <p className="mb-3 text-sm font-medium text-foreground">Contents</p>
+          <ol className="grid gap-x-6 gap-y-1.5 text-sm text-muted-foreground sm:grid-cols-2">
             {toc.map((entry, index) => (
               <li key={entry.id}>
                 <Link
                   href={`#${entry.id}`}
-                  className="hover:text-foreground underline-offset-4 hover:underline"
+                  className="underline-offset-4 hover:text-foreground hover:underline"
                 >
                   {index + 1}. {entry.label}
                 </Link>
@@ -65,7 +65,7 @@ export function LegalPage({
           </ol>
         </nav>
 
-        <div className="text-muted-foreground space-y-10 text-sm leading-relaxed">
+        <div className="space-y-10 text-sm leading-relaxed text-muted-foreground">
           {children}
         </div>
       </article>
@@ -85,7 +85,7 @@ export function LegalSection({
 }) {
   return (
     <section id={id} className="scroll-mt-24 space-y-3">
-      <h2 className="text-foreground font-heading text-lg font-medium">
+      <h2 className="font-heading text-lg font-medium text-foreground">
         {title}
       </h2>
       {children}
@@ -95,7 +95,7 @@ export function LegalSection({
 
 export function LegalSubheading({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-foreground pt-2 text-sm font-medium">{children}</h3>
+    <h3 className="pt-2 text-sm font-medium text-foreground">{children}</h3>
   )
 }
 
@@ -104,7 +104,7 @@ export function LegalList({ children }: { children: React.ReactNode }) {
 }
 
 export function Term({ children }: { children: React.ReactNode }) {
-  return <strong className="text-foreground font-medium">{children}</strong>
+  return <strong className="font-medium text-foreground">{children}</strong>
 }
 
 /**
@@ -121,7 +121,7 @@ export function LegalTable({
   rows: React.ReactNode[][]
 }) {
   return (
-    <div className="border-border/60 overflow-x-auto rounded-xl border">
+    <div className="overflow-x-auto rounded-xl border border-border/60">
       <table className="w-full min-w-[32rem] text-left text-sm">
         {caption ? <caption className="sr-only">{caption}</caption> : null}
         <thead className="bg-muted/40 text-foreground">
@@ -133,7 +133,7 @@ export function LegalTable({
             ))}
           </tr>
         </thead>
-        <tbody className="divide-border/50 divide-y">
+        <tbody className="divide-y divide-border/50">
           {rows.map((row, rowIndex) => (
             <tr key={rowIndex}>
               {row.map((cell, cellIndex) => (

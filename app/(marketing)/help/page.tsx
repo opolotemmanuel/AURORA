@@ -7,66 +7,71 @@ import { MARKETING_FAQ_ITEMS } from "@/lib/marketing/faq-items"
 export default function HelpPage() {
   return (
     <>
-      <article className="mx-auto max-w-3xl px-6 py-16">
+      <article className="mx-auto max-w-3xl px-6 pt-32 pb-16">
         <header className="mb-10 space-y-3">
-          <p className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
+          <p className="text-sm font-medium tracking-wide text-muted-foreground uppercase">
             Support
           </p>
-          <h1 className="font-heading text-foreground text-3xl font-semibold tracking-tight md:text-4xl">
+          <h1 className="font-heading text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
             Help center
           </h1>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             Answers about Aurora Organics, your account, and your data.
           </p>
         </header>
 
-        <div className="text-muted-foreground space-y-10 text-sm leading-relaxed">
+        <div className="space-y-10 text-sm leading-relaxed text-muted-foreground">
           <section className="space-y-3">
-            <h2 className="text-foreground font-heading text-lg font-medium">
+            <h2 className="font-heading text-lg font-medium text-foreground">
               Getting started
             </h2>
             <p>
-              Create an account, complete onboarding (including a required consent
-              step for photo processing), then start a scan from{" "}
-              <Link href="/scan" className="text-foreground underline underline-offset-4">
+              Create an account, complete onboarding (including a required
+              consent step for photo processing), then start a scan from{" "}
+              <Link
+                href="/scan"
+                className="text-foreground underline underline-offset-4"
+              >
                 /scan
               </Link>
               . You can upload a photo or use your camera. On-device checks help
-              ensure good lighting and framing before analysis. Each scan uses one
-              allowance from your tier; your report is saved to your dashboard and
-              can be downloaded as a text-only PDF.
+              ensure good lighting and framing before analysis. Each scan uses
+              one allowance from your tier; your report is saved to your
+              dashboard and can be downloaded as a text-only PDF.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-foreground font-heading text-lg font-medium">
+            <h2 className="font-heading text-lg font-medium text-foreground">
               Account and onboarding
             </h2>
             <p>
               Sign in with email and password, a one-time code, Google, or Apple
-              (where available). After your first sign-in, onboarding collects your
-              skin profile, routine, lifestyle, and optional location for
+              (where available). After your first sign-in, onboarding collects
+              your skin profile, routine, lifestyle, and optional location for
               climate-aware guidance. You must accept photo-processing consent
-              before scans can begin. You can update profile details anytime from
-              your dashboard settings.
+              before scans can begin. You can update profile details anytime
+              from your dashboard settings.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-foreground font-heading text-lg font-medium">
+            <h2 className="font-heading text-lg font-medium text-foreground">
               Scan tiers
             </h2>
             <p>
-              Aurora Organics offers three tiers, each with different analysis capabilities:
+              Aurora Organics offers three tiers, each with different analysis
+              capabilities:
             </p>
             <ul className="list-disc space-y-2 pl-5">
               <li>
-                <strong className="text-foreground">Starter</strong> — still-photo
-                scans. New accounts receive three free Starter scans.
+                <strong className="text-foreground">Starter</strong> —
+                still-photo scans. New accounts receive three free Starter
+                scans.
               </li>
               <li>
-                <strong className="text-foreground">Thinking</strong> — still-photo
-                scans with deeper AI analysis.
+                <strong className="text-foreground">Thinking</strong> —
+                still-photo scans with deeper AI analysis.
               </li>
               <li>
                 <strong className="text-foreground">Pro</strong> — still-photo
@@ -74,23 +79,26 @@ export default function HelpPage() {
               </li>
             </ul>
             <p>
-              Each saved analysis uses one scan allowance. Additional scans can be
-              purchased by tier when billing is available.
+              Each saved analysis uses one scan allowance. Additional scans can
+              be purchased by tier when billing is available.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-foreground font-heading text-lg font-medium">
+            <h2 className="font-heading text-lg font-medium text-foreground">
               Privacy and your data
             </h2>
             <p>
               Read our{" "}
-              <Link href="/privacy" className="text-foreground underline underline-offset-4">
+              <Link
+                href="/privacy"
+                className="text-foreground underline underline-offset-4"
+              >
                 privacy policy
               </Link>{" "}
-              for full details on what we collect, how photos are processed by AI,
-              and which third-party providers we use. Logged-in users can delete
-              scans, profile data, or their entire account from{" "}
+              for full details on what we collect, how photos are processed by
+              AI, and which third-party providers we use. Logged-in users can
+              delete scans, profile data, or their entire account from{" "}
               <Link
                 href="/dashboard/privacy"
                 className="text-foreground underline underline-offset-4"
@@ -109,7 +117,7 @@ export default function HelpPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-foreground font-heading text-lg font-medium">
+            <h2 className="font-heading text-lg font-medium text-foreground">
               Contact
             </h2>
             <p>

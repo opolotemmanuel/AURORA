@@ -1,12 +1,22 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Cormorant_Garamond, Geist_Mono, Inter } from "next/font/google"
 
 import { Suspense } from "react"
 
 import "./globals.css"
 import { AnalyticsConsentLoader } from "@/components/privacy/analytics-consent-loader"
+import { ServiceWorkerRegistrar } from "@/components/pwa/service-worker-registrar"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
+import {
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_SHORT_NAME,
+  SITE_TAGLINE,
+  THEME_COLOR_DARK,
+  THEME_COLOR_LIGHT,
+  siteUrl,
+} from "@/lib/site"
 import { cn } from "@/lib/utils"
 
 // Inter carries both body and headings. Cormorant stays reserved for display
@@ -28,26 +38,34 @@ const fontMono = Geist_Mono({
   variable: "--font-mono",
 })
 
-// Falls back to the deployment URL on Vercel, then to localhost in development,
-// so OG and canonical URLs resolve correctly in every environment.
-const siteUrl =
-  process.env.BETTER_AUTH_URL ||
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : "http://localhost:3000")
+const SITE_TITLE = `${SITE_NAME} | ${SITE_TAGLINE}`
 
-const SITE_NAME = "Aurora Organics"
-const SITE_DESCRIPTION =
-  "Scan your skin and get a cosmetic assessment in plain-language bands, an Ayurvedic skin lean, and Aurora Organics product matches filtered to your allergies and local climate. Three free scans, and your photo is never stored."
+// Painted by the browser outside the document (mobile status bar, installed
+// titlebar), so it has to follow the theme by media query rather than by the
+// `.dark` class next-themes toggles.
+export const viewport: Viewport = {
+  colorScheme: "light dark",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: THEME_COLOR_LIGHT },
+    { media: "(prefers-color-scheme: dark)", color: THEME_COLOR_DARK },
+  ],
+}
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: `${SITE_NAME} | Skin intelligence`,
+    default: SITE_TITLE,
     template: `%s | ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
+  // iOS has no install prompt of its own: Safari's Share sheet is the only
+  // path, and these are what make the result launch as a standalone app.
+  appleWebApp: {
+    capable: true,
+    title: SITE_SHORT_NAME,
+    statusBarStyle: "default",
+  },
   keywords: [
     "skin scan",
     "skincare analysis",
@@ -58,13 +76,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: SITE_NAME,
-    title: `${SITE_NAME} | Skin intelligence`,
+    title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     url: siteUrl,
   },
   twitter: {
     card: "summary_large_image",
-    title: `${SITE_NAME} | Skin intelligence`,
+    title: SITE_TITLE,
     description: SITE_DESCRIPTION,
   },
   robots: {
@@ -83,7 +101,7 @@ export default function RootLayout({
       lang="en"
       suppressHydrationWarning
       className={cn(
-        "antialiased font-sans",
+        "font-sans antialiased",
         inter.variable,
         interHeading.variable,
         cormorantDisplay.variable,
@@ -100,6 +118,7 @@ export default function RootLayout({
         <Suspense fallback={null}>
           <AnalyticsConsentLoader />
         </Suspense>
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   )

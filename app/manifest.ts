@@ -74,7 +74,7 @@ export default function manifest(): MetadataRoute.Manifest {
       {
         name: "Dashboard",
         short_name: "Dashboard",
-        description: "Your reports and routine",
+        description: "Your scans and routine",
         url: "/dashboard",
         icons: [
           { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },

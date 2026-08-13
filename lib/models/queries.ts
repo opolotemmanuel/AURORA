@@ -16,13 +16,12 @@ export const getUserScanTier = cache(async (userId: string): Promise<ScanTier> =
   return user?.scanTier ?? "starter"
 })
 
+/** Still-image scan model for a tier. Each tier has its own. */
 export const getScanModelForTier = cache(async (tier: ScanTier) => {
-  const stillTier: ScanTier = tier === "pro" ? "thinking" : tier
-
   return withDbRetry(() =>
     prisma.aiModelRate.findFirst({
       where: {
-        assignedTier: stillTier,
+        assignedTier: tier,
         isActive: true,
         supportsVision: true,
         supportsLive: false,

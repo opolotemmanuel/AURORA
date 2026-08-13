@@ -237,13 +237,17 @@ Users have **one active tier** at a time (`User.scanTier`) and a **single scan b
 
 ### Tiers and models
 
-| Tier | Model | Thinking | Still scan | Live scan |
-|------|-------|----------|------------|-----------|
-| **Starter** | `gemini-2.5-flash` | low | yes | no |
-| **Thinking** | `gemini-3.5-flash` | medium | yes | no |
-| **Pro** | `gemini-3.5-flash` still + `gemini-3.1-flash-live` | medium / none | yes (Thinking model) | yes (Pro live model) |
+Model strength climbs with the tier: smallest on Starter, latest Flash on Plus, strongest available model on Pro.
 
-Tier assignment lives in `lib/models/queries.ts` (`getScanModelForTier`, `getLiveScanModel`).
+| Tier | Still model | Thinking | Input / output / cached per 1M | Live scan |
+|------|-------------|----------|--------------------------------|-----------|
+| **Starter** | `gemini-3.5-flash-lite` | low | $0.30 / $2.50 / $0.03 | no |
+| **Plus** | `gemini-3.6-flash` | medium | $1.50 / $7.50 / $0.15 | no |
+| **Pro** | `gemini-3.1-pro-preview` | high | $2.00 / $12.00 / $0.20 | yes |
+
+Pro's live scan uses `gemini-3.1-flash-live-preview` ($1.00 image input / $4.50 text output per 1M, no context caching).
+
+A tier owns one still model and one live model, enforced by `@@unique([assignedTier, supportsLive])` on `AiModelRate`. Resolution lives in `lib/models/queries.ts` (`getScanModelForTier`, `getLiveScanModel`); rates are seeded from the published paid-tier pricing in `scripts/seed-model-rates.ts`. Retired models stay in the table as inactive rows so historical `AiUsage` can still be costed.
 
 ### Free tier
 
@@ -256,16 +260,32 @@ Tier assignment lives in `lib/models/queries.ts` (`getScanModelForTier`, `getLiv
 |------|------|-------|-------|
 | Starter | Standard | 20 | $9.99 |
 | Starter | Volume | 50 | $19.99 |
-| Thinking | Standard | 12 | $14.99 |
-| Thinking | Volume | 30 | $34.99 |
+| Plus | Standard | 12 | $14.99 |
+| Plus | Volume | 30 | $34.99 |
 | Pro | Standard | 10 | $24.99 |
 | Pro | Volume | 25 | $49.99 |
 
-Seed via `npm run db:seed-packs`. Payment (Stripe) is **planned** — until then use admin grant or manual `pack_grant`.
+Seed via `npm run db:seed-packs`.
+
+### Checkout and payments
+
+Users buy packs at `/dashboard/billing`. The gateway sits behind a driver interface so the simulation can be swapped for a real processor without touching the schema, the actions, or the UI.
+
+| Concern | Location |
+|---------|----------|
+| Driver interface | `lib/payments/types.ts` (`PaymentDriver`) |
+| Driver selection | `lib/payments/index.ts`, env `PAYMENT_PROVIDER` (default `mock`) |
+| Simulated gateway | `lib/payments/mock/driver.ts`, outcomes keyed off `lib/payments/test-cards.ts` |
+| Checkout actions | `lib/billing/actions.ts` |
+| Receipt PDF | `lib/pdf/receipt-document.tsx`, `app/api/billing/receipt/[paymentId]/route.ts` |
+
+To add a real processor: write `lib/payments/<provider>/driver.ts` implementing `PaymentDriver`, register it in `getPaymentDriver()`, and set `PAYMENT_PROVIDER`. Prices always come from `ScanPack.priceCents` server side, never from the client. Card PANs are never persisted, only brand and last four.
+
+`confirmPaymentAction` claims the payment with a conditional `updateMany` before granting, so a double submit or a replayed webhook can only grant once.
 
 ### Single-tier upgrade rule
 
-Changing tier **replaces** `scansRemaining` with the new pack size. Unused scans on the old tier are forfeited. Show confirmation in checkout UI when payment ships.
+Changing tier **replaces** `scansRemaining` with the new pack size. Unused scans on the old tier are forfeited. The checkout dialog warns before confirming.
 
 ### Profit floor (when adding packs)
 

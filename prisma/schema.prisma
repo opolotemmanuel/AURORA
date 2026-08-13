@@ -39,6 +39,8 @@ model User {
   scanFeedbacks     ScanFeedback[]
   chatConversations ChatConversation[]
   products          Product[]          @relation("ProductCreator")
+  billingProfile    BillingProfile?
+  payments          Payment[]
 
   @@unique([email])
   @@map("user")
@@ -228,8 +230,21 @@ enum AiProvider {
 
 enum ScanTier {
   starter
-  thinking
+  plus
   pro
+}
+
+enum PaymentProvider {
+  mock
+  stripe
+}
+
+enum PaymentStatus {
+  pending
+  requires_action
+  succeeded
+  failed
+  refunded
 }
 
 enum ScanCaptureMode {
@@ -256,7 +271,8 @@ model AiModelRate {
   updatedAt              DateTime   @updatedAt
 
   @@unique([provider, modelId])
-  @@unique([assignedTier])
+  // A tier holds at most one still model and one live model.
+  @@unique([assignedTier, supportsLive])
   @@index([isActive])
   @@index([isScanDefault])
   @@map("ai_model_rate")
@@ -345,6 +361,11 @@ model ScanBalance {
   remaining            Int      @default(0)
   lifetimeUsed         Int      @default(0)
   lifetimeGranted      Int      @default(0)
+  // Usage since the current plan started. Reset whenever a pack replaces the
+  // balance, so "scans used" reflects the plan a user is on right now.
+  periodUsed           Int       @default(0)
+  periodGranted        Int       @default(0)
+  periodStartedAt      DateTime?
   tokenBudgetRemaining BigInt   @default(0)
   lifetimeTokensUsed   BigInt   @default(0)
   createdAt            DateTime @default(now())
@@ -386,9 +407,61 @@ model ScanPack {
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
   ledgers    ScanLedger[]
+  payments   Payment[]
 
   @@index([tier, isActive])
   @@map("scan_pack")
+}
+
+// ─── billing ────────────────────────────────────────────────────────────────
+
+// User-editable billing identity. Snapshotted onto Payment at purchase time so a
+// later edit never rewrites an issued receipt.
+model BillingProfile {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName     String
+  email        String
+  phone        String?
+  addressLine1 String?
+  addressLine2 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String?
+  taxId        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("billing_profile")
+}
+
+model Payment {
+  id              String          @id @default(cuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  packId          String?
+  pack            ScanPack?       @relation(fields: [packId], references: [id], onDelete: SetNull)
+  provider        PaymentProvider @default(mock)
+  providerRef     String          @unique
+  status          PaymentStatus   @default(pending)
+  amountCents     Int
+  currency        String          @default("USD")
+  tier            ScanTier
+  scanCount       Int
+  receiptNumber   String          @unique
+  billingSnapshot Json?
+  cardBrand       String?
+  cardLast4       String?
+  failureReason   String?
+  paidAt          DateTime?
+  metadata        Json?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([userId, createdAt])
+  @@map("payment")
 }
 
 model Product {

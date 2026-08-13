@@ -1,10 +1,11 @@
 import type { AiProvider } from "@/generated/prisma/client"
 import type { UsageInput } from "@/lib/scans/cost"
 
+/** Fallback when no AiModelRate row resolves. Mirrors the Starter tier model. */
 export const DEFAULT_SCAN_MODEL = {
   provider: "gemini" as AiProvider,
-  modelId: "gemini-2.5-flash",
-  displayName: "Gemini 2.5 Flash",
+  modelId: "gemini-3.5-flash-lite",
+  displayName: "Gemini 3.5 Flash-Lite",
 } as const
 
 export const DEFAULT_MOCK_USAGE: UsageInput = {
@@ -32,7 +33,7 @@ const CHAT_TOKENS_PER_SCAN_BY_TIER: Record<
   number
 > = {
   starter: parseEnvInt("STARTER_CHAT_TOKENS_PER_SCAN", 40_000),
-  thinking: parseEnvInt("THINKING_CHAT_TOKENS_PER_SCAN", 60_000),
+  plus: parseEnvInt("PLUS_CHAT_TOKENS_PER_SCAN", 60_000),
   pro: parseEnvInt("PRO_CHAT_TOKENS_PER_SCAN", 80_000),
 }
 

@@ -1,9 +1,10 @@
 import Link from "next/link"
-import { IconCamera } from "@tabler/icons-react"
+import { IconCamera, IconSparkles } from "@tabler/icons-react"
 
 import { DotField } from "@/components/ui/dot-field"
 import { Button } from "@/components/ui/button"
 import { requireAuthContext } from "@/lib/auth/context"
+import { BILLING_HREF } from "@/lib/billing/constants"
 import { getUserDashboardStats } from "@/lib/dashboard/stats"
 
 /**
@@ -32,7 +33,7 @@ export async function DashboardScanCta() {
           <p className="max-w-md text-sm text-muted-foreground">
             {hasScans
               ? "Capture or upload a photo for personalized cosmetic guidance and product recommendations."
-              : "Your allowance is used up. Existing reports and chats stay available in your dashboard."}
+              : "Your allowance is used up. Pick a pack to keep scanning. Existing reports and chats stay available."}
           </p>
           {hasScans ? (
             <p className="text-xs font-medium text-primary">
@@ -47,14 +48,17 @@ export async function DashboardScanCta() {
           variant={hasScans ? "default" : "outline"}
           className="shrink-0"
         >
-          <Link href={hasScans ? "/scan" : "/reports"}>
+          <Link href={hasScans ? "/scan" : BILLING_HREF}>
             {hasScans ? (
               <>
                 <IconCamera className="size-4" />
                 Start your scan
               </>
             ) : (
-              "View your reports"
+              <>
+                <IconSparkles className="size-4" />
+                View plans
+              </>
             )}
           </Link>
         </Button>

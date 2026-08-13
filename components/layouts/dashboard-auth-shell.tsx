@@ -1,8 +1,10 @@
 import type { ReactNode } from "react"
 
 import { ImpersonationBanner } from "@/components/admin/impersonation-banner"
+import { EntitlementProvider } from "@/components/billing/entitlement-provider"
 import { DashboardShell } from "@/components/layouts/dashboard-shell"
 import { scheduleAiScanContextWarmup } from "@/lib/ai/context/warm"
+import { getScanEntitlement } from "@/lib/scans/entitlement"
 import {
   AuthShellGate,
   getResolvedAuthContext,
@@ -31,6 +33,7 @@ async function DashboardAuthShellInner({
   }
 
   scheduleAiScanContextWarmup(ctx.userId)
+  const entitlement = await getScanEntitlement(ctx.userId)
 
   const isImpersonating = Boolean(
     ctx.session.session &&
@@ -39,7 +42,7 @@ async function DashboardAuthShellInner({
   )
 
   return (
-    <>
+    <EntitlementProvider value={entitlement}>
       {isImpersonating ? <ImpersonationBanner /> : null}
       <DashboardShell
         role={ctx.role}
@@ -50,6 +53,6 @@ async function DashboardAuthShellInner({
       >
         {children}
       </DashboardShell>
-    </>
+    </EntitlementProvider>
   )
 }

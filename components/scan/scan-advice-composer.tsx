@@ -27,6 +27,11 @@ import { toUserFacingChatError } from "@/lib/chat/errors"
 import type { ChatMessageMetadata } from "@/lib/chat/types"
 import { cn } from "@/lib/utils"
 
+import { useEntitlement } from "@/components/billing/entitlement-provider"
+import {
+  UpgradeGateDialog,
+  useUpgradeGate,
+} from "@/components/billing/upgrade-gate-dialog"
 import type { AdviceChatToolbarProps } from "@/components/scan/advice-chat-toolbar"
 
 export type ChatMessageItem = {
@@ -187,6 +192,8 @@ export function ScanAdviceComposer({
   startFresh = false,
 }: ScanAdviceComposerProps) {
   const reduce = useReducedMotion()
+  const { canChat } = useEntitlement()
+  const upgradeGate = useUpgradeGate()
   const listRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -469,6 +476,14 @@ export function ScanAdviceComposer({
     const content = (text ?? draft).trim()
     const imageToSend = pendingImage
     if ((!content && !imageToSend) || sendingRef.current) return
+
+    // Paywall check runs before the draft is cleared, so declining the gate
+    // leaves the message intact to send after they top up.
+    if (!canChat) {
+      cancelListening()
+      upgradeGate.show()
+      return
+    }
 
     cancelListening()
     sendingRef.current = true
@@ -868,6 +883,14 @@ export function ScanAdviceComposer({
     </motion.div>
   )
 
+  const gateDialog = (
+    <UpgradeGateDialog
+      open={upgradeGate.open}
+      feature="chat"
+      onCancel={upgradeGate.close}
+    />
+  )
+
   if (inline) {
     return (
       <div
@@ -878,6 +901,7 @@ export function ScanAdviceComposer({
         )}
       >
         {panel}
+        {gateDialog}
       </div>
     )
   }
@@ -891,6 +915,7 @@ export function ScanAdviceComposer({
       )}
     >
       <AnimatePresence mode="wait">{panel}</AnimatePresence>
+      {gateDialog}
     </div>
   )
 }

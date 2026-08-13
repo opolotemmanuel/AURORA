@@ -15,7 +15,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
   return (
     <div className="space-y-8">
       <DashboardPageHeader
-        title="Reports"
+        title="Scans"
         description="Your scan history with dimension profiles and downloadable PDF reports."
       />
 

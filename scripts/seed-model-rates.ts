@@ -1,6 +1,14 @@
 /**
  * Seed AI model rate rows for usage-based pricing.
  * Run after migrations: npm run db:seed-rates
+ *
+ * Rates are micro-USD per 1M tokens, taken from the published Gemini API paid
+ * tier (https://ai.google.dev/gemini-api/docs/pricing), verified 2026-08-13.
+ * Scan prompts sit far below 200k tokens, so the short-context rate applies.
+ *
+ * Tier ladder: smallest model on Starter, latest Flash on Plus, strongest model
+ * on Pro. Pro also owns the live-scan model. Inactive rows stay in the table so
+ * historical AiUsage rows can still be costed.
  */
 import "dotenv/config"
 
@@ -23,12 +31,14 @@ type ModelSeed = {
 }
 
 const MODELS: ModelSeed[] = [
+  // ── Active tier models ────────────────────────────────────────────────
   {
-    modelId: "gemini-2.5-flash",
-    displayName: "Gemini 2.5 Flash",
-    inputMicrosPer1M: 150_000,
-    outputMicrosPer1M: 600_000,
-    cachedInputMicrosPer1M: 37_500,
+    // Starter: smallest current vision model. $0.30 / $2.50 / $0.03
+    modelId: "gemini-3.5-flash-lite",
+    displayName: "Gemini 3.5 Flash-Lite",
+    inputMicrosPer1M: 300_000,
+    outputMicrosPer1M: 2_500_000,
+    cachedInputMicrosPer1M: 30_000,
     isActive: true,
     isScanDefault: true,
     supportsVision: true,
@@ -37,38 +47,40 @@ const MODELS: ModelSeed[] = [
     thinkingLevel: "low",
   },
   {
-    modelId: "gemini-3.5-flash",
-    displayName: "Gemini 3.5 Flash",
+    // Plus: latest Flash, cheaper output than 3.5 Flash. $1.50 / $7.50 / $0.15
+    modelId: "gemini-3.6-flash",
+    displayName: "Gemini 3.6 Flash",
     inputMicrosPer1M: 1_500_000,
-    outputMicrosPer1M: 9_000_000,
+    outputMicrosPer1M: 7_500_000,
     cachedInputMicrosPer1M: 150_000,
     isActive: true,
     isScanDefault: false,
     supportsVision: true,
     supportsLive: false,
-    assignedTier: "thinking",
+    assignedTier: "plus",
     thinkingLevel: "medium",
   },
   {
-    modelId: "gemini-3.5-pro",
-    displayName: "Gemini 3.5 Pro",
-    inputMicrosPer1M: 15_000_000,
-    outputMicrosPer1M: 60_000_000,
-    cachedInputMicrosPer1M: 3_750_000,
-    isActive: false,
+    // Pro still: strongest available model. $2.00 / $12.00 / $0.20 under 200k
+    modelId: "gemini-3.1-pro-preview",
+    displayName: "Gemini 3.1 Pro",
+    inputMicrosPer1M: 2_000_000,
+    outputMicrosPer1M: 12_000_000,
+    cachedInputMicrosPer1M: 200_000,
+    isActive: true,
     isScanDefault: false,
     supportsVision: true,
     supportsLive: false,
-    assignedTier: null,
+    assignedTier: "pro",
     thinkingLevel: "high",
   },
   {
+    // Pro live: image/video input $1.00, text output $4.50. No context caching.
     modelId: "gemini-3.1-flash-live-preview",
     displayName: "Gemini 3.1 Flash Live",
-    // Live API pricing approximated from standard flash rates
-    inputMicrosPer1M: 1_500_000,
-    outputMicrosPer1M: 9_000_000,
-    cachedInputMicrosPer1M: 150_000,
+    inputMicrosPer1M: 1_000_000,
+    outputMicrosPer1M: 4_500_000,
+    cachedInputMicrosPer1M: 0,
     isActive: true,
     isScanDefault: false,
     supportsVision: true,
@@ -76,20 +88,51 @@ const MODELS: ModelSeed[] = [
     assignedTier: "pro",
     thinkingLevel: null,
   },
+
+  // ── Retired, kept so past usage can still be costed ───────────────────
   {
-    modelId: "gemini-omni-flash-preview",
-    displayName: "Gemini Omni Flash (reference)",
-    inputMicrosPer1M: 100_000,
-    outputMicrosPer1M: 100_000,
-    cachedInputMicrosPer1M: 0,
+    modelId: "gemini-3.5-flash",
+    displayName: "Gemini 3.5 Flash",
+    inputMicrosPer1M: 1_500_000,
+    outputMicrosPer1M: 9_000_000,
+    cachedInputMicrosPer1M: 150_000,
     isActive: false,
     isScanDefault: false,
-    supportsVision: false,
+    supportsVision: true,
+    supportsLive: false,
+    assignedTier: null,
+    thinkingLevel: "medium",
+  },
+  {
+    modelId: "gemini-2.5-flash",
+    displayName: "Gemini 2.5 Flash",
+    inputMicrosPer1M: 300_000,
+    outputMicrosPer1M: 2_500_000,
+    cachedInputMicrosPer1M: 30_000,
+    isActive: false,
+    isScanDefault: false,
+    supportsVision: true,
+    supportsLive: false,
+    assignedTier: null,
+    thinkingLevel: "low",
+  },
+  {
+    modelId: "gemini-2.5-flash-lite",
+    displayName: "Gemini 2.5 Flash-Lite",
+    inputMicrosPer1M: 100_000,
+    outputMicrosPer1M: 400_000,
+    cachedInputMicrosPer1M: 10_000,
+    isActive: false,
+    isScanDefault: false,
+    supportsVision: true,
     supportsLive: false,
     assignedTier: null,
     thinkingLevel: null,
   },
 ]
+
+/** Models that no longer exist in the Gemini API and were never used. */
+const REMOVED_MODEL_IDS = ["gemini-3.5-pro", "gemini-omni-flash-preview"]
 
 async function upsertModel(model: ModelSeed) {
   return withDbRetry(
@@ -123,7 +166,7 @@ async function upsertModel(model: ModelSeed) {
 }
 
 async function main() {
-  // Clear tier slots once (avoids unique constraint on assignedTier during upsert).
+  // Clear tier slots once, so reassigning a tier cannot trip the unique index.
   await withDbRetry(
     () => prisma.aiModelRate.updateMany({ data: { assignedTier: null } }),
     5,
@@ -133,7 +176,15 @@ async function main() {
     await upsertModel(model)
   }
 
-  console.log(`Seeded ${MODELS.length} Gemini model rates`)
+  const removed = await withDbRetry(() =>
+    prisma.aiModelRate.deleteMany({
+      where: { provider: "gemini", modelId: { in: REMOVED_MODEL_IDS } },
+    }),
+  )
+
+  console.log(
+    `Seeded ${MODELS.length} Gemini model rates, removed ${removed.count} stale rows`,
+  )
 }
 
 main()

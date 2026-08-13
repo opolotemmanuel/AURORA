@@ -15,8 +15,16 @@ export async function UsageStats() {
     <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Remaining" value={stats.remaining} />
-        <StatCard label="Used" value={stats.lifetimeUsed} />
-        <StatCard label="Granted" value={stats.lifetimeGranted} />
+        <StatCard
+          label="Used"
+          value={stats.periodUsed}
+          hint="On your current plan"
+        />
+        <StatCard
+          label="Granted"
+          value={stats.periodGranted}
+          hint={`${stats.lifetimeUsed} used all time`}
+        />
         <StatCard
           label="Chats used"
           value={stats.chatMessagesUsed}
@@ -31,15 +39,15 @@ export async function UsageStats() {
       <div className="surface-panel rounded-xl border border-border/60 p-5">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <UsageScanSummary
-            lifetimeUsed={stats.lifetimeUsed}
-            lifetimeGranted={stats.lifetimeGranted}
+            used={stats.periodUsed}
+            granted={stats.periodGranted}
             remaining={stats.remaining}
           />
         </div>
         <Progress
           value={Math.min(
             100,
-            (stats.lifetimeUsed / Math.max(stats.lifetimeGranted, 1)) * 100,
+            (stats.periodUsed / Math.max(stats.periodGranted, 1)) * 100,
           )}
           className="mt-4 h-2"
         />

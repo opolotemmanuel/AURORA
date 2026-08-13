@@ -17,7 +17,7 @@ export type ScanWizardStep =
 
 export type CaptureMode = "upload" | "camera" | "live" | "advice"
 
-export type ScanTier = "starter" | "thinking" | "pro"
+export type ScanTier = "starter" | "plus" | "pro"
 
 /** Token counters reported by the client-side Gemini Live session. */
 export type LiveSessionUsage = {

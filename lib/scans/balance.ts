@@ -49,6 +49,8 @@ export async function grantScans(input: GrantInput) {
   const tier = await resolveTier(input.userId, input.tier)
   const tokenGrant = chatTokensForScanGrant(input.amount, tier)
 
+  const now = new Date()
+
   return prisma.$transaction(async (tx) => {
     const balance = await tx.scanBalance.upsert({
       where: { userId: input.userId },
@@ -56,17 +58,25 @@ export async function grantScans(input: GrantInput) {
         userId: input.userId,
         remaining: input.amount,
         lifetimeGranted: input.amount,
+        periodGranted: input.amount,
+        periodStartedAt: now,
         tokenBudgetRemaining: tokenGrant,
       },
       update: input.replaceBalance
         ? {
+            // A replacing grant starts a new plan period, so usage counts
+            // restart from zero while lifetime totals keep accumulating.
             remaining: input.amount,
             lifetimeGranted: { increment: input.amount },
+            periodUsed: 0,
+            periodGranted: input.amount,
+            periodStartedAt: now,
             tokenBudgetRemaining: tokenGrant,
           }
         : {
             remaining: { increment: input.amount },
             lifetimeGranted: { increment: input.amount },
+            periodGranted: { increment: input.amount },
             tokenBudgetRemaining: { increment: tokenGrant },
           },
     })
@@ -137,6 +147,7 @@ async function debitScanWithClient(
     data: {
       remaining: { decrement: 1 },
       lifetimeUsed: { increment: 1 },
+      periodUsed: { increment: 1 },
     },
   })
 

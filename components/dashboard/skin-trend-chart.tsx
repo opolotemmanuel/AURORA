@@ -14,6 +14,9 @@ import {
 import { DashboardEmptyState } from "@/components/dashboard/dashboard-card"
 import type { ScanTrendPoint } from "@/lib/dashboard/scan-trends"
 
+/** Matches the h-56 wrapper below so the first paint has real dimensions. */
+const TREND_INITIAL_DIMENSION = { width: 320, height: 224 } as const
+
 const BAND_SCORE: Record<string, number> = {
   minimal: 1,
   mild: 2,
@@ -48,8 +51,17 @@ export function SkinTrendChart({ points }: SkinTrendChartProps) {
   }
 
   return (
-    <div className="h-56 w-full">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="h-56 w-full min-w-0">
+      {/*
+        Recharts measures the parent on mount and warns about a -1 x -1 chart
+        when it renders before layout settles. Seeding the dimensions matches
+        what ChartContainer does for every other chart in the app.
+      */}
+      <ResponsiveContainer
+        width="100%"
+        height="100%"
+        initialDimension={TREND_INITIAL_DIMENSION}
+      >
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
           <XAxis dataKey="label" tick={{ fontSize: 12 }} />

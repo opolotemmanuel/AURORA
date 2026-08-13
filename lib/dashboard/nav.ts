@@ -3,11 +3,12 @@ import {
   IconBrain,
   IconChartBar,
   IconCoin,
+  IconCreditCard,
   IconHome,
   IconLock,
   IconMessage,
   IconPackage,
-  IconReport,
+  IconScan,
   IconSettings,
   IconUser,
   IconUsers,
@@ -39,7 +40,7 @@ const YOUR_DATA: NavSection = {
   title: "Your data",
   items: [
     { href: "/dashboard/profile", label: "Profile", icon: IconUser },
-    { href: "/reports", label: "Reports", icon: IconReport },
+    { href: "/reports", label: "Scans", icon: IconScan },
     { href: "/chats", label: "Skin advice", icon: IconMessage },
     { href: "/dashboard/privacy", label: "Privacy", icon: IconLock },
   ],
@@ -47,7 +48,10 @@ const YOUR_DATA: NavSection = {
 
 const ACCOUNT: NavSection = {
   title: "Account",
-  items: [{ href: "/settings", label: "Settings", icon: IconSettings }],
+  items: [
+    { href: "/dashboard/billing", label: "Billing", icon: IconCreditCard },
+    { href: "/settings", label: "Settings", icon: IconSettings },
+  ],
 }
 
 const ADMIN: NavSection = {
@@ -56,7 +60,7 @@ const ADMIN: NavSection = {
     { href: "/admin", label: "Analytics", icon: IconChartBar },
     { href: "/admin/usage", label: "Usage", icon: IconChartBar },
     { href: "/admin/users", label: "Users", icon: IconUsers },
-    { href: "/admin/tokens", label: "Scans", icon: IconCoin },
+    { href: "/admin/tokens", label: "Allowances", icon: IconCoin },
     { href: "/admin/models", label: "Models", icon: IconBrain },
     { href: "/admin/products", label: "Products", icon: IconPackage },
     { href: "/admin/feedback", label: "Feedback", icon: IconMessage },

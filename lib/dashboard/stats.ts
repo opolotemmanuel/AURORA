@@ -59,6 +59,10 @@ export const getUserDashboardStats = cache(async (userId: string) => {
       remaining: balance?.remaining ?? 0,
       lifetimeUsed: balance?.lifetimeUsed ?? 0,
       lifetimeGranted: balance?.lifetimeGranted ?? 0,
+      // Current plan period. Each pack purchase restarts these at zero.
+      periodUsed: balance?.periodUsed ?? 0,
+      periodGranted: balance?.periodGranted ?? 0,
+      periodStartedAt: balance?.periodStartedAt ?? null,
       // Chat allowance is metered in tokens internally, but users only ever see
       // it as an estimated message count: raw token counts read as billing
       // internals, not as something they can act on.

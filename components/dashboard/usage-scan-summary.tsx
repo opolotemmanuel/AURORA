@@ -3,23 +3,26 @@
 import { CompactNumber } from "@/components/ui/compact-number"
 
 type UsageScanSummaryProps = {
-  lifetimeUsed: number
-  lifetimeGranted: number
+  /** Scans used on the current plan, not lifetime. */
+  used: number
+  granted: number
   remaining: number
 }
 
 export function UsageScanSummary({
-  lifetimeUsed,
-  lifetimeGranted,
+  used,
+  granted,
   remaining,
 }: UsageScanSummaryProps) {
   return (
     <>
       <div>
-        <h2 className="font-heading text-sm font-medium">Scans used</h2>
+        <h2 className="font-heading text-sm font-medium">
+          Scans used on this plan
+        </h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          <CompactNumber value={lifetimeUsed} /> of{" "}
-          <CompactNumber value={lifetimeGranted} /> granted
+          <CompactNumber value={used} /> of <CompactNumber value={granted} />{" "}
+          granted
         </p>
       </div>
       <p className="text-sm text-muted-foreground">

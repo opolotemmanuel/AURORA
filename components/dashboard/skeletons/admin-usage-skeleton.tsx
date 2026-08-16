@@ -28,6 +28,36 @@ export function AdminUsageSkeleton() {
       <StatCardsSkeleton count={4} />
       <StatCardsSkeleton count={4} />
 
+      {/* Unit economics: heading, stat row, then the two calibration tables. */}
+      <Skeleton className="h-5 w-40" />
+      <StatCardsSkeleton count={4} />
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="surface-panel rounded-xl border border-border/60 p-5">
+          <Skeleton className="h-4 w-24" />
+          <div className="mt-4">
+            <TableSkeleton rows={7} />
+          </div>
+        </div>
+        <div className="surface-panel rounded-xl border border-border/60 p-5">
+          <Skeleton className="h-4 w-44" />
+          <div className="mt-4">
+            <TableSkeleton rows={3} />
+          </div>
+        </div>
+      </div>
+
+      {/* Revenue and margin. */}
+      <Skeleton className="h-5 w-48" />
+      <StatCardsSkeleton count={4} />
+
+      <div className="surface-panel rounded-xl border border-border/60 p-5">
+        <Skeleton className="h-4 w-52" />
+        <div className="mt-4">
+          <TableSkeleton rows={3} />
+        </div>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="surface-panel rounded-xl border border-border/60 p-5">
           <Skeleton className="h-4 w-36" />
@@ -66,6 +96,17 @@ export function AdminUsageSkeleton() {
         <div className="mt-4">
           <TableSkeleton rows={5} />
         </div>
+      </div>
+
+      {/* Ops cards, then the planning section and its chart. */}
+      <StatCardsSkeleton count={2} />
+
+      <Skeleton className="h-5 w-28" />
+      <StatCardsSkeleton count={4} />
+
+      <div className="surface-panel rounded-xl border border-border/60 p-5">
+        <Skeleton className="h-4 w-48" />
+        <Skeleton className="mt-4 h-48 w-full rounded-lg" />
       </div>
 
       <div className="surface-panel rounded-xl border border-border/60 p-5">

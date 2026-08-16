@@ -1,5 +1,11 @@
+import Link from "next/link"
+
 import { RoleDistributionChart, UsageBarChart } from "@/components/dashboard/usage-chart"
 import { StatCard } from "@/components/dashboard/page-header"
+import {
+  formatMicrosOrDash,
+  formatPercentOrDash,
+} from "@/lib/admin/format-economics"
 import { getAdminDashboardStats } from "@/lib/dashboard/stats"
 import {
   formatExactMicroUsd,
@@ -44,8 +50,29 @@ export async function AdminAnalytics() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          label="Cost per scan"
+          value={formatMicrosOrDash(stats.costPerScanLoadedMicros)}
+          hint="All-time provider spend per credit used"
+        />
+        <StatCard
+          label="Gross margin"
+          value={formatPercentOrDash(stats.grossMarginPercent)}
+          hint={
+            stats.simulatedPayments
+              ? "Simulated payments less provider cost"
+              : "Revenue less provider cost"
+          }
+        />
         <StatCard label="Active products" value={stats.productCount} />
       </div>
+
+      <p className="text-xs text-muted-foreground">
+        <Link href="/admin/usage" className="hover:text-primary hover:underline">
+          Open the usage dashboard
+        </Link>{" "}
+        for per-scan and per-chat cost, tier margins, and spend projections.
+      </p>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="surface-panel rounded-xl border border-border/60 p-5">

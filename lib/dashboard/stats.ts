@@ -155,6 +155,10 @@ export const getAdminDashboardStats = cache(async () => {
         value: bucket.tokens,
       })),
       costByDay: usageSnapshot.costSeries14,
+      costPerScanLoadedMicros: usageSnapshot.costPerScanLoadedMicros,
+      revenueMicros: usageSnapshot.revenueMicros,
+      grossMarginPercent: usageSnapshot.grossMarginPercent,
+      simulatedPayments: usageSnapshot.simulatedPayments,
     }
   })
 })

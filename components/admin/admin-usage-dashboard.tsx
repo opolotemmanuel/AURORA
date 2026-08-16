@@ -3,6 +3,12 @@ import Link from "next/link"
 
 import { AdminUsageFilters } from "@/components/admin/admin-usage-filters"
 import { ModelHealthPanel } from "@/components/admin/model-health-panel"
+import { UsageMarginPanel } from "@/components/admin/usage-margin-panel"
+import {
+  UsageOpsPanel,
+  UsagePlanningPanel,
+} from "@/components/admin/usage-planning-panel"
+import { UsageUnitEconomics } from "@/components/admin/usage-unit-economics"
 import { UsageBarChart } from "@/components/dashboard/usage-chart"
 import { StatCard } from "@/components/dashboard/page-header"
 import { CompactNumber } from "@/components/ui/compact-number"
@@ -14,6 +20,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  formatMicrosOrDash,
+  formatMsOrDash,
+} from "@/lib/admin/format-economics"
+import { perUnit } from "@/lib/admin/unit-economics"
 import type { AdminUsageAnalytics } from "@/lib/admin/usage-analytics"
 import { buildModelHealthSummary } from "@/lib/models/status"
 import { listModelRates } from "@/lib/models/queries"
@@ -28,6 +39,7 @@ const FEATURE_LABELS: Record<string, string> = {
   scan_analyze: "Scan analysis",
   scan_live: "Live scan",
   chat_reply: "Chat reply",
+  chat_recommendations: "Recommendation pass",
   chat_guardrail: "Guardrail check",
   transcribe: "Voice transcription",
 }
@@ -83,6 +95,10 @@ export async function AdminUsageDashboard({
 
   const { tokens, highlights } = analytics
 
+  const latencyByFeature = new Map(
+    analytics.economics.ops.latency.map((row) => [row.feature, row]),
+  )
+
   return (
     <div className="space-y-8">
       <Suspense fallback={null}>
@@ -133,6 +149,10 @@ export async function AdminUsageDashboard({
           }
         />
       </div>
+
+      <UsageUnitEconomics economics={analytics.economics} />
+
+      <UsageMarginPanel economics={analytics.economics} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <div className="surface-panel rounded-xl border border-border/60 p-5">
@@ -266,7 +286,8 @@ export async function AdminUsageDashboard({
         <h2 className="font-heading text-sm font-medium">Cost by feature</h2>
         <p className="mt-1 text-xs text-muted-foreground">
           Every billable provider call, including guardrail checks and voice
-          transcription.
+          transcription. Latency is measured only where the call site records
+          it, so a feature can show cost without percentiles.
         </p>
         <div className="mt-4 overflow-x-auto">
           <Table>
@@ -276,37 +297,64 @@ export async function AdminUsageDashboard({
                 <TableHead className="text-right">Calls</TableHead>
                 <TableHead className="text-right">Tokens</TableHead>
                 <TableHead className="text-right">Cost</TableHead>
+                <TableHead className="text-right">Cost / call</TableHead>
+                <TableHead className="text-right">p50</TableHead>
+                <TableHead className="text-right">p95</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {analytics.perFeature.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-muted-foreground">
+                  <TableCell colSpan={7} className="text-muted-foreground">
                     No usage in this period
                   </TableCell>
                 </TableRow>
               ) : (
-                analytics.perFeature.map((row) => (
-                  <TableRow key={row.feature}>
-                    <TableCell>
-                      {FEATURE_LABELS[row.feature] ?? row.feature}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {row.callCount.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {row.tokens.totalTokens.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatMicroUsdCompact(row.tokens.estimatedCostMicros)}
-                    </TableCell>
-                  </TableRow>
-                ))
+                analytics.perFeature.map((row) => {
+                  const latency = latencyByFeature.get(row.feature)
+                  return (
+                    <TableRow key={row.feature}>
+                      <TableCell>
+                        {FEATURE_LABELS[row.feature] ?? row.feature}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {row.callCount.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {row.tokens.totalTokens.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatMicroUsdCompact(row.tokens.estimatedCostMicros)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatMicrosOrDash(
+                          perUnit(
+                            row.tokens.estimatedCostMicros,
+                            row.callCount,
+                          ),
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatMsOrDash(latency?.p50Ms ?? null)}
+                      </TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatMsOrDash(latency?.p95Ms ?? null)}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
               )}
             </TableBody>
           </Table>
         </div>
       </div>
+
+      <UsageOpsPanel economics={analytics.economics} />
+
+      <UsagePlanningPanel
+        economics={analytics.economics}
+        costPerScanSeries={analytics.costPerScanSeries}
+      />
 
       <div className="surface-panel rounded-xl border border-border/60 p-5">
         <h2 className="font-heading text-sm font-medium">Top users by tokens</h2>

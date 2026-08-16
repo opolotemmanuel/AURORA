@@ -1,7 +1,7 @@
 import { cache } from "react"
 import { connection } from "next/server"
 
-import { Prisma, type AiUsageFeature } from "@/generated/prisma/client"
+import { Prisma } from "@/generated/prisma/client"
 import {
   buildBucketKeys,
   bucketKey,
@@ -12,39 +12,37 @@ import {
   truncUnit,
   type UsagePeriod,
 } from "@/lib/admin/periods"
+import { getAdminEconomics } from "@/lib/admin/economics-queries"
+import {
+  deriveUnitEconomics,
+  perUnit,
+  type AdminEconomics,
+} from "@/lib/admin/unit-economics"
+import {
+  addBreakdowns,
+  buildRawWhere,
+  buildWhere,
+  emptyBreakdown,
+  resolveFilters,
+  SCAN_FEATURES,
+  SUM_SELECT,
+  toBreakdown,
+  toNumber,
+  type ResolvedUsageFilters,
+  type TokenBreakdown,
+  type UsageFilters,
+  type UsageSource,
+} from "@/lib/admin/usage-shared"
 import { prisma } from "@/lib/db/client"
 import { withDbRetry } from "@/lib/db/retry"
 import { listModelRates } from "@/lib/models/queries"
+import { isSimulatedProvider } from "@/lib/payments"
+import {
+  getChatTokensPerScanForTier,
+  getTargetMarginBps,
+} from "@/lib/scans/constants"
 
-export type { UsagePeriod }
-
-/** Filter values exposed in the UI, mapped to the features they cover. */
-export type UsageSource = "all" | "scan" | "chat" | "guardrail" | "transcribe"
-
-const SOURCE_FEATURES: Record<UsageSource, AiUsageFeature[] | null> = {
-  all: null,
-  scan: ["scan_analyze", "scan_live"],
-  chat: ["chat_reply", "chat_recommendations"],
-  guardrail: ["chat_guardrail"],
-  transcribe: ["transcribe"],
-}
-
-const SCAN_FEATURES = new Set<AiUsageFeature>(["scan_analyze", "scan_live"])
-
-export type UsageFilters = {
-  period?: UsagePeriod
-  modelId?: string
-  source?: UsageSource
-}
-
-export type TokenBreakdown = {
-  inputTokens: number
-  outputTokens: number
-  cachedTokens: number
-  reasoningTokens: number
-  totalTokens: number
-  estimatedCostMicros: number
-}
+export type { UsagePeriod, UsageSource, UsageFilters, TokenBreakdown }
 
 export type UsageTimeBucket = {
   label: string
@@ -54,6 +52,9 @@ export type UsageTimeBucket = {
   outputTokens: number
   cachedTokens: number
   reasoningTokens: number
+  /** Distinct scans in the bucket, so unit cost can be tracked over time. */
+  scans: number
+  costPerScanMicros: number | null
 }
 
 export type ModelUsageRow = {
@@ -63,6 +64,12 @@ export type ModelUsageRow = {
   scanCount: number
   chatCount: number
   tokens: TokenBreakdown
+  /**
+   * The same totals split by feature class. Per-tier cost-per-scan needs the
+   * scan half on its own, and the groupBy already returns it per feature.
+   */
+  scanTokens: TokenBreakdown
+  chatTokens: TokenBreakdown
   sharePercent: number
 }
 
@@ -76,7 +83,7 @@ export type UserUsageRow = {
 }
 
 export type FeatureUsageRow = {
-  feature: AiUsageFeature
+  feature: import("@/generated/prisma/client").AiUsageFeature
   callCount: number
   tokens: TokenBreakdown
 }
@@ -89,79 +96,19 @@ export type UsageHighlights = {
 }
 
 export type AdminUsageAnalytics = {
-  filters: Required<UsageFilters>
+  filters: ResolvedUsageFilters
   tokens: TokenBreakdown
   scansGranted: number
   scansUsed: number
   chatCount: number
   tokenSeries: UsageTimeBucket[]
   costSeries: { label: string; value: number }[]
+  costPerScanSeries: { label: string; value: number }[]
   perModel: ModelUsageRow[]
   perUser: UserUsageRow[]
   perFeature: FeatureUsageRow[]
   highlights: UsageHighlights
-}
-
-type SumFields = {
-  inputTokens: number | null
-  outputTokens: number | null
-  cachedTokens: number | null
-  reasoningTokens: number | null
-  totalTokens: number | null
-  estimatedCostMicros: number | null
-}
-
-const SUM_SELECT = {
-  inputTokens: true,
-  outputTokens: true,
-  cachedTokens: true,
-  reasoningTokens: true,
-  totalTokens: true,
-  estimatedCostMicros: true,
-} as const
-
-function emptyBreakdown(): TokenBreakdown {
-  return {
-    inputTokens: 0,
-    outputTokens: 0,
-    cachedTokens: 0,
-    reasoningTokens: 0,
-    totalTokens: 0,
-    estimatedCostMicros: 0,
-  }
-}
-
-function toBreakdown(sum: SumFields | null | undefined): TokenBreakdown {
-  return {
-    inputTokens: sum?.inputTokens ?? 0,
-    outputTokens: sum?.outputTokens ?? 0,
-    cachedTokens: sum?.cachedTokens ?? 0,
-    reasoningTokens: sum?.reasoningTokens ?? 0,
-    totalTokens: sum?.totalTokens ?? 0,
-    estimatedCostMicros: sum?.estimatedCostMicros ?? 0,
-  }
-}
-
-function addBreakdowns(a: TokenBreakdown, b: TokenBreakdown): TokenBreakdown {
-  return {
-    inputTokens: a.inputTokens + b.inputTokens,
-    outputTokens: a.outputTokens + b.outputTokens,
-    cachedTokens: a.cachedTokens + b.cachedTokens,
-    reasoningTokens: a.reasoningTokens + b.reasoningTokens,
-    totalTokens: a.totalTokens + b.totalTokens,
-    estimatedCostMicros: a.estimatedCostMicros + b.estimatedCostMicros,
-  }
-}
-
-function buildWhere(filters: Required<UsageFilters>): Prisma.AiUsageWhereInput {
-  const start = getPeriodStart(filters.period)
-  const features = SOURCE_FEATURES[filters.source] ?? null
-
-  return {
-    ...(start ? { createdAt: { gte: start } } : {}),
-    ...(filters.modelId ? { modelId: filters.modelId } : {}),
-    ...(features ? { feature: { in: features } } : {}),
-  }
+  economics: AdminEconomics
 }
 
 type TimeSeriesRow = {
@@ -172,6 +119,7 @@ type TimeSeriesRow = {
   output: bigint | number | null
   cached: bigint | number | null
   reasoning: bigint | number | null
+  scans: bigint | number | null
 }
 
 /** `to_char` output is UTC wall time, so read it back as UTC. */
@@ -179,34 +127,15 @@ function parseBucketTimestamp(value: string): Date {
   return new Date(`${value.replace(" ", "T")}Z`)
 }
 
-function toNumber(value: bigint | number | null | undefined): number {
-  if (value === null || value === undefined) return 0
-  return typeof value === "bigint" ? Number(value) : value
+function microsToUsd(micros: number): number {
+  return Math.round((micros / 1_000_000) * 10000) / 10000
 }
 
 async function fetchTimeSeries(
-  filters: Required<UsageFilters>,
+  filters: ResolvedUsageFilters,
 ): Promise<UsageTimeBucket[]> {
   const granularity = getBucketGranularity(filters.period)
-  const start = getPeriodStart(filters.period)
-  const features = SOURCE_FEATURES[filters.source] ?? null
-
-  const conditions: Prisma.Sql[] = []
-  if (start) {
-    conditions.push(Prisma.sql`"createdAt" >= ${start}`)
-  }
-  if (filters.modelId) {
-    conditions.push(Prisma.sql`"modelId" = ${filters.modelId}`)
-  }
-  if (features) {
-    conditions.push(
-      Prisma.sql`"feature"::text IN (${Prisma.join(features.map((f) => Prisma.sql`${f}`))})`,
-    )
-  }
-  const where =
-    conditions.length > 0
-      ? Prisma.sql`WHERE ${Prisma.join(conditions, " AND ")}`
-      : Prisma.empty
+  const where = buildRawWhere(filters)
 
   const rows = await prisma.$queryRaw<TimeSeriesRow[]>(Prisma.sql`
     SELECT
@@ -219,7 +148,8 @@ async function fetchTimeSeries(
       SUM("inputTokens") AS input,
       SUM("outputTokens") AS output,
       SUM("cachedTokens") AS cached,
-      SUM(COALESCE("reasoningTokens", 0)) AS reasoning
+      SUM(COALESCE("reasoningTokens", 0)) AS reasoning,
+      COUNT(DISTINCT "scanId") AS scans
     FROM "ai_usage"
     ${where}
     GROUP BY 1
@@ -236,14 +166,19 @@ async function fetchTimeSeries(
 
   return buildBucketKeys(filters.period, { earliest }).map((key) => {
     const row = byKey.get(key)
+    const costMicros = toNumber(row?.cost)
+    const scans = toNumber(row?.scans)
+
     return {
       label: bucketLabel(key, granularity),
       tokens: toNumber(row?.tokens),
-      costMicros: toNumber(row?.cost),
+      costMicros,
       inputTokens: toNumber(row?.input),
       outputTokens: toNumber(row?.output),
       cachedTokens: toNumber(row?.cached),
       reasoningTokens: toNumber(row?.reasoning),
+      scans,
+      costPerScanMicros: perUnit(costMicros, scans),
     }
   })
 }
@@ -271,7 +206,13 @@ async function fetchPerModel(
 
   const byModel = new Map<
     string,
-    { scanCount: number; chatCount: number; tokens: TokenBreakdown }
+    {
+      scanCount: number
+      chatCount: number
+      tokens: TokenBreakdown
+      scanTokens: TokenBreakdown
+      chatTokens: TokenBreakdown
+    }
   >()
 
   for (const row of grouped) {
@@ -279,14 +220,20 @@ async function fetchPerModel(
       scanCount: 0,
       chatCount: 0,
       tokens: emptyBreakdown(),
+      scanTokens: emptyBreakdown(),
+      chatTokens: emptyBreakdown(),
     }
     const count = row._count._all
+    const breakdown = toBreakdown(row._sum)
+
     if (SCAN_FEATURES.has(row.feature)) {
       entry.scanCount += count
+      entry.scanTokens = addBreakdowns(entry.scanTokens, breakdown)
     } else {
       entry.chatCount += count
+      entry.chatTokens = addBreakdowns(entry.chatTokens, breakdown)
     }
-    entry.tokens = addBreakdowns(entry.tokens, toBreakdown(row._sum))
+    entry.tokens = addBreakdowns(entry.tokens, breakdown)
     byModel.set(row.modelId, entry)
   }
 
@@ -298,6 +245,8 @@ async function fetchPerModel(
       scanCount: entry.scanCount,
       chatCount: entry.chatCount,
       tokens: entry.tokens,
+      scanTokens: entry.scanTokens,
+      chatTokens: entry.chatTokens,
       sharePercent:
         totalTokens > 0
           ? Math.round((entry.tokens.totalTokens / totalTokens) * 1000) / 10
@@ -418,37 +367,69 @@ async function getTodayHighlights(): Promise<
   return { scansToday, chatsToday }
 }
 
+/** The per-tier chat token grants, resolved once so derivations stay pure. */
+function chatTokenGrants() {
+  return {
+    starter: getChatTokensPerScanForTier("starter"),
+    plus: getChatTokensPerScanForTier("plus"),
+    pro: getChatTokensPerScanForTier("pro"),
+  }
+}
+
 export const getAdminUsageAnalytics = cache(
   async (input: UsageFilters = {}): Promise<AdminUsageAnalytics> => {
     await connection()
 
-    const filters: Required<UsageFilters> = {
-      period: input.period ?? "30d",
-      modelId: input.modelId ?? "",
-      source: input.source ?? "all",
-    }
+    const filters = resolveFilters(input)
 
     return withDbRetry(async () => {
       const where = buildWhere(filters)
 
-      const [totals, chatCount, tokenSeries, perUser, perFeature, allowance, highlightsToday] =
-        await Promise.all([
-          prisma.aiUsage.aggregate({ where, _sum: SUM_SELECT }),
-          prisma.aiUsage.count({ where: { ...where, feature: "chat_reply" } }),
-          fetchTimeSeries(filters),
-          fetchPerUser(where),
-          fetchPerFeature(where),
-          getScanAllowanceStats(getPeriodStart(filters.period)),
-          getTodayHighlights(),
-        ])
+      const [
+        totals,
+        chatCount,
+        tokenSeries,
+        perUser,
+        perFeature,
+        allowance,
+        highlightsToday,
+        fetched,
+      ] = await Promise.all([
+        prisma.aiUsage.aggregate({ where, _sum: SUM_SELECT }),
+        prisma.aiUsage.count({ where: { ...where, feature: "chat_reply" } }),
+        fetchTimeSeries(filters),
+        fetchPerUser(where),
+        fetchPerFeature(where),
+        getScanAllowanceStats(getPeriodStart(filters.period)),
+        getTodayHighlights(),
+        getAdminEconomics(filters),
+      ])
 
       const tokens = toBreakdown(totals._sum)
       const perModel = await fetchPerModel(where, tokens.totalTokens)
 
       const costSeries = tokenSeries.map((bucket) => ({
         label: bucket.label,
-        value: Math.round((bucket.costMicros / 1_000_000) * 10000) / 10000,
+        value: microsToUsd(bucket.costMicros),
       }))
+
+      const costPerScanSeries = tokenSeries.map((bucket) => ({
+        label: bucket.label,
+        value: microsToUsd(bucket.costPerScanMicros ?? 0),
+      }))
+
+      const economics = deriveUnitEconomics({
+        filters,
+        fetched,
+        tokens,
+        perFeature,
+        perModel,
+        scansUsed: allowance.scansUsed,
+        chatTokenGrants: chatTokenGrants(),
+        targetMarginPercent: getTargetMarginBps() / 100,
+        simulatedPayments: isSimulatedProvider(),
+        currency: fetched.currency,
+      })
 
       return {
         filters,
@@ -458,6 +439,7 @@ export const getAdminUsageAnalytics = cache(
         chatCount,
         tokenSeries,
         costSeries,
+        costPerScanSeries,
         perModel,
         perUser,
         perFeature,
@@ -466,6 +448,7 @@ export const getAdminUsageAnalytics = cache(
           mostActiveUser: perUser[0] ?? null,
           mostUsedModel: perModel[0] ?? null,
         },
+        economics,
       }
     })
   },
@@ -475,8 +458,9 @@ export const getAdminUsageSnapshot = cache(async () => {
   await connection()
   return withDbRetry(async () => {
     const todayStart = startOfUtcDay(new Date())
+    const allTimeFilters = resolveFilters({ period: "all" })
 
-    const [allTime, allowance, scansToday, chatsToday, recentSeries] =
+    const [allTime, allowance, scansToday, chatsToday, recentSeries, fetched] =
       await Promise.all([
         prisma.aiUsage.aggregate({ _sum: SUM_SELECT }),
         getScanAllowanceStats(null),
@@ -487,22 +471,41 @@ export const getAdminUsageSnapshot = cache(async () => {
           where: { feature: "chat_reply", createdAt: { gte: todayStart } },
         }),
         fetchTimeSeries({ period: "30d", modelId: "", source: "all" }),
+        getAdminEconomics(allTimeFilters),
       ])
+
+    const allTimeTokens = toBreakdown(allTime._sum)
 
     const tokenSeries14 = recentSeries.slice(-14)
     const costSeries14 = tokenSeries14.map((bucket) => ({
       label: bucket.label,
-      value: Math.round((bucket.costMicros / 1_000_000) * 10000) / 10000,
+      value: microsToUsd(bucket.costMicros),
     }))
 
+    const revenueMicros = fetched.revenueByTier.reduce(
+      (sum, row) => sum + row.amountCents * 10_000,
+      0,
+    )
+    const grossMarginMicros = revenueMicros - allTimeTokens.estimatedCostMicros
+    const grossMarginPercent = perUnit(grossMarginMicros, revenueMicros)
+
     return {
-      allTimeTokens: toBreakdown(allTime._sum),
+      allTimeTokens,
       scansGranted: allowance.scansGranted,
       scansUsed: allowance.scansUsed,
       scansToday,
       chatsToday,
       tokenSeries14,
       costSeries14,
+      /** All-time loaded cost of one scan credit, in micro-USD. */
+      costPerScanLoadedMicros: perUnit(
+        allTimeTokens.estimatedCostMicros,
+        allowance.scansUsed,
+      ),
+      revenueMicros,
+      grossMarginPercent:
+        grossMarginPercent === null ? null : grossMarginPercent * 100,
+      simulatedPayments: isSimulatedProvider(),
     }
   })
 })

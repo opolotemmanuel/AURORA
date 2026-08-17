@@ -10,6 +10,7 @@ import {
   IconPackage,
   IconScan,
   IconSettings,
+  IconTag,
   IconUser,
   IconUsers,
 } from "@tabler/icons-react"
@@ -62,6 +63,7 @@ const ADMIN: NavSection = {
     { href: "/admin/users", label: "Users", icon: IconUsers },
     { href: "/admin/tokens", label: "Allowances", icon: IconCoin },
     { href: "/admin/models", label: "Models", icon: IconBrain },
+    { href: "/admin/scan-packs", label: "Scan packs", icon: IconTag },
     { href: "/admin/products", label: "Products", icon: IconPackage },
     { href: "/admin/feedback", label: "Feedback", icon: IconMessage },
   ],

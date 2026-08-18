@@ -5,11 +5,10 @@ import { clinicUrl } from "@/lib/clinics/subdomain"
 
 export async function ClinicTeamLoader() {
   const session = await requireClinicMember()
-  const organizationId = session.tenant.organizationId
 
   const [members, invitations] = await Promise.all([
-    listClinicMembers(organizationId),
-    listClinicInvitations(organizationId),
+    listClinicMembers(session.scope),
+    listClinicInvitations(session.scope),
   ])
 
   return (

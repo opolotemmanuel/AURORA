@@ -28,7 +28,7 @@ const inviteSchema = z.object({
 export async function inviteClinicMemberAction(input: unknown) {
   const session = await requireClinicManager()
   const { email, role } = inviteSchema.parse(input)
-  const organizationId = session.tenant.organizationId
+  const organizationId = session.scope
 
   const seatLimit = session.tenant.plan?.seatLimit ?? 0
   const [memberCount, pendingCount] = await Promise.all([
@@ -92,7 +92,7 @@ export async function cancelClinicInvitationAction(input: unknown) {
   // Scoped by organizationId so a manager of one clinic can't cancel another
   // clinic's invitation by guessing an id.
   const result = await prisma.invitation.updateMany({
-    where: { id: invitationId, organizationId: session.tenant.organizationId },
+    where: { id: invitationId, organizationId: session.scope },
     data: { status: "canceled" },
   })
   if (result.count === 0) throw new Error("Invitation not found")
@@ -110,7 +110,7 @@ export async function updateClinicMemberRoleAction(input: unknown) {
   const { memberId, role } = memberRoleSchema.parse(input)
 
   const member = await prisma.member.findFirst({
-    where: { id: memberId, organizationId: session.tenant.organizationId },
+    where: { id: memberId, organizationId: session.scope },
     select: { id: true, role: true },
   })
   if (!member) throw new Error("Member not found")
@@ -131,7 +131,7 @@ export async function removeClinicMemberAction(input: unknown) {
   const { memberId } = memberIdSchema.parse(input)
 
   const member = await prisma.member.findFirst({
-    where: { id: memberId, organizationId: session.tenant.organizationId },
+    where: { id: memberId, organizationId: session.scope },
     select: { id: true, role: true, userId: true },
   })
   if (!member) throw new Error("Member not found")

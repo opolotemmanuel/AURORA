@@ -6,7 +6,7 @@ import { listClinicScans } from "@/lib/clinics/queries"
 export async function ClinicPatientsLoader() {
   const session = await requireClinicMember()
   const { tenant } = session
-  const scans = await listClinicScans(tenant.organizationId)
+  const scans = await listClinicScans(session.scope)
 
   return (
     <div className="space-y-6">

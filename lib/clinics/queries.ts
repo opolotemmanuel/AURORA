@@ -1,14 +1,16 @@
+import type { TenantScope } from "@/lib/clinics/membership"
 import { prisma } from "@/lib/db/client"
 
 /**
  * Scans belonging to one clinic.
  *
- * Every read here is filtered by organizationId, which is the single boundary
- * keeping one tenant's patient records out of another's dashboard. Callers must
- * pass an id they resolved from the caller's own membership, never from user
- * input.
+ * Every read here is filtered by organizationId, the single boundary keeping
+ * one tenant's patient records out of another's dashboard. The TenantScope
+ * parameter makes that boundary enforceable rather than conventional: it can
+ * only be produced by resolving a membership, so an id taken from a route
+ * param or form field will not typecheck here.
  */
-export async function listClinicScans(organizationId: string, take = 100) {
+export async function listClinicScans(organizationId: TenantScope, take = 100) {
   const scans = await prisma.scan.findMany({
     where: { organizationId },
     orderBy: { createdAt: "desc" },
@@ -38,12 +40,12 @@ export async function listClinicScans(organizationId: string, take = 100) {
 
 export type ClinicScanRow = Awaited<ReturnType<typeof listClinicScans>>[number]
 
-export async function countClinicScans(organizationId: string) {
+export async function countClinicScans(organizationId: TenantScope) {
   return prisma.scan.count({ where: { organizationId } })
 }
 
 /** Staff of one clinic, for the team page and seat-limit checks. */
-export async function listClinicMembers(organizationId: string) {
+export async function listClinicMembers(organizationId: TenantScope) {
   const members = await prisma.member.findMany({
     where: { organizationId },
     orderBy: { createdAt: "asc" },
@@ -67,7 +69,7 @@ export async function listClinicMembers(organizationId: string) {
 
 export type ClinicMemberRow = Awaited<ReturnType<typeof listClinicMembers>>[number]
 
-export async function listClinicInvitations(organizationId: string) {
+export async function listClinicInvitations(organizationId: TenantScope) {
   return prisma.invitation.findMany({
     where: { organizationId, status: "pending" },
     orderBy: { createdAt: "desc" },

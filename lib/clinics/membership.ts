@@ -6,6 +6,28 @@ import { resolveTenant, type TenantContext } from "@/lib/clinics/tenant"
 import { prisma } from "@/lib/db/client"
 import { withDbRetry } from "@/lib/db/retry"
 
+declare const TENANT_SCOPE: unique symbol
+
+/**
+ * An organization id that has been proven to belong to the caller.
+ *
+ * Tenant isolation rests on every tenant-scoped query filtering by
+ * organizationId, which is easy to get right once and easy to lose later.
+ * Queries in lib/clinics/queries.ts take this branded type instead of a plain
+ * string, and the only way to obtain one is to resolve a membership below — so
+ * a future caller cannot pass an id straight from a route param or form field
+ * and have it compile.
+ */
+export type TenantScope = string & { readonly [TENANT_SCOPE]: true }
+
+/**
+ * Mints a scope from an id whose membership has just been verified. Deliberately
+ * not exported: minting elsewhere would defeat the guarantee.
+ */
+function asTenantScope(organizationId: string): TenantScope {
+  return organizationId as TenantScope
+}
+
 export type ClinicRole = "owner" | "admin" | "member"
 
 const MANAGE_ROLES = new Set<ClinicRole>(["owner", "admin"])
@@ -22,6 +44,8 @@ export type ClinicSession = {
   tenant: TenantContext
   userId: string
   role: ClinicRole
+  /** Pass this to tenant-scoped queries; see TenantScope. */
+  scope: TenantScope
 }
 
 export type ClinicSessionResult =
@@ -77,6 +101,9 @@ export const resolveClinicSession = cache(async (): Promise<ClinicSessionResult>
       tenant: tenantResult.tenant,
       userId: auth.userId,
       role: normalizeRole(member.role),
+      // Minted only here, once a Member row for this user and organization has
+      // actually been found.
+      scope: asTenantScope(tenantResult.tenant.organizationId),
     },
   }
 })

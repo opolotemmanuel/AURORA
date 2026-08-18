@@ -6,15 +6,25 @@ export const getMyAffiliateProfile = cache(async (userId: string) => {
   return prisma.affiliateProfile.findUnique({ where: { userId } })
 })
 
-/** Ensures the singleton settings row exists and returns it. Not cached — it
- * writes on first call, so memoizing would risk returning a stale miss. */
-export async function getAffiliateSettings() {
-  return prisma.affiliateSettings.upsert({
-    where: { id: "global" },
-    create: { id: "global" },
-    update: {},
-  })
+const DEFAULT_AFFILIATE_SETTINGS = {
+  id: "global",
+  commissionRateBps: 1000,
+  customerDiscountBps: 1000,
 }
+
+/**
+ * Pure read — the singleton row is seeded by migration, not written here.
+ * An upsert-on-read previously lived here, but Prisma's upsert runs as an
+ * interactive transaction (a random transaction id is generated before any
+ * request-scoped data is read), which Next's Cache Components build step
+ * flags as an error for a page that's otherwise eligible for static
+ * prerendering. Falls back to in-memory defaults if the seed row is somehow
+ * missing, rather than writing during a render.
+ */
+export const getAffiliateSettings = cache(async () => {
+  const settings = await prisma.affiliateSettings.findUnique({ where: { id: "global" } })
+  return settings ?? { ...DEFAULT_AFFILIATE_SETTINGS, updatedAt: new Date() }
+})
 
 export async function getAffiliateDashboardData(userId: string) {
   const profile = await prisma.affiliateProfile.findUnique({

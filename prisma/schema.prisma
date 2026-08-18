@@ -116,6 +116,9 @@ model Organization {
   invitations Invitation[]
   products    Product[]
   scans       Scan[]
+  // White-label config lives in its own model so this one stays exactly as
+  // better-auth's organization plugin expects it.
+  clinic      ClinicSettings?
 
   @@map("organization")
 }
@@ -918,4 +921,80 @@ model AiUsage {
   @@index([userId, createdAt])
   @@index([scanId])
   @@map("ai_usage")
+}
+
+// ─── white-label enterprise (clinics & brands) ──────────────────────────────
+
+enum ClinicStatus {
+  active
+  suspended
+}
+
+// A subscription tier a clinic can sit on. Platform-admin editable, and each
+// row maps to a Stripe Price so what we show always matches what Stripe bills.
+model ClinicPlan {
+  id               String   @id @default(cuid())
+  name             String
+  description      String?
+  stripePriceId    String?  @unique
+  priceCents       Int
+  currency         String   @default("USD")
+  // "month" | "year" — kept as a string to match Stripe's own interval values.
+  interval         String   @default("month")
+  seatLimit        Int
+  monthlyScanQuota Int
+  isActive         Boolean  @default(true)
+  sortOrder        Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  clinics ClinicSettings[]
+
+  @@index([isActive, sortOrder])
+  @@map("clinic_plan")
+}
+
+// White-label configuration for one tenant. Deliberately separate from
+// Organization: better-auth's organization plugin owns and writes that table,
+// so adding our columns there would risk the plugin's own reads and writes.
+model ClinicSettings {
+  id             String       @id @default(cuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Serves the tenant at <subdomain>.<root domain>. Lowercased and checked
+  // against a reserved list before it is ever persisted.
+  subdomain String       @unique
+  status    ClinicStatus @default(active)
+
+  // Branding. A null field falls back to Aurora's own default everywhere it
+  // is consumed, so a half-configured clinic still renders correctly.
+  displayName  String
+  logoUrl      String?
+  primaryColor String?
+  accentColor  String?
+  supportEmail String?
+
+  planId String?
+  plan   ClinicPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  // Stripe's own status string rather than an enum: Stripe can introduce a
+  // status we haven't enumerated, and an unmapped value must not make the
+  // webhook throw and retry forever. Normalized through lib/clinics/subscription.
+  subscriptionStatus   String    @default("none")
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+
+  // Counted per billing period and reset when a new period starts, so a quota
+  // check never has to aggregate the whole scan table.
+  periodScanCount Int       @default(0)
+  periodStartedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@map("clinic_settings")
 }

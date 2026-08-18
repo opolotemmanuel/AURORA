@@ -3,6 +3,8 @@ import type Stripe from "stripe"
 
 import { finalizePaymentIntent } from "@/lib/billing/actions"
 import { prisma } from "@/lib/db/client"
+import { finalizeBookingIntent } from "@/lib/experts/booking-actions"
+import { toPaymentStatus } from "@/lib/experts/payment-status"
 import { getPaymentDriver } from "@/lib/payments"
 import { getStripeClient } from "@/lib/payments/stripe/client"
 
@@ -47,32 +49,54 @@ export async function POST(request: Request) {
   }
 
   const paymentIntent = event.data.object as Stripe.PaymentIntent
+  const driver = getPaymentDriver()
+
+  // Scan-pack purchases and consultation bookings are tracked in separate
+  // tables (see lib/experts/booking-actions.ts for why), so check both.
   const payment = await prisma.payment.findUnique({
     where: { providerRef: paymentIntent.id },
   })
 
-  if (!payment) {
-    console.warn(`Stripe webhook: no Payment row for ${paymentIntent.id}`)
-    return NextResponse.json({ ok: true, skipped: "unknown_payment" })
+  if (payment) {
+    const intent = await driver.confirmIntent({
+      ref: paymentIntent.id,
+      amountCents: payment.amountCents,
+      currency: payment.currency,
+      previousStatus: payment.status,
+    })
+
+    const result = await finalizePaymentIntent(payment, intent)
+    if (!result.ok) {
+      console.error(
+        `Stripe webhook: finalize failed for payment ${payment.id}`,
+        result.error,
+      )
+    }
+    return NextResponse.json({ ok: true })
   }
 
-  // Re-retrieve rather than trust the event payload's fields directly, and
-  // reuse the same driver the rest of billing goes through.
-  const driver = getPaymentDriver()
-  const intent = await driver.confirmIntent({
-    ref: paymentIntent.id,
-    amountCents: payment.amountCents,
-    currency: payment.currency,
-    previousStatus: payment.status,
+  const booking = await prisma.booking.findUnique({
+    where: { paymentRef: paymentIntent.id },
   })
 
-  const result = await finalizePaymentIntent(payment, intent)
-  if (!result.ok) {
-    console.error(
-      `Stripe webhook: finalize failed for payment ${payment.id}`,
-      result.error,
-    )
+  if (booking) {
+    const intent = await driver.confirmIntent({
+      ref: paymentIntent.id,
+      amountCents: booking.amountCents,
+      currency: booking.currency,
+      previousStatus: toPaymentStatus(booking.status),
+    })
+
+    const result = await finalizeBookingIntent(booking, intent)
+    if (!result.ok) {
+      console.error(
+        `Stripe webhook: finalize failed for booking ${booking.id}`,
+        result.error,
+      )
+    }
+    return NextResponse.json({ ok: true })
   }
 
-  return NextResponse.json({ ok: true })
+  console.warn(`Stripe webhook: no Payment or Booking row for ${paymentIntent.id}`)
+  return NextResponse.json({ ok: true, skipped: "unknown_payment" })
 }

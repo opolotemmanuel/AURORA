@@ -64,6 +64,14 @@ export const config = {
       missing: [{ type: "header", key: "next-router-prefetch" }],
     },
     {
+      source: "/expert/:path*",
+      missing: [{ type: "header", key: "next-router-prefetch" }],
+    },
+    {
+      source: "/experts/:path*",
+      missing: [{ type: "header", key: "next-router-prefetch" }],
+    },
+    {
       source: "/onboarding",
       missing: [{ type: "header", key: "next-router-prefetch" }],
     },

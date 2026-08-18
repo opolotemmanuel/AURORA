@@ -1,6 +1,8 @@
 import type { TablerIcon } from "@tabler/icons-react"
 import {
   IconBrain,
+  IconCalendarEvent,
+  IconCalendarTime,
   IconChartBar,
   IconCoin,
   IconCreditCard,
@@ -10,8 +12,10 @@ import {
   IconPackage,
   IconScan,
   IconSettings,
+  IconStethoscope,
   IconTag,
   IconUser,
+  IconUserCheck,
   IconUsers,
 } from "@tabler/icons-react"
 
@@ -47,11 +51,28 @@ const YOUR_DATA: NavSection = {
   ],
 }
 
+const MARKETPLACE: NavSection = {
+  title: "Experts",
+  items: [
+    { href: "/experts", label: "Talk to an expert", icon: IconStethoscope },
+    { href: "/dashboard/appointments", label: "My appointments", icon: IconCalendarEvent },
+  ],
+}
+
 const ACCOUNT: NavSection = {
   title: "Account",
   items: [
     { href: "/dashboard/billing", label: "Billing", icon: IconCreditCard },
+    { href: "/dashboard/expert-application", label: "Become an expert", icon: IconUserCheck },
     { href: "/settings", label: "Settings", icon: IconSettings },
+  ],
+}
+
+const EXPERT: NavSection = {
+  title: "Expert",
+  items: [
+    { href: "/expert", label: "Bookings", icon: IconCalendarEvent },
+    { href: "/expert/availability", label: "Availability", icon: IconCalendarTime },
   ],
 }
 
@@ -65,6 +86,7 @@ const ADMIN: NavSection = {
     { href: "/admin/models", label: "Models", icon: IconBrain },
     { href: "/admin/scan-packs", label: "Scan packs", icon: IconTag },
     { href: "/admin/products", label: "Products", icon: IconPackage },
+    { href: "/admin/experts", label: "Expert applications", icon: IconStethoscope },
     { href: "/admin/feedback", label: "Feedback", icon: IconMessage },
   ],
 }
@@ -74,7 +96,11 @@ export function canSeeAdminNav(role: AppRole): boolean {
 }
 
 export function getNavSections(role: AppRole): NavSection[] {
-  const sections: NavSection[] = [OVERVIEW, YOUR_DATA, ACCOUNT]
+  const sections: NavSection[] = [OVERVIEW, YOUR_DATA, MARKETPLACE, ACCOUNT]
+
+  if (role === "expert") {
+    sections.push(EXPERT)
+  }
 
   if (canSeeAdminNav(role)) {
     sections.push(ADMIN)
@@ -83,7 +109,7 @@ export function getNavSections(role: AppRole): NavSection[] {
   return sections
 }
 
-const EXACT_MATCH_HREFS = new Set(["/dashboard", "/admin"])
+const EXACT_MATCH_HREFS = new Set(["/dashboard", "/admin", "/expert"])
 
 export function isNavItemActive(pathname: string, href: string): boolean {
   if (pathname === href) {

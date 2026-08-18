@@ -37,6 +37,10 @@ export async function requireAdmin() {
   return requireRole(["admin"])
 }
 
+export async function requireExpert() {
+  return requireRole(["expert"])
+}
+
 export const getOnboardingStatus = cache(async (userId: string) => {
   const profile = await withDbRetry(() =>
     prisma.userProfile.findUnique({

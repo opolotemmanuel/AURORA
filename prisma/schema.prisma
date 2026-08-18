@@ -48,6 +48,7 @@ model User {
   affiliateProfile              AffiliateProfile?
   affiliateApplicationsReviewed AffiliateProfile[] @relation("AffiliateReviewedBy")
   affiliatePayoutsRecorded      AffiliatePayout[]  @relation("AffiliatePayoutCreatedBy")
+  apiKeysCreated                ApiKey[]           @relation("ApiKeyCreatedBy")
 
   @@unique([email])
   @@map("user")
@@ -119,6 +120,7 @@ model Organization {
   // White-label config lives in its own model so this one stays exactly as
   // better-auth's organization plugin expects it.
   clinic      ClinicSettings?
+  apiKeys     ApiKey[]
 
   @@map("organization")
 }
@@ -997,4 +999,29 @@ model ClinicSettings {
 
   @@index([status])
   @@map("clinic_settings")
+}
+
+// A partner integration credential, scoped to one tenant.
+model ApiKey {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+
+  // Only a SHA-256 hash is stored. The plaintext key is shown once at creation
+  // and is unrecoverable afterwards, so a database leak does not hand over
+  // working credentials.
+  hashedKey String @unique
+  // Leading characters of the key, kept so a specific credential can be
+  // identified in the UI and in logs without storing the secret.
+  keyPrefix String
+
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdById String?
+  createdBy   User?     @relation("ApiKeyCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+
+  @@index([organizationId, revokedAt])
+  @@map("api_key")
 }

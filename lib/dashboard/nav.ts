@@ -13,6 +13,7 @@ import {
   IconMessage,
   IconPackage,
   IconPalette,
+  IconPlug,
   IconScan,
   IconSettings,
   IconStethoscope,
@@ -91,9 +92,11 @@ const CLINIC: NavSection = {
   title: "Clinic",
   items: [
     { href: "/clinic", label: "Patients", icon: IconUsers },
+    { href: "/clinic/analytics", label: "Analytics", icon: IconChartBar },
     { href: "/clinic/team", label: "Team", icon: IconUserCheck },
     { href: "/clinic/branding", label: "Branding", icon: IconPalette },
     { href: "/clinic/billing", label: "Billing", icon: IconCreditCard },
+    { href: "/clinic/api", label: "API", icon: IconPlug },
   ],
 }
 

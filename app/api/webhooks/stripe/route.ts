@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import type Stripe from "stripe"
 
 import { finalizePaymentIntent } from "@/lib/billing/actions"
+import { syncClinicSubscription } from "@/lib/clinics/subscription-sync"
 import { prisma } from "@/lib/db/client"
 import { finalizeBookingIntent } from "@/lib/experts/booking-actions"
 import { toPaymentStatus } from "@/lib/experts/payment-status"
@@ -20,6 +21,17 @@ const HANDLED_EVENTS = new Set([
   "payment_intent.succeeded",
   "payment_intent.payment_failed",
   "payment_intent.canceled",
+])
+
+/**
+ * Clinic subscriptions (see lib/clinics/subscription-sync.ts). These carry a
+ * Subscription rather than a PaymentIntent, so they're dispatched separately
+ * from the one-off payment path below.
+ */
+const SUBSCRIPTION_EVENTS = new Set([
+  "customer.subscription.created",
+  "customer.subscription.updated",
+  "customer.subscription.deleted",
 ])
 
 export async function POST(request: Request) {
@@ -42,6 +54,17 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Stripe webhook signature verification failed", error)
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
+  }
+
+  if (SUBSCRIPTION_EVENTS.has(event.type)) {
+    const subscription = event.data.object as Stripe.Subscription
+    const result = await syncClinicSubscription(subscription)
+    if (!result.handled) {
+      console.warn(
+        `Stripe webhook: subscription ${subscription.id} not applied (${result.reason})`,
+      )
+    }
+    return NextResponse.json({ ok: true, ...result })
   }
 
   if (!HANDLED_EVENTS.has(event.type)) {

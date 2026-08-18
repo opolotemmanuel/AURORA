@@ -141,3 +141,16 @@ export async function getTenantOrganizationId(): Promise<string | null> {
   const tenant = await getServableTenant()
   return tenant?.organizationId ?? null
 }
+
+/**
+ * As above, but null instead of throwing when there is no request context to
+ * read a Host header from — a scan replayed from a queue or a script belongs to
+ * no tenant, and that is a correct answer rather than a failure.
+ */
+export async function getTenantOrganizationIdSafe(): Promise<string | null> {
+  try {
+    return await getTenantOrganizationId()
+  } catch {
+    return null
+  }
+}

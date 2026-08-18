@@ -12,6 +12,7 @@ import {
   IconLock,
   IconMessage,
   IconPackage,
+  IconPalette,
   IconScan,
   IconSettings,
   IconStethoscope,
@@ -84,6 +85,18 @@ const AFFILIATE: NavSection = {
   items: [{ href: "/affiliate", label: "Dashboard", icon: IconGift }],
 }
 
+// Only ever reachable on a clinic's own subdomain; the routes themselves 404
+// on the platform host, where there is no tenant to resolve.
+const CLINIC: NavSection = {
+  title: "Clinic",
+  items: [
+    { href: "/clinic", label: "Patients", icon: IconUsers },
+    { href: "/clinic/team", label: "Team", icon: IconUserCheck },
+    { href: "/clinic/branding", label: "Branding", icon: IconPalette },
+    { href: "/clinic/billing", label: "Billing", icon: IconCreditCard },
+  ],
+}
+
 const ADMIN: NavSection = {
   title: "Administration",
   items: [
@@ -116,6 +129,10 @@ export function getNavSections(role: AppRole): NavSection[] {
     sections.push(AFFILIATE)
   }
 
+  if (role === "company_admin") {
+    sections.push(CLINIC)
+  }
+
   if (canSeeAdminNav(role)) {
     sections.push(ADMIN)
   }
@@ -123,7 +140,13 @@ export function getNavSections(role: AppRole): NavSection[] {
   return sections
 }
 
-const EXACT_MATCH_HREFS = new Set(["/dashboard", "/admin", "/expert", "/affiliate"])
+const EXACT_MATCH_HREFS = new Set([
+  "/dashboard",
+  "/admin",
+  "/expert",
+  "/affiliate",
+  "/clinic",
+])
 
 export function isNavItemActive(pathname: string, href: string): boolean {
   if (pathname === href) {

@@ -26,25 +26,28 @@ model User {
   onboardingCompleted Boolean?  @default(false)
   scanTier            ScanTier  @default(starter)
 
-  sessions                   Session[]
-  accounts                   Account[]
-  members                    Member[]
-  invitations                Invitation[]       @relation("Inviter")
-  profile                    UserProfile?
-  location                   UserLocation?
-  scanBalance                ScanBalance?
-  scanLedgers                ScanLedger[]       @relation("ScanLedgerUser")
-  grantedScans               ScanLedger[]       @relation("ScanGrantedBy")
-  scans                      Scan[]
-  scanFeedbacks              ScanFeedback[]
-  chatConversations          ChatConversation[]
-  products                   Product[]          @relation("ProductCreator")
-  billingProfile             BillingProfile?
-  payments                   Payment[]
-  expertProfile              ExpertProfile?
-  expertApplicationsReviewed ExpertProfile[]    @relation("ExpertReviewedBy")
-  bookings                   Booking[]          @relation("BookingUser")
-  expertReviews              ExpertReview[]     @relation("ReviewUser")
+  sessions                      Session[]
+  accounts                      Account[]
+  members                       Member[]
+  invitations                   Invitation[]       @relation("Inviter")
+  profile                       UserProfile?
+  location                      UserLocation?
+  scanBalance                   ScanBalance?
+  scanLedgers                   ScanLedger[]       @relation("ScanLedgerUser")
+  grantedScans                  ScanLedger[]       @relation("ScanGrantedBy")
+  scans                         Scan[]
+  scanFeedbacks                 ScanFeedback[]
+  chatConversations             ChatConversation[]
+  products                      Product[]          @relation("ProductCreator")
+  billingProfile                BillingProfile?
+  payments                      Payment[]
+  expertProfile                 ExpertProfile?
+  expertApplicationsReviewed    ExpertProfile[]    @relation("ExpertReviewedBy")
+  bookings                      Booking[]          @relation("BookingUser")
+  expertReviews                 ExpertReview[]     @relation("ReviewUser")
+  affiliateProfile              AffiliateProfile?
+  affiliateApplicationsReviewed AffiliateProfile[] @relation("AffiliateReviewedBy")
+  affiliatePayoutsRecorded      AffiliatePayout[]  @relation("AffiliatePayoutCreatedBy")
 
   @@unique([email])
   @@map("user")
@@ -636,6 +639,101 @@ model ExpertReview {
 
   @@index([expertId, createdAt])
   @@map("expert_review")
+}
+
+// ─── affiliate marketplace ──────────────────────────────────────────────────
+
+enum AffiliateApplicationStatus {
+  pending
+  approved
+  rejected
+}
+
+// Actual purchases happen on the external WooCommerce store, not in this
+// app — see AffiliateOrder. "confirmed" mirrors WooCommerce's "completed"
+// order status; "cancelled" covers both cancellation and refund, either of
+// which voids the commission.
+enum AffiliateOrderStatus {
+  pending
+  confirmed
+  cancelled
+}
+
+// Single global row (id is always "global") holding the current commission
+// and customer-discount rates. Each AffiliateOrder snapshots the rate that
+// applied at attribution time, so changing this never rewrites history.
+model AffiliateSettings {
+  id                  String   @id @default("global")
+  commissionRateBps   Int      @default(1000)
+  customerDiscountBps Int      @default(1000)
+  updatedAt           DateTime @updatedAt
+
+  @@map("affiliate_settings")
+}
+
+model AffiliateProfile {
+  id                  String                     @id @default(cuid())
+  userId              String                     @unique
+  user                User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status              AffiliateApplicationStatus @default(pending)
+  howTheyPromote      String
+  website             String?
+  rejectionReason     String?
+  // Set on approval, once the WooCommerce coupon is created.
+  couponCode          String?                    @unique
+  wooCommerceCouponId Int?
+  appliedAt           DateTime                   @default(now())
+  reviewedAt          DateTime?
+  reviewedById        String?
+  reviewedBy          User?                      @relation("AffiliateReviewedBy", fields: [reviewedById], references: [id], onDelete: SetNull)
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+
+  orders  AffiliateOrder[]
+  payouts AffiliatePayout[]
+
+  @@index([status])
+  @@map("affiliate_profile")
+}
+
+model AffiliateOrder {
+  id                        String               @id @default(cuid())
+  affiliateId               String
+  affiliate                 AffiliateProfile     @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  // The WooCommerce order id. Unique so a retried webhook delivery (WooCommerce
+  // resends on any non-2xx response) can never double-count a commission.
+  wooCommerceOrderId        Int                  @unique
+  status                    AffiliateOrderStatus @default(pending)
+  couponCode                String
+  orderTotalCents           Int
+  currency                  String
+  commissionRateBpsSnapshot Int
+  commissionAmountCents     Int
+  customerEmail             String?
+  placedAt                  DateTime
+  createdAt                 DateTime             @default(now())
+  updatedAt                 DateTime             @updatedAt
+
+  @@index([affiliateId, status])
+  @@map("affiliate_order")
+}
+
+// A manually-recorded payment to an affiliate, made outside the app (bank
+// transfer, etc.). Owed balance = confirmed AffiliateOrder commissions minus
+// the sum of these, computed on read rather than stored.
+model AffiliatePayout {
+  id          String           @id @default(cuid())
+  affiliateId String
+  affiliate   AffiliateProfile @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  amountCents Int
+  note        String?
+  paidAt      DateTime         @default(now())
+  createdById String?
+  createdBy   User?            @relation("AffiliatePayoutCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime         @default(now())
+
+  @@index([affiliateId])
+  @@map("affiliate_payout")
 }
 
 model Scan {

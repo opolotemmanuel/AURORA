@@ -41,6 +41,10 @@ export async function requireExpert() {
   return requireRole(["expert"])
 }
 
+export async function requireAffiliate() {
+  return requireRole(["affiliate"])
+}
+
 export const getOnboardingStatus = cache(async (userId: string) => {
   const profile = await withDbRetry(() =>
     prisma.userProfile.findUnique({

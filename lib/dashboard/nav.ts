@@ -6,6 +6,7 @@ import {
   IconChartBar,
   IconCoin,
   IconCreditCard,
+  IconGift,
   IconHome,
   IconLock,
   IconMessage,
@@ -19,7 +20,7 @@ import {
   IconUsers,
 } from "@tabler/icons-react"
 
-export type AppRole = "user" | "admin" | "expert" | "company_admin"
+export type AppRole = "user" | "admin" | "expert" | "company_admin" | "affiliate"
 
 export type NavItem = {
   href: string
@@ -64,6 +65,7 @@ const ACCOUNT: NavSection = {
   items: [
     { href: "/dashboard/billing", label: "Billing", icon: IconCreditCard },
     { href: "/dashboard/expert-application", label: "Become an expert", icon: IconUserCheck },
+    { href: "/dashboard/affiliate-application", label: "Become an affiliate", icon: IconGift },
     { href: "/settings", label: "Settings", icon: IconSettings },
   ],
 }
@@ -74,6 +76,11 @@ const EXPERT: NavSection = {
     { href: "/expert", label: "Bookings", icon: IconCalendarEvent },
     { href: "/expert/availability", label: "Availability", icon: IconCalendarTime },
   ],
+}
+
+const AFFILIATE: NavSection = {
+  title: "Affiliate",
+  items: [{ href: "/affiliate", label: "Dashboard", icon: IconGift }],
 }
 
 const ADMIN: NavSection = {
@@ -87,6 +94,7 @@ const ADMIN: NavSection = {
     { href: "/admin/scan-packs", label: "Scan packs", icon: IconTag },
     { href: "/admin/products", label: "Products", icon: IconPackage },
     { href: "/admin/experts", label: "Expert applications", icon: IconStethoscope },
+    { href: "/admin/affiliates", label: "Affiliates", icon: IconGift },
     { href: "/admin/feedback", label: "Feedback", icon: IconMessage },
   ],
 }
@@ -102,6 +110,10 @@ export function getNavSections(role: AppRole): NavSection[] {
     sections.push(EXPERT)
   }
 
+  if (role === "affiliate") {
+    sections.push(AFFILIATE)
+  }
+
   if (canSeeAdminNav(role)) {
     sections.push(ADMIN)
   }
@@ -109,7 +121,7 @@ export function getNavSections(role: AppRole): NavSection[] {
   return sections
 }
 
-const EXACT_MATCH_HREFS = new Set(["/dashboard", "/admin", "/expert"])
+const EXACT_MATCH_HREFS = new Set(["/dashboard", "/admin", "/expert", "/affiliate"])
 
 export function isNavItemActive(pathname: string, href: string): boolean {
   if (pathname === href) {
@@ -139,6 +151,8 @@ export function getRoleLabel(role: AppRole): string {
       return "Expert"
     case "company_admin":
       return "Company admin"
+    case "affiliate":
+      return "Affiliate"
     default:
       return "Member"
   }
@@ -149,4 +163,5 @@ export const ASSIGNABLE_ROLES: AppRole[] = [
   "admin",
   "expert",
   "company_admin",
+  "affiliate",
 ]

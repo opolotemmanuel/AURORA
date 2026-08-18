@@ -47,9 +47,22 @@ export async function createAffiliateCoupon(input: {
   })
 
   if (!response.ok) {
-    throw new Error(
-      `WooCommerce coupon creation failed (${response.status}): ${await response.text()}`,
-    )
+    const body = await response.text()
+    let message = body
+    try {
+      const parsed = JSON.parse(body) as { message?: string }
+      if (parsed.message) message = parsed.message
+    } catch {
+      // Not JSON — fall back to the raw body.
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      throw new Error(
+        `WooCommerce rejected the request (${response.status}): ${message}. ` +
+          "WOOCOMMERCE_CONSUMER_KEY/SECRET are missing, invalid, or lack Read/Write permission.",
+      )
+    }
+    throw new Error(`WooCommerce coupon creation failed (${response.status}): ${message}`)
   }
 
   const coupon = (await response.json()) as WooCommerceCoupon

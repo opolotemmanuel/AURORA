@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { IconExternalLink } from "@tabler/icons-react"
 
+import { useState } from "react"
+
+import { ClinicDeleteDialog } from "@/components/admin/clinic-delete-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
@@ -28,6 +31,7 @@ export function ClinicsTable({
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
+  const [deleting, setDeleting] = useState<AdminClinicRow | null>(null)
 
   function run(work: () => Promise<unknown>, success: string) {
     startTransition(async () => {
@@ -177,11 +181,35 @@ export function ClinicsTable({
                 >
                   {clinic.status === "active" ? "Suspend" : "Reactivate"}
                 </Button>
+
+                <Button asChild size="sm" variant="outline">
+                  <a href={`/api/admin/clinics/${clinic.id}/export`}>Export</a>
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={pending}
+                  onClick={() => setDeleting(clinic)}
+                >
+                  Delete
+                </Button>
               </div>
             </div>
           </li>
         )
       })}
+
+      {deleting ? (
+        <ClinicDeleteDialog
+          clinicId={deleting.id}
+          clinicName={deleting.name}
+          open={Boolean(deleting)}
+          onOpenChange={(open) => {
+            if (!open) setDeleting(null)
+          }}
+        />
+      ) : null}
     </ul>
   )
 }

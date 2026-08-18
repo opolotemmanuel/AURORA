@@ -245,6 +245,59 @@ describe("tenant isolation", () => {
     })
   })
 
+  describe("tenant deletion", () => {
+    // The claim the delete dialog makes to the admin: staff and invitations go,
+    // but patient scans survive and detach. If the schema ever changed to
+    // cascade, this is what would catch it before it destroyed medical records.
+    it("detaches patient scans instead of deleting them", async () => {
+      const doomed = await makeClinic("doomed")
+
+      await prisma.organization.delete({ where: { id: doomed.organizationId } })
+
+      const scan = await prisma.scan.findUnique({ where: { id: doomed.scanId } })
+      assert.ok(scan, "the patient's scan must survive the clinic's deletion")
+      assert.equal(
+        scan.organizationId,
+        null,
+        "the scan must be detached from the deleted clinic",
+      )
+
+      const [members, invitations, clinic] = await Promise.all([
+        prisma.member.count({ where: { organizationId: doomed.organizationId } }),
+        prisma.invitation.count({
+          where: { organizationId: doomed.organizationId },
+        }),
+        prisma.clinicSettings.findUnique({ where: { id: doomed.clinicId } }),
+      ])
+
+      assert.equal(members, 0, "members cascade away with the organization")
+      assert.equal(invitations, 0, "invitations cascade away too")
+      assert.equal(clinic, null, "clinic settings cascade away too")
+    })
+
+    it("frees the subdomain for reuse after deletion", async () => {
+      const recycled = await makeClinic("recycle")
+      const subdomain = `iso-${RUN}-recycle`
+
+      await prisma.organization.delete({ where: { id: recycled.organizationId } })
+
+      const reuseOrgId = randomUUID()
+      await prisma.organization.create({
+        data: { id: reuseOrgId, name: `Reuse ${RUN}`, slug: `${subdomain}-2` },
+      })
+      created.organizationIds.push(reuseOrgId)
+
+      const reused = await prisma.clinicSettings.create({
+        data: {
+          organizationId: reuseOrgId,
+          subdomain,
+          displayName: "Reused",
+        },
+      })
+      assert.equal(reused.subdomain, subdomain)
+    })
+  })
+
   describe("subdomain uniqueness", () => {
     it("refuses a second clinic on the same subdomain", async () => {
       const organizationId = randomUUID()

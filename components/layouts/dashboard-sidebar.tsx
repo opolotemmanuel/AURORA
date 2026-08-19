@@ -49,7 +49,7 @@ import { signOut } from "@/lib/auth/client"
 import {
   getNavSections,
   isNavItemActive,
-  resolveWorkspace,
+  resolveActiveWorkspace,
   type AppRole,
   type WorkspaceId,
   type WorkspaceCapabilities,
@@ -253,10 +253,11 @@ export function DashboardSidebar({
   // client component fails at serialisation time. Only the workspace id, a
   // string, crosses the boundary. The server still decides which ids are
   // available, so this is a rendering detail, not an authorization one.
-  const sections = activeWorkspaceId
-    && capabilities
-    ? resolveWorkspace(capabilities, activeWorkspaceId).sections
-    : getNavSections(role)
+  const workspace = capabilities
+    ? resolveActiveWorkspace(capabilities, activeWorkspaceId, pathname)
+    : null
+
+  const sections = workspace ? workspace.sections : getNavSections(role)
   const brandName = brand?.name ?? "Aurora Organics"
 
   useEffect(() => {
@@ -318,12 +319,11 @@ export function DashboardSidebar({
         </SidebarMenu>
       </SidebarHeader>
 
-      {workspaces && activeWorkspaceId ? (
+      {workspaces && workspace ? (
         <div className="border-b border-sidebar-border px-2 py-2">
-          <WorkspaceSwitcher
-            workspaces={workspaces}
-            activeId={activeWorkspaceId}
-          />
+          {/* Named from the same resolution the sections use, so the switcher
+              never labels the sidebar as one workspace while showing another. */}
+          <WorkspaceSwitcher workspaces={workspaces} activeId={workspace.id} />
         </div>
       ) : null}
 

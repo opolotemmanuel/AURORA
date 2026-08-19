@@ -288,6 +288,38 @@ export function workspaceForPath(
   return best?.workspace ?? null
 }
 
+/**
+ * The workspace whose navigation should be shown, given what the caller holds,
+ * what they last selected, and where they are.
+ *
+ * The stored preference is kept whenever it actually contains the current path,
+ * and the path decides only when it does not.
+ *
+ * Neither half alone is correct. Preference-always-wins is what shipped first,
+ * and it hid the entire administration menu: `resolveWorkspace` falls back to
+ * the first available workspace, `personal` is always first, so an
+ * administrator with no stored preference — a fresh browser, cleared cookies —
+ * got the personal sidebar on /admin while the page itself rendered fine.
+ * Path-always-wins fails the other way: /admin/models and /admin/training
+ * belong to both Administration and AI operations, so it would tip an
+ * AI-operations user back into Administration on their own pages.
+ */
+export function resolveActiveWorkspace(
+  capabilities: WorkspaceCapabilities,
+  storedId: string | null | undefined,
+  pathname: string,
+): Workspace {
+  const stored = resolveWorkspace(capabilities, storedId)
+
+  const storedHoldsPath = stored.sections
+    .flatMap((section) => section.items)
+    .some((item) => isNavItemActive(pathname, item.href))
+
+  if (storedHoldsPath) return stored
+
+  return workspaceForPath(capabilities, pathname) ?? stored
+}
+
 export function canSeeAdminNav(role: AppRole): boolean {
   return role === "admin"
 }

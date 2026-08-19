@@ -86,7 +86,11 @@ const EXPERT: NavSection = {
 
 const AFFILIATE: NavSection = {
   title: "Affiliate",
-  items: [{ href: "/affiliate", label: "Dashboard", icon: IconGift }],
+  items: [
+    { href: "/affiliate", label: "Overview", icon: IconGift },
+    { href: "/affiliate/products", label: "Products & links", icon: IconPackage },
+    { href: "/affiliate/earnings", label: "Earnings", icon: IconCoin },
+  ],
 }
 
 // Only ever reachable on a clinic's own subdomain; the routes themselves 404

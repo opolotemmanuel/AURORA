@@ -999,6 +999,13 @@ model ClinicSettings {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // A domain the clinic owns and manages at its own registrar, e.g.
+  // skin.theirclinic.com. Only served once verified; the subdomain keeps
+  // working either way, so a misconfigured domain never takes a clinic offline.
+  customDomain           String?   @unique
+  customDomainToken      String?
+  customDomainVerifiedAt DateTime?
+
   @@index([status])
   @@map("clinic_settings")
 }

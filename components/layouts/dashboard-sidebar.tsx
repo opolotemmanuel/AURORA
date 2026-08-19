@@ -52,6 +52,7 @@ import {
   resolveWorkspace,
   type AppRole,
   type WorkspaceId,
+  type WorkspaceCapabilities,
 } from "@/lib/dashboard/nav"
 import { cn } from "@/lib/utils"
 
@@ -231,6 +232,7 @@ export function DashboardSidebar({
   brand,
   workspaces,
   activeWorkspaceId,
+  capabilities,
 }: {
   role: AppRole
   userName: string
@@ -241,6 +243,7 @@ export function DashboardSidebar({
   brand?: { name: string; logoUrl: string | null }
   workspaces?: WorkspaceOption[]
   activeWorkspaceId?: WorkspaceId
+  capabilities?: WorkspaceCapabilities
 }) {
   const pathname = usePathname()
   const { state, isMobile, setOpenMobile, toggleSidebar } = useSidebar()
@@ -251,7 +254,8 @@ export function DashboardSidebar({
   // string, crosses the boundary. The server still decides which ids are
   // available, so this is a rendering detail, not an authorization one.
   const sections = activeWorkspaceId
-    ? resolveWorkspace(role, activeWorkspaceId).sections
+    && capabilities
+    ? resolveWorkspace(capabilities, activeWorkspaceId).sections
     : getNavSections(role)
   const brandName = brand?.name ?? "Aurora Organics"
 

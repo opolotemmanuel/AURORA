@@ -6,6 +6,7 @@ import { z } from "zod"
 import { requireAuthContext } from "@/lib/auth/context"
 import { WORKSPACE_COOKIE, WORKSPACE_COOKIE_OPTIONS } from "@/lib/dashboard/workspace-cookie"
 import { availableWorkspaces } from "@/lib/dashboard/nav"
+import { getWorkspaceCapabilities } from "@/lib/dashboard/capabilities"
 
 const schema = z.object({ workspaceId: z.string().trim().min(1) })
 
@@ -21,7 +22,8 @@ export async function setWorkspaceAction(input: unknown) {
   const ctx = await requireAuthContext()
   const { workspaceId } = schema.parse(input)
 
-  const allowed = availableWorkspaces(ctx.role).some((w) => w.id === workspaceId)
+  const capabilities = await getWorkspaceCapabilities(ctx.userId, ctx.user.role ?? null)
+  const allowed = availableWorkspaces(capabilities).some((w) => w.id === workspaceId)
   if (!allowed) {
     throw new Error("That workspace is not available to you.")
   }

@@ -7,6 +7,7 @@ import { DashboardShell } from "@/components/layouts/dashboard-shell"
 import { scheduleAiScanContextWarmup } from "@/lib/ai/context/warm"
 import { resolveTenant } from "@/lib/clinics/tenant"
 import { availableWorkspaces, resolveWorkspace } from "@/lib/dashboard/nav"
+import { getWorkspaceCapabilities } from "@/lib/dashboard/capabilities"
 import { WORKSPACE_COOKIE } from "@/lib/dashboard/workspace-cookie"
 import { getScanEntitlement } from "@/lib/scans/entitlement"
 import {
@@ -45,9 +46,10 @@ async function DashboardAuthShellInner({
   // workspace never reaches the browser. The switcher changes navigation only —
   // every route and action keeps its own authorization check.
   const cookieStore = await cookies()
-  const workspaces = availableWorkspaces(ctx.role)
+  const capabilities = await getWorkspaceCapabilities(ctx.userId, ctx.user.role ?? null)
+  const workspaces = availableWorkspaces(capabilities)
   const activeWorkspace = resolveWorkspace(
-    ctx.role,
+    capabilities,
     cookieStore.get(WORKSPACE_COOKIE)?.value,
   )
 
@@ -77,6 +79,7 @@ async function DashboardAuthShellInner({
         emailVerified={ctx.user.emailVerified}
         brand={brand}
         activeWorkspaceId={activeWorkspace.id}
+        capabilities={capabilities}
         workspaces={workspaces.map((w) => ({
           id: w.id,
           label: w.label,

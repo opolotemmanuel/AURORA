@@ -212,18 +212,35 @@ const WORKSPACES: Record<WorkspaceId, Workspace> = {
 }
 
 /**
+ * What a person can do, resolved from their profiles and memberships rather
+ * than from the single role field. Plain booleans, so this crosses the
+ * server-to-client boundary safely.
+ */
+export type WorkspaceCapabilities = {
+  isAdmin: boolean
+  isExpert: boolean
+  isAffiliate: boolean
+  isClinicMember: boolean
+}
+
+/**
  * Which workspaces this person may use.
  *
- * Everyone has a personal one. The rest follow the role they actually hold, so
- * the switcher can only ever offer what the backend would already allow.
+ * Everyone has a personal one. The rest follow capabilities, not the role
+ * string: someone can be an administrator and a consulting dermatologist at
+ * once, and keying off role alone gave them only whichever the field happened
+ * to hold. The switcher still offers nothing the backend would refuse — each
+ * capability is proven at its source before it appears here.
  */
-export function availableWorkspaces(role: AppRole): Workspace[] {
+export function availableWorkspaces(
+  capabilities: WorkspaceCapabilities,
+): Workspace[] {
   const list: Workspace[] = [WORKSPACES.personal]
 
-  if (role === "expert") list.push(WORKSPACES.expert)
-  if (role === "company_admin") list.push(WORKSPACES.clinic)
-  if (role === "affiliate") list.push(WORKSPACES.affiliate)
-  if (role === "admin") {
+  if (capabilities.isExpert) list.push(WORKSPACES.expert)
+  if (capabilities.isClinicMember) list.push(WORKSPACES.clinic)
+  if (capabilities.isAffiliate) list.push(WORKSPACES.affiliate)
+  if (capabilities.isAdmin) {
     list.push(WORKSPACES.admin, WORKSPACES.ai_ops)
   }
 
@@ -235,10 +252,10 @@ export function availableWorkspaces(role: AppRole): Workspace[] {
  * stale or tampered cookie falls back rather than showing an empty sidebar.
  */
 export function resolveWorkspace(
-  role: AppRole,
+  capabilities: WorkspaceCapabilities,
   requested: string | null | undefined,
 ): Workspace {
-  const available = availableWorkspaces(role)
+  const available = availableWorkspaces(capabilities)
   return (
     available.find((workspace) => workspace.id === requested) ?? available[0]
   )
@@ -246,10 +263,10 @@ export function resolveWorkspace(
 
 /** The workspace a path belongs to, used to follow a deep link into the right view. */
 export function workspaceForPath(
-  role: AppRole,
+  capabilities: WorkspaceCapabilities,
   pathname: string,
 ): Workspace | null {
-  const available = availableWorkspaces(role)
+  const available = availableWorkspaces(capabilities)
 
   // Most specific match wins, so /admin/training resolves to AI operations
   // rather than to Administration.
@@ -313,11 +330,19 @@ export function isNavItemActive(pathname: string, href: string): boolean {
   return pathname.startsWith(`${href}/`)
 }
 
+/**
+ * Searches every workspace the person holds, not just the active one, so the
+ * mobile header still names the page after following a link that crossed into
+ * another workspace.
+ */
 export function getActiveNavItem(
   pathname: string,
-  role: AppRole,
+  capabilities: WorkspaceCapabilities,
 ): NavItem | null {
-  const items = getNavSections(role).flatMap((section) => section.items)
+  const items = availableWorkspaces(capabilities)
+    .flatMap((workspace) => workspace.sections)
+    .flatMap((section) => section.items)
+
   return items.find((item) => isNavItemActive(pathname, item.href)) ?? null
 }
 

@@ -5,21 +5,41 @@ import { usePathname } from "next/navigation"
 import { DashboardContent } from "@/components/layouts/dashboard-content"
 import { DashboardSidebar } from "@/components/layouts/dashboard-sidebar"
 import type { WorkspaceOption } from "@/components/layouts/workspace-switcher"
+
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
+
 import {
   getActiveNavItem,
   type AppRole,
   type WorkspaceId,
+  type WorkspaceCapabilities,
 } from "@/lib/dashboard/nav"
 
-function MobileHeader({ role, brandName }: { role: AppRole; brandName: string }) {
+/**
+ * Used only if the shell somehow renders without capabilities. Nothing is
+ * granted by their absence — the header simply falls back to the brand name.
+ */
+const NO_CAPABILITIES: WorkspaceCapabilities = {
+  isAdmin: false,
+  isExpert: false,
+  isAffiliate: false,
+  isClinicMember: false,
+}
+
+function MobileHeader({
+  capabilities,
+  brandName,
+}: {
+  capabilities: WorkspaceCapabilities
+  brandName: string
+}) {
   const pathname = usePathname()
-  const activeItem = getActiveNavItem(pathname, role)
+  const activeItem = capabilities ? getActiveNavItem(pathname, capabilities) : null
 
   if (activeItem) {
     const Icon = activeItem.icon
@@ -46,6 +66,7 @@ export function DashboardShell({
   brand,
   workspaces,
   activeWorkspaceId,
+  capabilities,
 }: {
   children: React.ReactNode
   role: AppRole
@@ -57,6 +78,7 @@ export function DashboardShell({
   brand?: { name: string; logoUrl: string | null }
   workspaces?: WorkspaceOption[]
   activeWorkspaceId?: WorkspaceId
+  capabilities?: WorkspaceCapabilities
 }) {
   return (
     <TooltipProvider delayDuration={0}>
@@ -70,11 +92,15 @@ export function DashboardShell({
         brand={brand}
         workspaces={workspaces}
         activeWorkspaceId={activeWorkspaceId}
+        capabilities={capabilities}
       />
       <SidebarInset className="min-h-0 overflow-y-auto">
         <header className="sticky top-0 z-20 flex h-12 items-center gap-2 border-b border-border bg-background/90 px-4 backdrop-blur-sm md:hidden">
           <SidebarTrigger />
-          <MobileHeader role={role} brandName={brand?.name ?? "Aurora Organics"} />
+          <MobileHeader
+            capabilities={capabilities ?? NO_CAPABILITIES}
+            brandName={brand?.name ?? "Aurora Organics"}
+          />
         </header>
         <DashboardContent>{children}</DashboardContent>
       </SidebarInset>

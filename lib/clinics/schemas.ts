@@ -66,7 +66,9 @@ export type CreateClinicInput = z.infer<typeof createClinicSchema>
  * keeps clinic branding self-contained with no external service to configure.
  * The trade-off is that every byte travels with the row, hence the tight cap.
  */
-export const MAX_LOGO_BYTES = 200 * 1024
+export const MAX_LOGO_BYTES = 1024 * 1024
+/** Shown in validation messages and the upload hint, so they cannot disagree. */
+export const MAX_LOGO_LABEL = "1MB"
 /** Base64 inflates by about a third; leave room for that plus the media prefix. */
 const MAX_LOGO_DATA_URI_LENGTH = Math.ceil((MAX_LOGO_BYTES * 4) / 3) + 200
 
@@ -103,9 +105,10 @@ export const clinicBrandingSchema = z.object({
   logoUrl: z
     .string()
     .trim()
-    // Generous, because an uploaded logo is stored inline as a data URI. The
-    // real limit is the byte cap enforced below, not the string length.
-    .max(MAX_LOGO_DATA_URI_LENGTH)
+    // A backstop so an enormous string is rejected before it is decoded. It
+    // carries the same message as the byte check below, which is the real
+    // limit — otherwise an oversized upload surfaces a raw character count.
+    .max(MAX_LOGO_DATA_URI_LENGTH, `Logo must be ${MAX_LOGO_LABEL} or smaller.`)
     .optional()
     .transform((value) => (value ? value : undefined))
     .refine(
@@ -114,7 +117,7 @@ export const clinicBrandingSchema = z.object({
     )
     .refine(
       (value) => value === undefined || logoByteLength(value) <= MAX_LOGO_BYTES,
-      `Logo must be ${Math.floor(MAX_LOGO_BYTES / 1024)}KB or smaller.`,
+      `Logo must be ${MAX_LOGO_LABEL} or smaller.`,
     ),
   primaryColor: optionalHexColor,
   accentColor: optionalHexColor,

@@ -9,7 +9,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { updateClinicBrandingAction } from "@/lib/clinics/branding-actions"
 import { contrastingForeground, normalizeHexColor } from "@/lib/clinics/branding"
-import { ALLOWED_LOGO_MIME_TYPES, MAX_LOGO_BYTES } from "@/lib/clinics/schemas"
+import {
+  ALLOWED_LOGO_MIME_TYPES,
+  MAX_LOGO_BYTES,
+  MAX_LOGO_LABEL,
+} from "@/lib/clinics/schemas"
 
 export type BrandingFormValues = {
   displayName: string
@@ -46,7 +50,7 @@ export function ClinicBrandingForm({
       return
     }
     if (file.size > MAX_LOGO_BYTES) {
-      toast.error(`That image is ${Math.round(file.size / 1024)}KB. The limit is ${Math.floor(MAX_LOGO_BYTES / 1024)}KB.`)
+      toast.error(`That image is ${Math.round(file.size / 1024)}KB. The limit is ${MAX_LOGO_LABEL}.`)
       event.target.value = ""
       return
     }
@@ -167,7 +171,7 @@ export function ClinicBrandingForm({
           </div>
 
           <p className="text-muted-foreground text-xs">
-            PNG, JPG, WebP or SVG, up to {Math.floor(MAX_LOGO_BYTES / 1024)}KB.
+            PNG, JPG, WebP or SVG, up to {MAX_LOGO_LABEL}.
             Shown instead of your clinic name in the sidebar and on reports.
           </p>
         </div>

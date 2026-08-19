@@ -36,15 +36,23 @@ const baseProfile = {
   lifestyleFactors: null,
 }
 
-const temperateLocation: UserScanContext["location"] = {
-  city: "Kampala",
-  region: "Central",
-  country: "Uganda",
+/**
+ * Karachi: hot, coastal, humid. `climateZone` and `seasonBand` are set to
+ * values the system actually produces — lib/climate/sync.ts classifies
+ * humidity >= 65 with temp >= 20 as `humid_subtropical`, and season bands are
+ * spring/summer/autumn/winter. The previous "tropical" and "wet" matched
+ * nothing in lib/climate/tag-match.ts, so the climate arm of the prompt was
+ * silently contributing no tags to any eval case.
+ */
+const humidLocation: UserScanContext["location"] = {
+  city: "Karachi",
+  region: "Sindh",
+  country: "Pakistan",
   uvIndexBand: "high",
   humidityBand: "high",
   temperatureBand: "high",
-  climateZone: "tropical",
-  seasonBand: "wet",
+  climateZone: "humid_subtropical",
+  seasonBand: "summer",
 }
 
 /**
@@ -61,7 +69,7 @@ export const SCAN_EVAL_CASES: ScanEvalCase[] = [
     image: "clear-skin.jpg",
     mimeType: "image/jpeg",
     profile: { ...baseProfile },
-    location: temperateLocation,
+    location: humidLocation,
     expectedOverall: "minimal",
     // The old prompt defaulted to mild on everything. This case is the guard.
     expectedBands: { redness: "minimal", wrinkles: "minimal" },
@@ -77,7 +85,7 @@ export const SCAN_EVAL_CASES: ScanEvalCase[] = [
       primaryConcerns: ["acne", "oiliness"],
       skinGoals: ["clear_skin"],
     },
-    location: temperateLocation,
+    location: humidLocation,
     expectedBands: { texture_pores: "moderate" },
     stabilityRuns: 3,
   },
@@ -91,7 +99,7 @@ export const SCAN_EVAL_CASES: ScanEvalCase[] = [
       primaryConcerns: ["hyperpigmentation"],
       skinGoals: ["even_tone"],
     },
-    location: temperateLocation,
+    location: humidLocation,
     expectedBands: { pigmentation: "moderate" },
   },
   {
@@ -103,7 +111,7 @@ export const SCAN_EVAL_CASES: ScanEvalCase[] = [
       ageBand: "age_55_64",
       primaryConcerns: ["aging"],
     },
-    location: temperateLocation,
+    location: humidLocation,
     expectedBands: { wrinkles: "moderate" },
   },
   {
@@ -127,7 +135,7 @@ export const SCAN_EVAL_CASES: ScanEvalCase[] = [
       skinGoals: ["hydration"],
       allergies: "nuts, almond",
     },
-    location: temperateLocation,
+    location: humidLocation,
     // The obvious pick for dryness is the almond balm. It must be rejected.
     forbiddenSlugs: ["almond-restore-balm"],
   },
@@ -141,7 +149,7 @@ export const SCAN_EVAL_CASES: ScanEvalCase[] = [
       primaryConcerns: ["sensitivity", "dryness"],
       allergies: "fragrance",
     },
-    location: temperateLocation,
+    location: humidLocation,
     forbiddenSlugs: ["rose-veil-mist"],
   },
   {
@@ -154,7 +162,7 @@ export const SCAN_EVAL_CASES: ScanEvalCase[] = [
       // say so rather than inventing evidence for it.
       primaryConcerns: ["hyperpigmentation", "aging"],
     },
-    location: temperateLocation,
+    location: humidLocation,
   },
 ]
 

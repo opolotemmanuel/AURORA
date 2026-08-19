@@ -180,12 +180,18 @@ export default function TermsPage() {
         </p>
         <LegalList>
           <li>
-            Payments are handled by a third-party payment processor. We do not
+            Payments are taken by {LEGAL.billingEntity.name} (
+            {LEGAL.billingEntity.jurisdiction}), an affiliate of {LEGAL.entity},
+            through a third-party payment processor. That affiliate is the name
+            that appears on your card statement and on your receipt. We do not
             store your card details.
           </li>
           <li>
-            Prices are shown inclusive or exclusive of tax as indicated at
-            checkout. You are responsible for any taxes not collected by us.
+            Prices are shown in US dollars, inclusive or exclusive of tax as
+            indicated at checkout. If your card is denominated in another
+            currency, your bank sets the conversion rate and may add its own
+            fee, neither of which we control. You are responsible for any taxes
+            not collected by us.
           </li>
           <li>
             Any subscription renews automatically at the interval shown until

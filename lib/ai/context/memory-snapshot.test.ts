@@ -13,7 +13,7 @@ describe("memory-snapshot", () => {
     rememberUserScanContext("user-1", {
       profile: null,
       location: {
-        city: "Kampala",
+        city: "Karachi",
         region: "Central",
         country: "UG",
         uvIndexBand: null,
@@ -26,7 +26,7 @@ describe("memory-snapshot", () => {
 
     const recalled = recallUserScanContext("user-1")
     assert.ok(recalled)
-    assert.equal(recalled?.location?.city, "Kampala")
+    assert.equal(recalled?.location?.city, "Karachi")
   })
 
   it("recalls scan history by user, exclude id, and limit", () => {

@@ -71,6 +71,13 @@ export default function PrivacyPage() {
           or by post at {LEGAL.postalAddress}.
         </p>
         <p>
+          We are established in {LEGAL.country}. Card payments are taken by{" "}
+          {LEGAL.billingEntity.name} ({LEGAL.billingEntity.jurisdiction}), which
+          acts as a separate controller of the billing data you give at
+          checkout. That is the name you will see on your card statement and on
+          your receipt.
+        </p>
+        <p>
           Aurora Organics is a cosmetic skin wellness service. It provides
           cosmetic and lifestyle guidance only. It does not diagnose, treat, or
           prevent any medical condition, and it is not a medical device. See our{" "}
@@ -288,11 +295,19 @@ export default function PrivacyPage() {
 
       <LegalSection id="transfers" title="8. International transfers">
         <p>
-          Several of our processors are based in the United States, so data
-          leaves the UK and EEA. Those transfers rely on the European
-          Commission&apos;s Standard Contractual Clauses and the UK
-          International Data Transfer Addendum, together with the technical
-          measures described in section 12. You can request a copy of the
+          We are established in {LEGAL.country}, and every processor listed in
+          section 7 is outside it. Your data therefore leaves {LEGAL.country} in
+          the ordinary course of running the service. Pakistan does not
+          currently restrict outbound transfers of personal data by general
+          statute, but we apply the same safeguards regardless: contractual data
+          protection terms with each processor, and the technical measures
+          described in section 12.
+        </p>
+        <p>
+          If you are in the UK or the EEA, your data also leaves that area,
+          principally to processors in the United States. Those transfers rely
+          on the European Commission&apos;s Standard Contractual Clauses and the
+          UK International Data Transfer Addendum. You can request a copy of the
           transfer mechanism we rely on for any given processor.
         </p>
       </LegalSection>
@@ -464,6 +479,24 @@ export default function PrivacyPage() {
       </LegalSection>
 
       <LegalSection id="regional" title="14. Regional notices">
+        <LegalSubheading>Pakistan</LegalSubheading>
+        <p>
+          We are established in {LEGAL.country} and this policy is governed
+          accordingly. Article 14 of the Constitution protects the privacy and
+          dignity of the individual, and the Prevention of Electronic Crimes Act
+          2016 makes unauthorised access to an information system or to data an
+          offence. At the time of writing Pakistan has no comprehensive personal
+          data protection statute in force; a Personal Data Protection Bill has
+          been under consideration for several years and has not been enacted.
+        </p>
+        <p>
+          We have not waited for it. The rights described in section 10 —
+          access, correction, deletion, portability, and withdrawal of consent —
+          are offered to every user wherever they live, and are available
+          through Privacy settings rather than on request. If and when a data
+          protection statute comes into force in Pakistan, we will update this
+          policy and tell you what changed.
+        </p>
         <LegalSubheading>California (CCPA and CPRA)</LegalSubheading>
         <p>
           The categories we collect, and why, are set out in sections 2 and 5.

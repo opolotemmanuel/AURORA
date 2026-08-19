@@ -28,7 +28,7 @@ function scanWithIdentifiers() {
       notes: "lives above the pharmacy on Mill Street",
     },
     locationSnapshot: {
-      city: "Kampala",
+      city: "Karachi",
       region: "Central",
       country: "UG",
       climateZone: "tropical",
@@ -43,7 +43,7 @@ function scanWithIdentifiers() {
       doshaTyping: { pitta: 0.6 },
       summary: "Jane's skin shows redness around the nose.",
     },
-    feedback: { rating: 4, message: "I am Jane and I live in Kampala" },
+    feedback: { rating: 4, message: "I am Jane and I live in Karachi" },
   }
 }
 
@@ -80,7 +80,7 @@ describe("deidentifyScan", () => {
 
     assert.equal(result.payload.environment.country, "UG")
     const serialised = JSON.stringify(result.payload)
-    assert.ok(!serialised.includes("Kampala"), "city must not survive")
+    assert.ok(!serialised.includes("Karachi"), "city must not survive")
     assert.ok(!serialised.includes("Central"), "region must not survive")
   })
 
@@ -164,7 +164,7 @@ describe("findIdentifierLeaks", () => {
   })
 
   it("catches forbidden field names", () => {
-    assert.ok(findIdentifierLeaks({ city: "Kampala" }).length > 0)
+    assert.ok(findIdentifierLeaks({ city: "Karachi" }).length > 0)
     assert.ok(findIdentifierLeaks({ summary: "anything" }).length > 0)
   })
 

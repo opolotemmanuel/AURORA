@@ -49,8 +49,8 @@ import { signOut } from "@/lib/auth/client"
 import {
   getNavSections,
   isNavItemActive,
+  resolveWorkspace,
   type AppRole,
-  type NavSection,
   type WorkspaceId,
 } from "@/lib/dashboard/nav"
 import { cn } from "@/lib/utils"
@@ -229,7 +229,6 @@ export function DashboardSidebar({
   userImage,
   emailVerified,
   brand,
-  workspaceSections,
   workspaces,
   activeWorkspaceId,
 }: {
@@ -240,14 +239,20 @@ export function DashboardSidebar({
   emailVerified: boolean
   /** The clinic whose site this is, or undefined on the platform host. */
   brand?: { name: string; logoUrl: string | null }
-  workspaceSections?: NavSection[]
   workspaces?: WorkspaceOption[]
   activeWorkspaceId?: WorkspaceId
 }) {
   const pathname = usePathname()
   const { state, isMobile, setOpenMobile, toggleSidebar } = useSidebar()
   const collapsed = state === "collapsed"
-  const sections = workspaceSections ?? getNavSections(role)
+  // Resolved here rather than passed in. Sections carry icon components, and a
+  // React component is a function — passing one from a server component to a
+  // client component fails at serialisation time. Only the workspace id, a
+  // string, crosses the boundary. The server still decides which ids are
+  // available, so this is a rendering detail, not an authorization one.
+  const sections = activeWorkspaceId
+    ? resolveWorkspace(role, activeWorkspaceId).sections
+    : getNavSections(role)
   const brandName = brand?.name ?? "Aurora Organics"
 
   useEffect(() => {

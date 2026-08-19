@@ -76,7 +76,6 @@ async function DashboardAuthShellInner({
         userImage={ctx.user.image ?? null}
         emailVerified={ctx.user.emailVerified}
         brand={brand}
-        workspaceSections={activeWorkspace.sections}
         activeWorkspaceId={activeWorkspace.id}
         workspaces={workspaces.map((w) => ({
           id: w.id,

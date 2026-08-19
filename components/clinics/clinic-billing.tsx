@@ -10,6 +10,7 @@ import {
   startClinicCheckoutAction,
 } from "@/lib/clinics/billing-actions"
 import { formatMoneyCents } from "@/lib/payments/format"
+import { formatLimit, formatScanQuota, formatSeats } from "@/lib/clinics/plan-limits"
 
 export type BillingPlanOption = {
   id: string
@@ -134,10 +135,8 @@ export function ClinicBilling({
                 ) : null}
 
                 <p className="text-muted-foreground text-xs">
-                  {plan.seatLimit} seat{plan.seatLimit === 1 ? "" : "s"} ·{" "}
-                  {plan.monthlyScanQuota < 0
-                    ? "unlimited scans"
-                    : `${plan.monthlyScanQuota} scans / month`}
+                  {formatSeats(plan.seatLimit)} ·{" "}
+                  {formatScanQuota(plan.monthlyScanQuota)}
                 </p>
 
                 {canManage ? (

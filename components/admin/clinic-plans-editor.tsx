@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { UNLIMITED, isUnlimited } from "@/lib/clinics/plan-limits"
 import {
   deleteClinicPlanAction,
   upsertClinicPlanAction,
@@ -173,25 +174,54 @@ function PlanForm({
           </select>
         </div>
 
+        {/*
+          Unlimited is stored as -1, but nobody should have to know that. The
+          checkbox writes the sentinel and the number input is hidden while it
+          is on, so a plan cannot end up with a stale figure that reads as a
+          real limit.
+        */}
         <div className="space-y-2">
-          <Label>Seat limit</Label>
-          <Input
-            type="number"
-            min={1}
-            value={draft.seatLimit}
-            onChange={(e) => set("seatLimit", Number(e.target.value) || 1)}
-          />
+          <Label>Seats</Label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={isUnlimited(draft.seatLimit)}
+              onChange={(e) => set("seatLimit", e.target.checked ? UNLIMITED : 5)}
+            />
+            Unlimited
+          </label>
+          {!isUnlimited(draft.seatLimit) ? (
+            <Input
+              type="number"
+              min={1}
+              aria-label="Seat limit"
+              value={draft.seatLimit}
+              onChange={(e) => set("seatLimit", Number(e.target.value) || 1)}
+            />
+          ) : null}
         </div>
 
         <div className="space-y-2">
-          <Label>Monthly scan quota</Label>
-          <Input
-            type="number"
-            min={-1}
-            value={draft.monthlyScanQuota}
-            onChange={(e) => set("monthlyScanQuota", Number(e.target.value) || 0)}
-          />
-          <p className="text-muted-foreground text-xs">Use -1 for unlimited.</p>
+          <Label>Monthly scans</Label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={isUnlimited(draft.monthlyScanQuota)}
+              onChange={(e) =>
+                set("monthlyScanQuota", e.target.checked ? UNLIMITED : 500)
+              }
+            />
+            Unlimited
+          </label>
+          {!isUnlimited(draft.monthlyScanQuota) ? (
+            <Input
+              type="number"
+              min={0}
+              aria-label="Monthly scan quota"
+              value={draft.monthlyScanQuota}
+              onChange={(e) => set("monthlyScanQuota", Number(e.target.value) || 0)}
+            />
+          ) : null}
         </div>
 
         <div className="space-y-2">

@@ -6,6 +6,7 @@ import { z } from "zod"
 
 import { getAuthContext } from "@/lib/auth/context"
 import { requireClinicManager } from "@/lib/clinics/membership"
+import { formatSeats, wouldExceedLimit } from "@/lib/clinics/plan-limits"
 import { resolveTenant } from "@/lib/clinics/tenant"
 import { prisma } from "@/lib/db/client"
 
@@ -30,19 +31,23 @@ export async function inviteClinicMemberAction(input: unknown) {
   const { email, role } = inviteSchema.parse(input)
   const organizationId = session.scope
 
-  const seatLimit = session.tenant.plan?.seatLimit ?? 0
+  // Checked before the counts: no plan at all is a different situation from a
+  // plan whose seats are full, and the previous code conflated the two by
+  // treating a missing plan as a limit of zero.
+  const plan = session.tenant.plan
+  if (!plan) {
+    throw new Error("This clinic has no plan assigned yet, so it has no seats.")
+  }
+
   const [memberCount, pendingCount] = await Promise.all([
     prisma.member.count({ where: { organizationId } }),
     prisma.invitation.count({ where: { organizationId, status: "pending" } }),
   ])
 
-  if (seatLimit > 0 && memberCount + pendingCount >= seatLimit) {
+  if (wouldExceedLimit(plan.seatLimit, memberCount + pendingCount)) {
     throw new Error(
-      `Your plan includes ${seatLimit} seat${seatLimit === 1 ? "" : "s"}, and they are all taken or invited. Upgrade the plan to add more.`,
+      `Your plan includes ${formatSeats(plan.seatLimit)}, and they are all taken or invited. Upgrade the plan to add more.`,
     )
-  }
-  if (seatLimit === 0) {
-    throw new Error("This clinic has no plan assigned yet, so it has no seats.")
   }
 
   const existingUser = await prisma.user.findUnique({

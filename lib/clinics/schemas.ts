@@ -152,7 +152,10 @@ export const clinicPlanSchema = z.object({
     .transform((value) => (value ? value : undefined)),
   priceCents: z.number().int().min(0).max(100_000_00),
   interval: z.enum(["month", "year"]),
-  seatLimit: z.number().int().min(1).max(1000),
+  /** -1 encodes unlimited, matching monthlyScanQuota below. */
+  seatLimit: z.number().int().min(-1).max(1000).refine((value) => value !== 0, {
+    message: "Seats must be at least 1, or unlimited.",
+  }),
   /** Negative encodes unlimited, for bespoke unmetered agreements. */
   monthlyScanQuota: z.number().int().min(-1).max(1_000_000),
   isActive: z.boolean().default(true),

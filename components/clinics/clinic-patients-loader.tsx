@@ -2,6 +2,7 @@ import { StatCard } from "@/components/dashboard/stat-card"
 import { Badge } from "@/components/ui/badge"
 import { requireClinicMember } from "@/lib/clinics/membership"
 import { listClinicScans } from "@/lib/clinics/queries"
+import { formatLimit } from "@/lib/clinics/plan-limits"
 
 export async function ClinicPatientsLoader() {
   const session = await requireClinicMember()
@@ -23,7 +24,7 @@ export async function ClinicPatientsLoader() {
         <StatCard label="Plan" value={tenant.plan?.name ?? "No plan"} />
         <StatCard
           label="Seats"
-          value={tenant.plan ? String(tenant.plan.seatLimit) : "—"}
+          value={tenant.plan ? formatLimit(tenant.plan.seatLimit) : "—"}
         />
       </div>
 

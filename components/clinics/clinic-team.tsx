@@ -15,6 +15,7 @@ import {
   updateClinicMemberRoleAction,
 } from "@/lib/clinics/member-actions"
 import type { ClinicInvitationRow, ClinicMemberRow } from "@/lib/clinics/queries"
+import { isUnlimited } from "@/lib/clinics/plan-limits"
 
 export function ClinicTeam({
   members,
@@ -90,9 +91,11 @@ export function ClinicTeam({
             </Button>
           </div>
           <p className="text-muted-foreground text-xs">
-            {seatLimit
-              ? `${seatsUsed} of ${seatLimit} seats used, counting pending invites.`
-              : "This clinic has no plan assigned, so it has no seats yet."}
+            {seatLimit === null
+              ? "This clinic has no plan assigned, so it has no seats yet."
+              : isUnlimited(seatLimit)
+                ? `${seatsUsed} in use. Your plan has unlimited seats.`
+                : `${seatsUsed} of ${seatLimit} seats used, counting pending invites.`}
           </p>
         </form>
       ) : null}

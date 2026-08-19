@@ -1,10 +1,13 @@
 import type { ReactNode } from "react"
+import { cookies } from "next/headers"
 
 import { ImpersonationBanner } from "@/components/admin/impersonation-banner"
 import { EntitlementProvider } from "@/components/billing/entitlement-provider"
 import { DashboardShell } from "@/components/layouts/dashboard-shell"
 import { scheduleAiScanContextWarmup } from "@/lib/ai/context/warm"
 import { resolveTenant } from "@/lib/clinics/tenant"
+import { availableWorkspaces, resolveWorkspace } from "@/lib/dashboard/nav"
+import { WORKSPACE_COOKIE } from "@/lib/dashboard/workspace-cookie"
 import { getScanEntitlement } from "@/lib/scans/entitlement"
 import {
   AuthShellGate,
@@ -38,6 +41,16 @@ async function DashboardAuthShellInner({
 
   // On a clinic's subdomain the whole dashboard carries that clinic's name and
   // logo, not Aurora's — including for its patients, not just its staff.
+  // Resolved on the server from the caller's real role, so an unavailable
+  // workspace never reaches the browser. The switcher changes navigation only —
+  // every route and action keeps its own authorization check.
+  const cookieStore = await cookies()
+  const workspaces = availableWorkspaces(ctx.role)
+  const activeWorkspace = resolveWorkspace(
+    ctx.role,
+    cookieStore.get(WORKSPACE_COOKIE)?.value,
+  )
+
   const tenant = await resolveTenant()
   const brand =
     tenant.kind === "tenant"
@@ -63,6 +76,14 @@ async function DashboardAuthShellInner({
         userImage={ctx.user.image ?? null}
         emailVerified={ctx.user.emailVerified}
         brand={brand}
+        workspaceSections={activeWorkspace.sections}
+        activeWorkspaceId={activeWorkspace.id}
+        workspaces={workspaces.map((w) => ({
+          id: w.id,
+          label: w.label,
+          description: w.description,
+          home: w.home,
+        }))}
       >
         {children}
       </DashboardShell>

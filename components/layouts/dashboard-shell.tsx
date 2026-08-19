@@ -4,13 +4,19 @@ import { usePathname } from "next/navigation"
 
 import { DashboardContent } from "@/components/layouts/dashboard-content"
 import { DashboardSidebar } from "@/components/layouts/dashboard-sidebar"
+import type { WorkspaceOption } from "@/components/layouts/workspace-switcher"
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { getActiveNavItem, type AppRole } from "@/lib/dashboard/nav"
+import {
+  getActiveNavItem,
+  type AppRole,
+  type NavSection,
+  type WorkspaceId,
+} from "@/lib/dashboard/nav"
 
 function MobileHeader({ role, brandName }: { role: AppRole; brandName: string }) {
   const pathname = usePathname()
@@ -39,6 +45,9 @@ export function DashboardShell({
   userImage,
   emailVerified,
   brand,
+  workspaceSections,
+  workspaces,
+  activeWorkspaceId,
 }: {
   children: React.ReactNode
   role: AppRole
@@ -48,6 +57,9 @@ export function DashboardShell({
   emailVerified: boolean
   /** The clinic whose site this is, or undefined on the platform host. */
   brand?: { name: string; logoUrl: string | null }
+  workspaceSections?: NavSection[]
+  workspaces?: WorkspaceOption[]
+  activeWorkspaceId?: WorkspaceId
 }) {
   return (
     <TooltipProvider delayDuration={0}>
@@ -59,6 +71,9 @@ export function DashboardShell({
         userImage={userImage}
         emailVerified={emailVerified}
         brand={brand}
+        workspaceSections={workspaceSections}
+        workspaces={workspaces}
+        activeWorkspaceId={activeWorkspaceId}
       />
       <SidebarInset className="min-h-0 overflow-y-auto">
         <header className="sticky top-0 z-20 flex h-12 items-center gap-2 border-b border-border bg-background/90 px-4 backdrop-blur-sm md:hidden">

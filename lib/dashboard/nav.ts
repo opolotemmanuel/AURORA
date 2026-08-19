@@ -123,6 +123,150 @@ const ADMIN: NavSection = {
   ],
 }
 
+// ─── workspaces ─────────────────────────────────────────────────────────────
+
+/**
+ * A workspace is a persona, not a permission.
+ *
+ * Switching changes what the navigation shows and where "home" is. It grants
+ * nothing: every route and every server action keeps its own guard, so a user
+ * who somehow selected a workspace they are not entitled to would still be
+ * refused at each door. The list below is derived from the caller's real role
+ * on the server, so an unavailable workspace never reaches the browser either.
+ */
+export type WorkspaceId =
+  | "personal"
+  | "expert"
+  | "clinic"
+  | "affiliate"
+  | "admin"
+  | "ai_ops"
+
+export type Workspace = {
+  id: WorkspaceId
+  label: string
+  description: string
+  icon: TablerIcon
+  home: string
+  sections: NavSection[]
+}
+
+const AI_OPS: NavSection = {
+  title: "AI operations",
+  items: [
+    { href: "/admin/training", label: "Training data", icon: IconShieldCheck },
+    { href: "/admin/models", label: "Models", icon: IconBrain },
+    { href: "/admin/usage", label: "Model usage", icon: IconChartBar },
+  ],
+}
+
+const WORKSPACES: Record<WorkspaceId, Workspace> = {
+  personal: {
+    id: "personal",
+    label: "My account",
+    description: "Your own scans, reports and appointments",
+    icon: IconUser,
+    home: "/dashboard",
+    sections: [OVERVIEW, YOUR_DATA, MARKETPLACE, ACCOUNT],
+  },
+  expert: {
+    id: "expert",
+    label: "Expert",
+    description: "Consultations, availability and assessment review",
+    icon: IconStethoscope,
+    home: "/expert",
+    sections: [EXPERT],
+  },
+  clinic: {
+    id: "clinic",
+    label: "Clinic",
+    description: "Your clinic's patients, branding and billing",
+    icon: IconBuildingHospital,
+    home: "/clinic",
+    sections: [CLINIC],
+  },
+  affiliate: {
+    id: "affiliate",
+    label: "Affiliate",
+    description: "Your referral code and earnings",
+    icon: IconGift,
+    home: "/affiliate",
+    sections: [AFFILIATE],
+  },
+  admin: {
+    id: "admin",
+    label: "Administration",
+    description: "Users, tenants, catalogue and platform operations",
+    icon: IconSettings,
+    home: "/admin",
+    sections: [ADMIN],
+  },
+  ai_ops: {
+    id: "ai_ops",
+    label: "AI operations",
+    description: "Training data, models and spend",
+    icon: IconBrain,
+    home: "/admin/training",
+    sections: [AI_OPS],
+  },
+}
+
+/**
+ * Which workspaces this person may use.
+ *
+ * Everyone has a personal one. The rest follow the role they actually hold, so
+ * the switcher can only ever offer what the backend would already allow.
+ */
+export function availableWorkspaces(role: AppRole): Workspace[] {
+  const list: Workspace[] = [WORKSPACES.personal]
+
+  if (role === "expert") list.push(WORKSPACES.expert)
+  if (role === "company_admin") list.push(WORKSPACES.clinic)
+  if (role === "affiliate") list.push(WORKSPACES.affiliate)
+  if (role === "admin") {
+    list.push(WORKSPACES.admin, WORKSPACES.ai_ops)
+  }
+
+  return list
+}
+
+/**
+ * Resolves a stored preference against what the caller may actually use, so a
+ * stale or tampered cookie falls back rather than showing an empty sidebar.
+ */
+export function resolveWorkspace(
+  role: AppRole,
+  requested: string | null | undefined,
+): Workspace {
+  const available = availableWorkspaces(role)
+  return (
+    available.find((workspace) => workspace.id === requested) ?? available[0]
+  )
+}
+
+/** The workspace a path belongs to, used to follow a deep link into the right view. */
+export function workspaceForPath(
+  role: AppRole,
+  pathname: string,
+): Workspace | null {
+  const available = availableWorkspaces(role)
+
+  // Most specific match wins, so /admin/training resolves to AI operations
+  // rather than to Administration.
+  let best: { workspace: Workspace; length: number } | null = null
+
+  for (const workspace of available) {
+    for (const item of workspace.sections.flatMap((section) => section.items)) {
+      const matches = pathname === item.href || pathname.startsWith(`${item.href}/`)
+      if (matches && (!best || item.href.length > best.length)) {
+        best = { workspace, length: item.href.length }
+      }
+    }
+  }
+
+  return best?.workspace ?? null
+}
+
 export function canSeeAdminNav(role: AppRole): boolean {
   return role === "admin"
 }

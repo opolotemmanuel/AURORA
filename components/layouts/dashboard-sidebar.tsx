@@ -41,11 +41,17 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { ThemeToggleMenuItem } from "@/components/theme-toggle"
+import {
+  WorkspaceSwitcher,
+  type WorkspaceOption,
+} from "@/components/layouts/workspace-switcher"
 import { signOut } from "@/lib/auth/client"
 import {
   getNavSections,
   isNavItemActive,
   type AppRole,
+  type NavSection,
+  type WorkspaceId,
 } from "@/lib/dashboard/nav"
 import { cn } from "@/lib/utils"
 
@@ -223,6 +229,9 @@ export function DashboardSidebar({
   userImage,
   emailVerified,
   brand,
+  workspaceSections,
+  workspaces,
+  activeWorkspaceId,
 }: {
   role: AppRole
   userName: string
@@ -231,11 +240,14 @@ export function DashboardSidebar({
   emailVerified: boolean
   /** The clinic whose site this is, or undefined on the platform host. */
   brand?: { name: string; logoUrl: string | null }
+  workspaceSections?: NavSection[]
+  workspaces?: WorkspaceOption[]
+  activeWorkspaceId?: WorkspaceId
 }) {
   const pathname = usePathname()
   const { state, isMobile, setOpenMobile, toggleSidebar } = useSidebar()
   const collapsed = state === "collapsed"
-  const sections = getNavSections(role)
+  const sections = workspaceSections ?? getNavSections(role)
   const brandName = brand?.name ?? "Aurora Organics"
 
   useEffect(() => {
@@ -296,6 +308,15 @@ export function DashboardSidebar({
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
+
+      {workspaces && activeWorkspaceId ? (
+        <div className="border-b border-sidebar-border px-2 py-2">
+          <WorkspaceSwitcher
+            workspaces={workspaces}
+            activeId={activeWorkspaceId}
+          />
+        </div>
+      ) : null}
 
       <SidebarContent>
         <SidebarNavLayoutGroup>

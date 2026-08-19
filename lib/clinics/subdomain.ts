@@ -3,6 +3,9 @@
  * by proxy.ts, which runs on every request, so it must stay free of database
  * and Node-only dependencies.
  */
+// Safe to import here: tenant-cookie reads environment variables only, with no
+// database or Node built-in dependency of its own.
+import { appOrigin } from "@/lib/clinics/tenant-cookie"
 
 /**
  * Labels that can never belong to a clinic, because they either already serve
@@ -163,9 +166,23 @@ export function clinicUrl(subdomain: string, path = "/"): string {
   const root = rootDomain()
   const suffix = path.startsWith("/") ? path : `/${path}`
 
-  if (!root) {
+  if (root) {
+    return `https://${subdomain}.${root}${suffix}`
+  }
+
+  // Local development: *.localhost resolves to 127.0.0.1 in browsers with no
+  // hosts-file entry, so real subdomains work here without any DNS.
+  if (process.env.NODE_ENV !== "production") {
     const port = process.env.PORT || "3000"
     return `http://${subdomain}.localhost:${port}${suffix}`
   }
-  return `https://${subdomain}.${root}${suffix}`
+
+  // Deployed with no wildcard domain — most often *.vercel.app, which cannot
+  // host tenant subdomains at all. Link to the pinning route on this same
+  // origin instead of a subdomain that will never resolve. Previously this
+  // returned a localhost URL, which sent anyone clicking it off the deployment
+  // and onto their own machine.
+  const origin = appOrigin()
+  const target = suffix === "/" ? "" : `?next=${encodeURIComponent(suffix)}`
+  return `${origin}/c/${subdomain}${target}`
 }

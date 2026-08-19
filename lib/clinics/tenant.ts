@@ -1,7 +1,11 @@
 import { cache } from "react"
-import { headers } from "next/headers"
+import { cookies, headers } from "next/headers"
 
 import { extractSubdomain, normalizeHostname } from "@/lib/clinics/subdomain"
+import {
+  TENANT_COOKIE,
+  hostBasedTenancyConfigured,
+} from "@/lib/clinics/tenant-cookie"
 import {
   resolveClinicAccess,
   resolveScanQuota,
@@ -70,11 +74,23 @@ export const resolveTenant = cache(async (): Promise<TenantResolveResult> => {
   // A clinic may be reached on its own domain or on its subdomain. Only a
   // verified domain resolves, so a half-configured one falls through to the
   // subdomain rather than serving nothing.
-  const where = subdomain
+  let where = subdomain
     ? { subdomain }
     : host
       ? { customDomain: host }
       : null
+
+  // Nothing in the Host header identifies a tenant. On a deployment with no
+  // wildcard domain there never will be, so fall back to the pinned clinic.
+  // Consulted last, so it can never override real host-based routing.
+  let pinned: string | null = null
+  if (!where && !hostBasedTenancyConfigured()) {
+    const cookieStore = await cookies()
+    pinned = cookieStore.get(TENANT_COOKIE)?.value ?? null
+    if (pinned) {
+      where = { subdomain: pinned }
+    }
+  }
 
   if (!where) {
     return { kind: "platform" }
@@ -108,7 +124,7 @@ export const resolveTenant = cache(async (): Promise<TenantResolveResult> => {
 
   if (!clinic) {
     // Reached on a host that is neither a known subdomain nor a known domain.
-    return { kind: "unknown_subdomain", subdomain: subdomain ?? host ?? "" }
+    return { kind: "unknown_subdomain", subdomain: subdomain ?? pinned ?? host ?? "" }
   }
 
   // Matched by domain, but that domain has not been proven yet. Treat it as

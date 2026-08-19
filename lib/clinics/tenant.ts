@@ -136,6 +136,19 @@ export const getServableTenant = cache(async (): Promise<TenantContext | null> =
   return result.tenant.access.ok ? result.tenant : null
 })
 
+/**
+ * The clinic owning this host, regardless of whether its subscription entitles
+ * it to serve patients.
+ *
+ * Used by the login gate, which must keep working for a lapsed clinic: its
+ * staff still need to sign in to fix billing, so entitlement is checked later,
+ * per route, not at the door.
+ */
+export async function getTenantSubdomainOrganizationId(): Promise<string | null> {
+  const result = await resolveTenant()
+  return result.kind === "tenant" ? result.tenant.organizationId : null
+}
+
 /** The organization id to stamp on records created during this request. */
 export async function getTenantOrganizationId(): Promise<string | null> {
   const tenant = await getServableTenant()

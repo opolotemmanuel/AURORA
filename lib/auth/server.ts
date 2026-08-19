@@ -1,6 +1,14 @@
 import { betterAuth } from "better-auth"
+import { APIError, createAuthMiddleware } from "better-auth/api"
 import { prismaAdapter } from "better-auth/adapters/prisma"
 import { admin, emailOTP, organization } from "better-auth/plugins"
+
+import {
+  accessDenialMessage,
+  decideAccess,
+  getAffiliationByEmail,
+} from "@/lib/clinics/access-gate"
+import { extractSubdomain } from "@/lib/clinics/subdomain"
 
 import { prisma } from "@/lib/db/client"
 import { sendOtpEmail } from "@/lib/email/send-otp"
@@ -45,11 +53,62 @@ function tenantTrustedOrigins(): string[] {
   return origins
 }
 
+/**
+ * Resolves the clinic that owns the host this request arrived on, from the raw
+ * Host header — the auth hook runs outside Next's request helpers.
+ */
+async function hostOrganizationId(headers: Headers | undefined): Promise<string | null> {
+  const subdomain = extractSubdomain(headers?.get("host"))
+  if (!subdomain) return null
+
+  const clinic = await prisma.clinicSettings.findUnique({
+    where: { subdomain },
+    select: { organizationId: true },
+  })
+  return clinic?.organizationId ?? null
+}
+
+/**
+ * Refuses authentication where the account does not belong to the site it is
+ * being used on. See lib/clinics/access-gate.ts for the rules.
+ *
+ * Enforced here, at the authentication endpoints, rather than only after a
+ * session exists — a refused person should never get a session cookie at all,
+ * and gating OTP issuance means we don't email a code for an account that
+ * cannot sign in here anyway.
+ */
+const clinicIsolationHook = createAuthMiddleware(async (ctx) => {
+  const GATED_PATHS = new Set([
+    "/sign-in/email",
+    "/sign-up/email",
+    "/email-otp/send-verification-otp",
+    "/forget-password",
+  ])
+  if (!GATED_PATHS.has(ctx.path)) return
+
+  const email = (ctx.body as { email?: unknown } | undefined)?.email
+  if (typeof email !== "string" || !email) return
+
+  const affiliation = await getAffiliationByEmail(email)
+
+  // No account yet. Signing up is how a clinic acquires a patient, so let it
+  // through; the link to this clinic is created after the account exists.
+  if (!affiliation) return
+
+  const decision = decideAccess(affiliation, await hostOrganizationId(ctx.headers))
+  if (decision.allowed) return
+
+  throw new APIError("FORBIDDEN", {
+    message: accessDenialMessage(decision.reason),
+  })
+})
+
 export const auth = betterAuth({
   appName: "Aurora Organics",
   baseURL: process.env.BETTER_AUTH_URL,
   secret: process.env.BETTER_AUTH_SECRET,
   trustedOrigins: tenantTrustedOrigins(),
+  hooks: { before: clinicIsolationHook },
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),

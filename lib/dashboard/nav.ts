@@ -16,6 +16,7 @@ import {
   IconPlug,
   IconScan,
   IconSettings,
+  IconShieldCheck,
   IconStethoscope,
   IconTag,
   IconUser,
@@ -79,6 +80,7 @@ const EXPERT: NavSection = {
   items: [
     { href: "/expert", label: "Bookings", icon: IconCalendarEvent },
     { href: "/expert/availability", label: "Availability", icon: IconCalendarTime },
+    { href: "/expert/validation", label: "Validate", icon: IconShieldCheck },
   ],
 }
 
@@ -97,6 +99,7 @@ const CLINIC: NavSection = {
     { href: "/clinic/team", label: "Team", icon: IconUserCheck },
     { href: "/clinic/branding", label: "Branding", icon: IconPalette },
     { href: "/clinic/domain", label: "Domain", icon: IconWorld },
+    { href: "/clinic/data", label: "Data sharing", icon: IconShieldCheck },
     { href: "/clinic/billing", label: "Billing", icon: IconCreditCard },
     { href: "/clinic/api", label: "API", icon: IconPlug },
   ],
@@ -115,6 +118,7 @@ const ADMIN: NavSection = {
     { href: "/admin/experts", label: "Expert applications", icon: IconStethoscope },
     { href: "/admin/affiliates", label: "Affiliates", icon: IconGift },
     { href: "/admin/clinics", label: "Clinics", icon: IconBuildingHospital },
+    { href: "/admin/training", label: "Training data", icon: IconShieldCheck },
     { href: "/admin/feedback", label: "Feedback", icon: IconMessage },
   ],
 }

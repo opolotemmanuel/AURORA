@@ -28,6 +28,19 @@ export const RETENTION = {
    * abuse investigation, then dropped.
    */
   aiUsageDays: 400,
+
+  /**
+   * Withdrawn training records. Kept briefly after withdrawal so the removal
+   * itself is auditable and reversible if it was a mistake, then deleted
+   * outright — a withdrawn record has no lawful basis to persist beyond that.
+   */
+  withdrawnTrainingRecordDays: 30,
+
+  /**
+   * Audit entries. Long enough to investigate a consent or export dispute well
+   * after the fact, and bounded so the trail does not grow without limit.
+   */
+  auditLogDays: 730,
 } as const
 
 export type RetentionKey = keyof typeof RETENTION

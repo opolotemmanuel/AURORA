@@ -1,6 +1,7 @@
 import { Suspense } from "react"
 
 import { ConsentSummary } from "@/components/dashboard/consent-summary"
+import { TrainingConsentLoader } from "@/components/privacy/training-consent-loader"
 import { PrivacyControlsLoader } from "@/components/dashboard/privacy-controls-loader"
 import { DashboardPageHeader } from "@/components/dashboard/page-header"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -30,6 +31,9 @@ export default function PrivacyPage() {
       />
       <Suspense fallback={<PrivacyControlsSkeleton />}>
         <ConsentSummary />
+      </Suspense>
+      <Suspense fallback={<PrivacyControlsSkeleton />}>
+        <TrainingConsentLoader />
       </Suspense>
       <Suspense fallback={<PrivacyControlsSkeleton />}>
         <PrivacyControlsLoader />

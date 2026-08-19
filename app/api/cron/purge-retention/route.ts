@@ -46,6 +46,24 @@ export async function GET(request: Request) {
     where: { createdAt: { lt: cutoffDate(RETENTION.aiUsageDays, now) } },
   })
 
+  // Withdrawn training records are deleted outright once the grace window has
+  // passed. Withdrawal already excluded them from every query; this is what
+  // makes the removal real rather than a flag.
+  const withdrawnTraining = await prisma.trainingRecord.deleteMany({
+    where: {
+      status: "withdrawn",
+      withdrawnAt: {
+        lt: cutoffDate(RETENTION.withdrawnTrainingRecordDays, now),
+      },
+    },
+  })
+
+  // The audit trail is never edited, only aged out — which is why this is the
+  // one place in the codebase that deletes from it.
+  const auditRows = await prisma.auditLog.deleteMany({
+    where: { createdAt: { lt: cutoffDate(RETENTION.auditLogDays, now) } },
+  })
+
   return NextResponse.json({
     ok: true,
     ranAt: now.toISOString(),
@@ -55,6 +73,8 @@ export async function GET(request: Request) {
       expiredSessions: sessions.count,
       verifications: verifications.count,
       aiUsageRows: usage.count,
+      withdrawnTrainingRecords: withdrawnTraining.count,
+      auditRows: auditRows.count,
     },
   })
 }

@@ -50,6 +50,7 @@ model User {
   affiliatePayoutsRecorded      AffiliatePayout[]  @relation("AffiliatePayoutCreatedBy")
   apiKeysCreated                ApiKey[]           @relation("ApiKeyCreatedBy")
   clinicPatient                 ClinicPatient?
+  trainingRecords               TrainingRecord[]
 
   @@unique([email])
   @@map("user")
@@ -123,6 +124,7 @@ model Organization {
   clinic      ClinicSettings?
   apiKeys     ApiKey[]
   patients    ClinicPatient[]
+  trainingRecords TrainingRecord[]
 
   @@map("organization")
 }
@@ -334,6 +336,13 @@ model UserProfile {
   consentAcceptedAt      DateTime?
   photoProcessingConsent Boolean          @default(false)
   marketingConsent       Boolean          @default(false)
+
+  // Separate, explicit, and off by default: consenting to have a scan analysed
+  // is not consenting to have it improve a model. Revocable, and revoking
+  // withdraws records already collected — see lib/training/consent.ts.
+  trainingConsent        Boolean          @default(false)
+  trainingConsentAt      DateTime?
+  trainingConsentVersion String?
   onboardingStep         String           @default("welcome")
   onboardingCompletedAt  DateTime?
   expertReviewRequested  Boolean          @default(false)
@@ -568,6 +577,7 @@ model ExpertProfile {
   availabilitySlots ExpertAvailabilitySlot[]
   bookings          Booking[]
   reviews           ExpertReview[]
+  trainingValidations TrainingValidation[]
 
   @@index([specialty, status])
   @@index([status])
@@ -763,6 +773,7 @@ model Scan {
   usage             ScanUsage?
   result            ScanResult?
   report            Report?
+  trainingRecord    TrainingRecord?
   feedback          ScanFeedback?
   scanLedgers       ScanLedger[]
   chatConversations ChatConversation[]
@@ -824,6 +835,107 @@ model Report {
   updatedAt   DateTime     @updatedAt
 
   @@map("report")
+}
+
+enum TrainingRecordStatus {
+  /** De-identified and waiting for a qualified expert to review it. */
+  pending_validation
+  /** An expert confirmed or corrected it. Only these are ever exported. */
+  validated
+  /** An expert judged it unusable. Kept so it is not re-collected. */
+  rejected
+  /** Consent was revoked, or retention expired. Excluded and purgeable. */
+  withdrawn
+}
+
+enum TrainingVerdict {
+  /** The model's assessment was right. */
+  confirmed
+  /** The assessment was wrong; the corrected band is stored alongside. */
+  corrected
+  /** Unusable — poor input, ambiguous case, or not a real assessment. */
+  rejected
+}
+
+/**
+ * One candidate example for model training.
+ *
+ * `payload` is de-identified: no names, emails, ids, free text, precise dates
+ * or locations finer than country. That is what gets exported.
+ *
+ * The row itself is pseudonymous rather than anonymous — sourceUserId and
+ * sourceScanId are deliberately kept so consent can be revoked and retention
+ * enforced later. Without that link, a withdrawal request could not be honoured
+ * because there would be no way to find the person's records. Those columns are
+ * never part of an export.
+ */
+model TrainingRecord {
+  id           String              @id @default(cuid())
+  sourceScanId String              @unique
+  sourceScan   Scan                @relation(fields: [sourceScanId], references: [id], onDelete: Cascade)
+  sourceUserId String
+  sourceUser   User                @relation(fields: [sourceUserId], references: [id], onDelete: Cascade)
+  /** The clinic the scan belonged to, for tenant-scoped withdrawal. */
+  organizationId String?
+  organization   Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  status         TrainingRecordStatus @default(pending_validation)
+  payload        Json
+  /** Version of the de-identification rules used, so a later change is traceable. */
+  deidentVersion String
+  deidentifiedAt DateTime             @default(now())
+  withdrawnAt    DateTime?
+  withdrawnReason String?
+
+  validation TrainingValidation?
+
+  createdAt DateTime @default(now())
+
+  @@index([status])
+  @@index([sourceUserId])
+  @@index([organizationId])
+  @@map("training_record")
+}
+
+/** A qualified expert's judgement on one candidate example. */
+model TrainingValidation {
+  id               String          @id @default(cuid())
+  trainingRecordId String          @unique
+  trainingRecord   TrainingRecord  @relation(fields: [trainingRecordId], references: [id], onDelete: Cascade)
+  /** The reviewing ExpertProfile, so provenance survives a role change. */
+  expertId         String
+  expert           ExpertProfile   @relation(fields: [expertId], references: [id], onDelete: Restrict)
+  verdict          TrainingVerdict
+  correctedBand    AssessmentBand?
+  notes            String?
+  createdAt        DateTime        @default(now())
+
+  @@index([expertId])
+  @@map("training_validation")
+}
+
+/**
+ * Append-only record of who did what to sensitive data.
+ *
+ * Never updated or deleted by application code: an audit trail that can be
+ * edited is not an audit trail. Retention purges it on a schedule instead.
+ */
+model AuditLog {
+  id             String   @id @default(cuid())
+  /** Null for system actions such as a scheduled purge. */
+  actorId        String?
+  actorRole      String?
+  action         String
+  subjectType    String
+  subjectId      String?
+  organizationId String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  @@index([action, createdAt])
+  @@index([subjectType, subjectId])
+  @@index([organizationId, createdAt])
+  @@map("audit_log")
 }
 
 model ScanFeedback {
@@ -1005,6 +1117,14 @@ model ClinicSettings {
   customDomain           String?   @unique
   customDomainToken      String?
   customDomainVerifiedAt DateTime?
+
+  // Whether this clinic permits its patients' scans to be considered for model
+  // training. Off by default, and never sufficient on its own: the patient must
+  // also consent. A clinic's patients signed up with the clinic, so the clinic
+  // agreeing cannot stand in for the person whose health data it is.
+  allowTrainingContribution   Boolean   @default(false)
+  trainingContributionSetAt   DateTime?
+  trainingContributionSetById String?
 
   @@index([status])
   @@map("clinic_settings")

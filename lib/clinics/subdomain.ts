@@ -162,7 +162,19 @@ function firstLabelIfSingle(prefix: string): string | null {
 }
 
 /** Builds the public URL for a clinic, used in invites and admin links. */
-export function clinicUrl(subdomain: string, path = "/"): string {
+/**
+ * The public URL for a clinic.
+ *
+ * `origin` should be the origin the current request arrived on — see
+ * lib/clinics/request-origin.ts. Passing it keeps generated links correct on
+ * whatever host the app is actually served from, rather than baking in a
+ * configured value that goes stale the moment the deployment moves.
+ */
+export function clinicUrl(
+  subdomain: string,
+  path = "/",
+  origin?: string,
+): string {
   const root = rootDomain()
   const suffix = path.startsWith("/") ? path : `/${path}`
 
@@ -172,17 +184,23 @@ export function clinicUrl(subdomain: string, path = "/"): string {
 
   // Local development: *.localhost resolves to 127.0.0.1 in browsers with no
   // hosts-file entry, so real subdomains work here without any DNS.
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV !== "production" && !origin) {
     const port = process.env.PORT || "3000"
     return `http://${subdomain}.localhost:${port}${suffix}`
   }
 
   // Deployed with no wildcard domain — most often *.vercel.app, which cannot
   // host tenant subdomains at all. Link to the pinning route on this same
-  // origin instead of a subdomain that will never resolve. Previously this
-  // returned a localhost URL, which sent anyone clicking it off the deployment
-  // and onto their own machine.
-  const origin = appOrigin()
+  // origin instead of a subdomain that will never resolve.
+  const base = (origin ?? appOrigin()).replace(/\/$/, "")
+
+  // Locally a real subdomain still works and is the better link, since it
+  // exercises the same host-based routing production uses.
+  if (base.includes("localhost") && process.env.NODE_ENV !== "production") {
+    const port = process.env.PORT || "3000"
+    return `http://${subdomain}.localhost:${port}${suffix}`
+  }
+
   const target = suffix === "/" ? "" : `?next=${encodeURIComponent(suffix)}`
-  return `${origin}/c/${subdomain}${target}`
+  return `${base}/c/${subdomain}${target}`
 }

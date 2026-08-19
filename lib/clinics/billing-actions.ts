@@ -4,6 +4,7 @@ import { z } from "zod"
 
 import { requireClinicManager } from "@/lib/clinics/membership"
 import { clinicUrl } from "@/lib/clinics/subdomain"
+import { requestOrigin } from "@/lib/clinics/request-origin"
 import { prisma } from "@/lib/db/client"
 import { getStripeClient } from "@/lib/payments/stripe/client"
 
@@ -52,7 +53,7 @@ export async function startClinicCheckoutAction(input: unknown) {
     })
   }
 
-  const billingUrl = clinicUrl(session.tenant.subdomain, "/clinic/billing")
+  const billingUrl = clinicUrl(session.tenant.subdomain, "/clinic/billing", await requestOrigin())
 
   const checkout = await stripe.checkout.sessions.create({
     mode: "subscription",
@@ -88,7 +89,7 @@ export async function openClinicBillingPortalAction() {
 
   const portal = await getStripeClient().billingPortal.sessions.create({
     customer: clinic.stripeCustomerId,
-    return_url: clinicUrl(session.tenant.subdomain, "/clinic/billing"),
+    return_url: clinicUrl(session.tenant.subdomain, "/clinic/billing", await requestOrigin()),
   })
 
   return { url: portal.url }

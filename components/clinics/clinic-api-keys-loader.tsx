@@ -1,6 +1,7 @@
 import { ClinicApiKeys } from "@/components/clinics/clinic-api-keys"
 import { canManageClinic, requireClinicMember } from "@/lib/clinics/membership"
 import { clinicUrl } from "@/lib/clinics/subdomain"
+import { requestOrigin } from "@/lib/clinics/request-origin"
 import { prisma } from "@/lib/db/client"
 
 export async function ClinicApiKeysLoader() {
@@ -23,7 +24,11 @@ export async function ClinicApiKeysLoader() {
     <ClinicApiKeys
       keys={keys}
       canManage={canManageClinic(session.role)}
-      apiBaseUrl={clinicUrl(session.tenant.subdomain).replace(/\/$/, "")}
+      apiBaseUrl={clinicUrl(
+        session.tenant.subdomain,
+        "/",
+        await requestOrigin(),
+      ).replace(/\/$/, "")}
     />
   )
 }

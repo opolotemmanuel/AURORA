@@ -16,22 +16,25 @@ import {
   setClinicStatusAction,
 } from "@/lib/admin/clinic-actions"
 import type { AdminClinicRow } from "@/lib/admin/clinic-queries"
-import { clinicUrl } from "@/lib/clinics/subdomain"
+
 import { describeSubscriptionStatus } from "@/lib/clinics/subscription"
 import { formatMoneyCents } from "@/lib/payments/format"
 
 type PlanOption = { id: string; name: string; priceCents: number; interval: string }
 
+/** The public URL is built server-side, where the request host is available. */
+type ClinicRow = AdminClinicRow & { url: string }
+
 export function ClinicsTable({
   clinics,
   plans,
 }: {
-  clinics: AdminClinicRow[]
+  clinics: ClinicRow[]
   plans: PlanOption[]
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
-  const [deleting, setDeleting] = useState<AdminClinicRow | null>(null)
+  const [deleting, setDeleting] = useState<ClinicRow | null>(null)
 
   function run(work: () => Promise<unknown>, success: string) {
     startTransition(async () => {
@@ -56,7 +59,7 @@ export function ClinicsTable({
   return (
     <ul className="divide-border divide-y rounded-xl border border-border/60">
       {clinics.map((clinic) => {
-        const url = clinicUrl(clinic.subdomain)
+        const url = clinic.url
         const comped = !clinic.stripeSubscriptionId
 
         return (

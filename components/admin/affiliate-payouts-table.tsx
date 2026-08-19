@@ -42,48 +42,82 @@ export function AffiliatePayoutsTable({
     )
   }
 
+  const totalOwed = affiliates.reduce((sum, a) => sum + a.owedCents, 0)
+
   return (
     <>
-      <ul className="divide-y divide-border rounded-xl border border-border/60">
+      {totalOwed > 0 ? (
+        <div className="surface-panel mb-4 flex flex-wrap items-baseline justify-between gap-2 rounded-xl border border-border/60 p-5">
+          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            Total outstanding
+          </p>
+          <p className="font-heading text-2xl font-medium tabular-nums">
+            {formatMoneyCents(totalOwed, "USD")}
+          </p>
+        </div>
+      ) : null}
+
+      <div className="grid gap-4 lg:grid-cols-2">
         {affiliates.map((affiliate) => (
-          <li
+          <div
             key={affiliate.id}
-            className="flex flex-wrap items-center justify-between gap-4 p-5"
+            className="surface-panel flex flex-col gap-4 rounded-xl border border-border/60 p-5"
           >
-            <div>
+            <div className="space-y-1">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="font-medium">{affiliate.name}</p>
                 {affiliate.couponCode ? (
                   <Badge variant="outline">{affiliate.couponCode}</Badge>
                 ) : null}
               </div>
-              <p className="text-sm text-muted-foreground">{affiliate.email}</p>
-              <p className="text-xs text-muted-foreground">
-                {affiliate.orderCount} confirmed order
-                {affiliate.orderCount === 1 ? "" : "s"} · earned{" "}
-                {formatMoneyCents(affiliate.earnedCents, "USD")} · paid{" "}
-                {formatMoneyCents(affiliate.paidCents, "USD")}
-              </p>
+              <p className="text-muted-foreground text-sm">{affiliate.email}</p>
             </div>
-            <div className="flex items-center gap-3">
-              <p className="font-heading text-lg font-medium tabular-nums">
-                {formatMoneyCents(affiliate.owedCents, "USD")}
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={affiliate.owedCents <= 0}
-                onClick={() => {
-                  setTarget(affiliate)
-                  setOpen(true)
-                }}
-              >
-                Record payout
-              </Button>
-            </div>
-          </li>
+
+            <dl className="grid grid-cols-3 gap-3 rounded-lg border border-border/60 p-3 text-center">
+              <div>
+                <dt className="text-muted-foreground text-xs">Earned</dt>
+                <dd className="font-medium tabular-nums">
+                  {formatMoneyCents(affiliate.earnedCents, "USD")}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground text-xs">Paid</dt>
+                <dd className="font-medium tabular-nums">
+                  {formatMoneyCents(affiliate.paidCents, "USD")}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-muted-foreground text-xs">Owed</dt>
+                <dd
+                  className={`font-medium tabular-nums ${
+                    affiliate.owedCents > 0 ? "text-primary" : ""
+                  }`}
+                >
+                  {formatMoneyCents(affiliate.owedCents, "USD")}
+                </dd>
+              </div>
+            </dl>
+
+            <p className="text-muted-foreground text-xs">
+              {affiliate.orderCount} confirmed order
+              {affiliate.orderCount === 1 ? "" : "s"}
+            </p>
+
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-auto w-full"
+              disabled={affiliate.owedCents <= 0}
+              onClick={() => {
+                setTarget(affiliate)
+                setOpen(true)
+              }}
+            >
+              {affiliate.owedCents > 0 ? "Record payout" : "Nothing owed"}
+            </Button>
+          </div>
         ))}
-      </ul>
+      </div>
 
       <RecordPayoutDialog
         affiliate={target}

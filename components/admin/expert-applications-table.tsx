@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { IconMail, IconStethoscope } from "@tabler/icons-react"
 
 import {
   AlertDialog,
@@ -50,15 +51,68 @@ export function ExpertApplicationsTable({
 }: {
   applications: ExpertApplicationRow[]
 }) {
+  // Pending first: those are the ones needing a decision, and burying them
+  // under already-reviewed applications is what makes a queue get missed.
+  const pending = applications.filter((app) => app.status === "pending")
+  const reviewed = applications.filter((app) => app.status !== "pending")
+
+  if (applications.length === 0) {
+    return (
+      <div className="text-muted-foreground rounded-xl border border-border/60 p-6 text-sm">
+        No expert applications yet.
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {pending.length > 0 ? (
+        <section className="space-y-3">
+          <div className="flex items-center gap-2">
+            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+              Awaiting review
+            </p>
+            <Badge variant="secondary">{pending.length}</Badge>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {pending.map((app) => (
+              <ApplicationCard key={app.id} app={app} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {reviewed.length > 0 ? (
+        <section className="space-y-3">
+          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            Reviewed
+          </p>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {reviewed.map((app) => (
+              <ApplicationCard key={app.id} app={app} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * One application. The rejection note lives here rather than in the parent so
+ * each card keeps its own — a single shared value meant a reason typed for one
+ * applicant appeared in the next one's dialog.
+ */
+function ApplicationCard({ app }: { app: ExpertApplicationRow }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [reason, setReason] = useState("")
 
-  function approve(id: string) {
+  function approve() {
     startTransition(async () => {
       try {
-        await approveExpertApplicationAction(id)
-        toast.success("Expert approved")
+        await approveExpertApplicationAction(app.id)
+        toast.success(`${app.user.name} approved`)
         router.refresh()
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Approval failed")
@@ -66,10 +120,13 @@ export function ExpertApplicationsTable({
     })
   }
 
-  function reject(id: string) {
+  function reject() {
     startTransition(async () => {
       try {
-        await rejectExpertApplicationAction({ expertProfileId: id, reason })
+        await rejectExpertApplicationAction({
+          expertProfileId: app.id,
+          reason,
+        })
         toast.success("Application rejected")
         setReason("")
         router.refresh()
@@ -79,85 +136,104 @@ export function ExpertApplicationsTable({
     })
   }
 
-  if (applications.length === 0) {
-    return (
-      <div className="rounded-xl border border-border/60 p-6 text-sm text-muted-foreground">
-        No expert applications yet.
-      </div>
-    )
-  }
-
   return (
-    <ul className="divide-y divide-border rounded-xl border border-border/60">
-      {applications.map((app) => (
-        <li key={app.id} className="space-y-3 p-5">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="font-medium">{app.user.name}</p>
-                <Badge variant={statusVariant(app.status)}>{app.status}</Badge>
-                <Badge variant="outline">{SPECIALTY_LABELS[app.specialty]}</Badge>
-              </div>
-              <p className="text-sm text-muted-foreground">{app.user.email}</p>
-            </div>
-            <p className="font-heading text-sm font-medium tabular-nums">
-              {formatMoneyCents(app.consultationPriceCents, "USD")} / session
-            </p>
-          </div>
+    <div className="surface-panel flex flex-col gap-4 rounded-xl border border-border/60 p-5">
+      <div className="space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="font-medium">{app.user.name}</p>
+          <Badge variant={statusVariant(app.status)}>{app.status}</Badge>
+        </div>
 
-          <p className="text-sm font-medium">{app.headline}</p>
-          <p className="text-sm text-muted-foreground">{app.bio}</p>
-          <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
-            <p className="font-medium text-foreground">Credentials</p>
-            <p>{app.credentials}</p>
-            <p className="mt-1">{app.yearsExperience} years experience</p>
-          </div>
+        <div className="text-muted-foreground flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+          <span className="inline-flex items-center gap-1.5">
+            <IconMail className="size-3.5" />
+            {app.user.email}
+          </span>
+          <span className="inline-flex items-center gap-1.5">
+            <IconStethoscope className="size-3.5" />
+            {SPECIALTY_LABELS[app.specialty]}
+          </span>
+        </div>
+      </div>
 
-          {app.status === "rejected" && app.rejectionReason ? (
-            <p className="text-xs text-destructive">
-              Rejected: {app.rejectionReason}
-            </p>
-          ) : null}
+      <p className="text-sm">{app.headline}</p>
 
-          {app.status === "pending" ? (
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" disabled={pending} onClick={() => approve(app.id)}>
-                Approve
+      <dl className="grid grid-cols-3 gap-3 rounded-lg border border-border/60 p-3 text-center">
+        <div>
+          <dt className="text-muted-foreground text-xs">Experience</dt>
+          <dd className="font-medium tabular-nums">
+            {app.yearsExperience}
+            <span className="text-muted-foreground text-xs"> yrs</span>
+          </dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground text-xs">Consultation</dt>
+          <dd className="font-medium tabular-nums">
+            {formatMoneyCents(app.consultationPriceCents)}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground text-xs">Applied</dt>
+          <dd className="font-medium">
+            {app.appliedAt.toLocaleDateString(undefined, { dateStyle: "medium" })}
+          </dd>
+        </div>
+      </dl>
+
+      <details className="group">
+        <summary className="text-muted-foreground hover:text-foreground cursor-pointer text-xs">
+          Credentials and bio
+        </summary>
+        <div className="mt-2 space-y-2 text-sm">
+          <p className="text-muted-foreground">{app.credentials}</p>
+          <p className="text-muted-foreground">{app.bio}</p>
+        </div>
+      </details>
+
+      {app.status === "rejected" && app.rejectionReason ? (
+        <p className="border-destructive/30 bg-destructive/5 text-destructive rounded-lg border p-3 text-xs">
+          {app.rejectionReason}
+        </p>
+      ) : null}
+
+      {app.status === "pending" ? (
+        <div className="mt-auto flex flex-wrap gap-2 border-t border-border/60 pt-4">
+          <Button size="sm" disabled={pending} onClick={approve}>
+            Approve
+          </Button>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button size="sm" variant="destructive" disabled={pending}>
+                Reject
               </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="destructive" disabled={pending}>
-                    Reject
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Reject {app.user.name}?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Optionally explain why, shown to the applicant so they can
-                      resubmit.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <Textarea
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    placeholder="Reason (optional)"
-                    rows={3}
-                  />
-                  <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => setReason("")}>
-                      Cancel
-                    </AlertDialogCancel>
-                    <AlertDialogAction onClick={() => reject(app.id)}>
-                      Reject application
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          ) : null}
-        </li>
-      ))}
-    </ul>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Reject {app.user.name}?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Optionally explain why. The applicant sees this and can
+                  resubmit.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <Textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Reason (optional)"
+                rows={3}
+              />
+              <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setReason("")}>
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction onClick={reject}>
+                  Reject application
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      ) : null}
+    </div>
   )
 }

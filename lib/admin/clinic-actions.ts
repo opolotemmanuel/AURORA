@@ -6,6 +6,10 @@ import { z } from "zod"
 
 import { requireAdmin } from "@/lib/auth/session"
 import { clinicPlanSchema, createClinicSchema } from "@/lib/clinics/schemas"
+import {
+  createStripePriceForPlan,
+  stripePriceNeedsRefresh,
+} from "@/lib/clinics/stripe-price"
 import { prisma } from "@/lib/db/client"
 
 function revalidateClinics() {
@@ -164,10 +168,35 @@ export async function upsertClinicPlanAction(input: unknown) {
   const parsed = clinicPlanSchema.extend({ id: z.string().trim().optional() }).parse(input)
   const { id, ...data } = parsed
 
+  const previous = id
+    ? await prisma.clinicPlan.findUnique({
+        where: { id },
+        select: { priceCents: true, interval: true, stripePriceId: true },
+      })
+    : null
+
+  // An id typed by hand wins: the admin is pointing at a specific Stripe price
+  // and we should not quietly replace it with a generated one.
+  const manualPriceId =
+    data.stripePriceId && data.stripePriceId !== previous?.stripePriceId
+      ? data.stripePriceId
+      : null
+
+  let stripePriceId = data.stripePriceId ?? previous?.stripePriceId ?? undefined
+
+  if (!manualPriceId && stripePriceNeedsRefresh(previous, data)) {
+    // Stripe prices are immutable, so a changed amount needs a new one. See
+    // lib/clinics/stripe-price.ts.
+    const created = await createStripePriceForPlan(data)
+    if (created) stripePriceId = created
+  }
+
+  const record = { ...data, stripePriceId }
+
   if (id) {
-    await prisma.clinicPlan.update({ where: { id }, data })
+    await prisma.clinicPlan.update({ where: { id }, data: record })
   } else {
-    await prisma.clinicPlan.create({ data })
+    await prisma.clinicPlan.create({ data: record })
   }
 
   revalidateClinics()

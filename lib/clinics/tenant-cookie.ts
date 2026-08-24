@@ -15,6 +15,8 @@
  * a production tenant should rely on.
  */
 
+import { getSiteUrl } from "@/lib/site-url"
+
 export const TENANT_COOKIE = "aurora-tenant"
 
 /** Session-length: pinning should not outlive the browser session silently. */
@@ -36,14 +38,11 @@ export function hostBasedTenancyConfigured(): boolean {
 /**
  * The origin the app is actually served from, used to build clinic links when
  * there is no tenant root domain to hang a subdomain off.
+ *
+ * Prefers the stable production alias over this deployment's own unique URL
+ * (see getSiteUrl's preferStableAlias) — these links go out in invite emails
+ * and must still resolve once the preview deployment that sent them is gone.
  */
 export function appOrigin(): string {
-  const configured = process.env.BETTER_AUTH_URL?.trim()
-  if (configured) return configured.replace(/\/$/, "")
-
-  // Vercel sets this for every deployment, without a scheme.
-  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL
-  if (vercel) return `https://${vercel.replace(/^https?:\/\//, "").replace(/\/$/, "")}`
-
-  return `http://localhost:${process.env.PORT || "3000"}`
+  return getSiteUrl({ preferStableAlias: true })
 }

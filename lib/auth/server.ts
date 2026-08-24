@@ -9,9 +9,11 @@ import {
   getAffiliationByEmail,
 } from "@/lib/clinics/access-gate"
 import { extractSubdomain } from "@/lib/clinics/subdomain"
+import { requestOrigin } from "@/lib/clinics/request-origin"
 
 import { prisma } from "@/lib/db/client"
 import { sendOtpEmail } from "@/lib/email/send-otp"
+import { getPlatformOrigins, getSiteUrl } from "@/lib/site-url"
 
 const googleConfigured =
   Boolean(process.env.GOOGLE_CLIENT_ID) &&
@@ -113,6 +115,23 @@ const clinicIsolationHook = createAuthMiddleware(async (ctx) => {
  */
 async function trustedOriginsForRequest(request?: Request): Promise<string[]> {
   const origins = tenantTrustedOrigins()
+
+  // Trust the origin this request actually arrived on, but only when it is
+  // one this deployment can prove it owns: the production alias, the
+  // git-branch alias, or this specific deployment's own URL (all injected
+  // by the Vercel platform, never by the client), or the resolved
+  // getSiteUrl() origin. The Host header itself is client-supplied, so this
+  // allowlist check — not unconditional trust — is what keeps a spoofed
+  // Host from ever being accepted.
+  try {
+    const candidate = await requestOrigin()
+    if (getPlatformOrigins().includes(candidate)) {
+      origins.push(candidate)
+    }
+  } catch (error) {
+    console.error("[auth] Request origin resolution failed", error)
+  }
+
   if (!request) return origins
 
   let host: string | null = null
@@ -142,7 +161,7 @@ async function trustedOriginsForRequest(request?: Request): Promise<string[]> {
 
 export const auth = betterAuth({
   appName: "Aurora Organics",
-  baseURL: process.env.BETTER_AUTH_URL,
+  baseURL: getSiteUrl(),
   secret: process.env.BETTER_AUTH_SECRET,
   trustedOrigins: trustedOriginsForRequest,
   hooks: { before: clinicIsolationHook },

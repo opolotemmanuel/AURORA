@@ -1,3 +1,5 @@
+import { Suspense } from "react"
+import { TenantBanner } from "@/components/clinics/tenant-banner"
 import { EntitlementProvider } from "@/components/billing/entitlement-provider"
 import { ScanShell } from "@/components/layouts/scan-shell"
 import { ScanTooltipProvider } from "@/components/layouts/scan-tooltip-provider"
@@ -33,6 +35,14 @@ async function ScanAuthShellInner({
 
   return (
     <EntitlementProvider value={entitlement}>
+      {/* The scan page is where a clinic-attributed record is actually
+          created, and it sits outside the dashboard shell — so the banner is
+          repeated here rather than inherited. Under cookie pinning the
+          address bar still reads the platform host, so this is the only
+          thing on screen that says which clinic the scan will belong to. */}
+      <Suspense fallback={null}>
+        <TenantBanner userId={ctx.userId} />
+      </Suspense>
       <ScanTooltipProvider>
         <ScanShell>{children}</ScanShell>
       </ScanTooltipProvider>

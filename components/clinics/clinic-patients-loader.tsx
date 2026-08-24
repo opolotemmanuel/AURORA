@@ -1,13 +1,15 @@
 import { StatCard } from "@/components/dashboard/stat-card"
 import { Badge } from "@/components/ui/badge"
 import { requireClinicMember } from "@/lib/clinics/membership"
-import { listClinicScans } from "@/lib/clinics/queries"
+import { listScansForCurrentTenant } from "@/lib/scan/tenant-scans"
 import { formatLimit } from "@/lib/clinics/plan-limits"
 
 export async function ClinicPatientsLoader() {
   const session = await requireClinicMember()
   const { tenant } = session
-  const scans = await listClinicScans(session.scope)
+  // Permission check, tenant-scoped query and audit all happen in here —
+  // see lib/scan/tenant-scans.ts, the reference pattern for tenant reads.
+  const scans = await listScansForCurrentTenant()
 
   return (
     <div className="space-y-6">

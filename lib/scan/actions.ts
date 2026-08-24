@@ -40,6 +40,16 @@ function hasMeteredUsage(usage: UsageInput): boolean {
 }
 
 /** @deprecated Prefer analyzeScanAction for new scan flow. */
+/**
+ * @deprecated Unreachable — nothing imports this. The live write path is
+ * lib/scan/persist-scan-result.ts, reached through lib/scan/run-analyze.ts.
+ *
+ * Left in place rather than deleted because removing it was not part of this
+ * phase, but do not revive it without bringing it up to the reference pattern
+ * in lib/scan/tenant-scans.ts: it resolves the tenant correctly but does not
+ * write the scan.created audit entry that persist-scan-result now does, so a
+ * scan created through here would be attributed but not accounted for.
+ */
 export async function saveScanResultAction(
   input: SaveScanResultInput,
 ): Promise<SaveScanResult> {

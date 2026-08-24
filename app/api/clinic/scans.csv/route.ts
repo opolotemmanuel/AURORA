@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 
 import { buildClinicScanCsv } from "@/lib/clinics/analytics"
 import { resolveClinicSession } from "@/lib/clinics/membership"
+import { can } from "@/lib/clinics/permissions"
+import { recordAudit, recordDenied } from "@/lib/audit/log"
 
 /**
  * CSV export of the calling clinic's scans.
@@ -18,8 +20,36 @@ export async function GET() {
     return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
 
-  const csv = await buildClinicScanCsv(result.session.scope)
-  const filename = `${result.session.tenant.subdomain}-scans.csv`
+  const { session } = result
+
+  // Membership alone is not authorization: a member without SCAN_VIEW may
+  // not lift the whole patient list out as a file.
+  if (!can(session, "SCAN_VIEW")) {
+    await recordDenied({
+      action: "patient.exported",
+      subjectType: "clinic",
+      subjectId: session.tenant.organizationId,
+      actorId: session.userId,
+      actorRole: session.role,
+      organizationId: session.tenant.organizationId,
+      metadata: { permission: "SCAN_VIEW", format: "csv" },
+    })
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
+  }
+
+  const csv = await buildClinicScanCsv(session.scope)
+
+  // Bulk extraction of patient records is exactly what an audit is for.
+  await recordAudit({
+    action: "patient.exported",
+    subjectType: "clinic",
+    subjectId: session.tenant.organizationId,
+    actorId: session.userId,
+    actorRole: session.role,
+    organizationId: session.tenant.organizationId,
+    metadata: { format: "csv" },
+  })
+  const filename = `${session.tenant.subdomain}-scans.csv`
 
   return new NextResponse(csv, {
     headers: {

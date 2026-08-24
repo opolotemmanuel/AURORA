@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache"
 
 import { revalidateScanHistoryContext } from "@/lib/ai/context/cache-tags"
 import { recordAiUsage } from "@/lib/ai/usage/record-usage"
+import { recordAudit } from "@/lib/audit/log"
 import { getTenantOrganizationIdSafe } from "@/lib/clinics/tenant"
 import type { ScanCaptureMode } from "@/generated/prisma/client"
 import { CONSENT_VERSION } from "@/lib/onboarding/constants"
@@ -154,6 +155,19 @@ export async function persistScanResult(input: PersistScanResultInput) {
       latencyMs: input.latencyMs,
       costMicros: input.estimatedCostMicros,
       marginMicros: input.marginMicros ?? null,
+    })
+
+    // Both the person and the tenant, together. A platform administrator
+    // scanning inside a clinic must leave both behind, or the trail cannot
+    // answer "who did this, and on whose site". Never the assessment itself:
+    // the band, the summary and the image stay out of the audit metadata.
+    await recordAudit({
+      action: "scan.created",
+      subjectType: "scan",
+      subjectId: saved.scan.id,
+      actorId: input.userId,
+      organizationId,
+      metadata: { captureMode: input.captureMode ?? "still" },
     })
 
     revalidatePath("/reports")

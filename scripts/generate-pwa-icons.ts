@@ -41,11 +41,19 @@ const TARGETS: IconTarget[] = [
     note: "manifest icon (maskable), safe inside Android masks",
   },
   {
-    // Also read by lib/pdf/brand-logo.ts, so keep the path and size as they are.
     source: LOGO,
     out: "app/icon.png",
     size: 32,
-    note: "favicon and PDF header mark",
+    note: "favicon",
+  },
+  {
+    // Read by lib/pdf/brand-logo.ts. The PDF draws this into a 40pt box, which
+    // is about 167px at print resolution — the 32px favicon it used to reuse
+    // was soft on screen and worse on paper.
+    source: LOGO,
+    out: "public/icons/logo-print.png",
+    size: 512,
+    note: "PDF letterhead mark",
   },
   {
     source: LOGO,

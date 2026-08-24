@@ -23,7 +23,8 @@
     "db:seed-packs": "npx tsx scripts/seed-scan-packs.ts",
     "db:reset-domain": "npx tsx scripts/reset-domain-data.ts",
     "db:backfill-ai-usage": "npx tsx scripts/backfill-ai-usage.ts",
-    "eval": "npx tsx evals/run.ts"
+    "eval": "npx tsx evals/run.ts",
+    "gen:logo": "npx tsx scripts/generate-brand-logo.ts"
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.19",

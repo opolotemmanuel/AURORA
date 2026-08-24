@@ -17,6 +17,7 @@ import {
   THEME_COLOR_LIGHT,
   siteUrl,
 } from "@/lib/site"
+import { getSiteUrl } from "@/lib/site-url"
 import { cn } from "@/lib/utils"
 
 // Inter carries both body and headings. Cormorant stays reserved for display
@@ -52,7 +53,9 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  // Called directly (not via the siteUrl re-export) so canonical, og:url and
+  // og:image resolve against the origin actually serving this deployment.
+  metadataBase: new URL(getSiteUrl()),
   title: {
     default: SITE_TITLE,
     template: `%s | ${SITE_NAME}`,

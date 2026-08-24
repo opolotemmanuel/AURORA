@@ -3,6 +3,8 @@
  * app/manifest.ts, so the installed app and the page metadata never drift.
  */
 
+import { getSiteUrl } from "@/lib/site-url"
+
 export const SITE_NAME = "Aurora Organics"
 
 /** Home screen labels truncate hard, so the manifest gets the short form. */
@@ -29,8 +31,4 @@ export const BRAND_COLOR = "#ff6900"
  * Falls back to the deployment URL on Vercel, then to localhost in development,
  * so OG and canonical URLs resolve correctly in every environment.
  */
-export const siteUrl =
-  process.env.BETTER_AUTH_URL ||
-  (process.env.VERCEL_PROJECT_PRODUCTION_URL
-    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-    : "http://localhost:3000")
+export const siteUrl = getSiteUrl()

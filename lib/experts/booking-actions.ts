@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 
 import type { Booking } from "@/generated/prisma/client"
 import { requireSession } from "@/lib/auth/session"
+import { getTenantOrganizationIdSafe } from "@/lib/clinics/tenant"
 import { prisma } from "@/lib/db/client"
 import {
   confirmBookingPaymentSchema,
@@ -78,6 +79,12 @@ export async function startBookingCheckoutAction(
     customerName: profile.fullName,
   })
 
+  // A consultation booked inside a clinic's environment is that clinic's
+  // record. Null is a real state, not missing data: booked on the platform,
+  // it belongs to no clinic. Resolved through the same helper the scan write
+  // paths use, so booking and scan agree on which tenant a request is in.
+  const organizationId = await getTenantOrganizationIdSafe()
+
   try {
     await prisma.$transaction(async (tx) => {
       // Atomic claim: only succeeds if the slot is still unbooked, so two
@@ -94,6 +101,7 @@ export async function startBookingCheckoutAction(
         data: {
           id: bookingId,
           userId: session.user.id,
+          organizationId,
           expertId: slot.expertId,
           slotId: slot.id,
           notes: parsed.data.notes,

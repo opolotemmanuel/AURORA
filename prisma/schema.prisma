@@ -115,31 +115,51 @@ model Organization {
   metadata  String?
   createdAt DateTime @default(now())
 
-  members     Member[]
-  invitations Invitation[]
-  products    Product[]
-  scans       Scan[]
+  members         Member[]
+  invitations     Invitation[]
+  products        Product[]
+  scans           Scan[]
   // White-label config lives in its own model so this one stays exactly as
   // better-auth's organization plugin expects it.
-  clinic      ClinicSettings?
-  apiKeys     ApiKey[]
-  patients    ClinicPatient[]
+  clinic          ClinicSettings?
+  apiKeys         ApiKey[]
+  patients        ClinicPatient[]
   trainingRecords TrainingRecord[]
+  bookings        Booking[]
 
   @@map("organization")
 }
 
+/**
+ * Where a membership sits in its lifecycle.
+ * Revoking is a state change, not a delete: removing the row would destroy
+ * the record that the relationship ever existed, which is the thing an audit
+ * of tenant access most needs to show.
+ * `invited` is carried here for completeness, but the pending-invite workflow
+ * lives in Invitation and is not duplicated — a Member row is created only
+ * once an invitation is accepted.
+ */
+enum MembershipStatus {
+  active
+  invited
+  suspended
+  revoked
+}
+
 model Member {
-  id             String       @id
+  id             String           @id
   userId         String
   organizationId String
-  role           String       @default("member")
-  createdAt      DateTime     @default(now())
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  role           String           @default("member")
+  // Defaulted so every existing membership backfills to active on migration.
+  status         MembershipStatus @default(active)
+  createdAt      DateTime         @default(now())
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([userId, organizationId])
   @@index([organizationId])
+  @@index([userId, status])
   @@map("member")
 }
 
@@ -340,14 +360,14 @@ model UserProfile {
   // Separate, explicit, and off by default: consenting to have a scan analysed
   // is not consenting to have it improve a model. Revocable, and revoking
   // withdraws records already collected — see lib/training/consent.ts.
-  trainingConsent        Boolean          @default(false)
+  trainingConsent        Boolean   @default(false)
   trainingConsentAt      DateTime?
   trainingConsentVersion String?
-  onboardingStep         String           @default("welcome")
+  onboardingStep         String    @default("welcome")
   onboardingCompletedAt  DateTime?
-  expertReviewRequested  Boolean          @default(false)
-  createdAt              DateTime         @default(now())
-  updatedAt              DateTime         @updatedAt
+  expertReviewRequested  Boolean   @default(false)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   @@index([onboardingCompletedAt])
   @@map("user_profile")
@@ -574,9 +594,9 @@ model ExpertProfile {
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
 
-  availabilitySlots ExpertAvailabilitySlot[]
-  bookings          Booking[]
-  reviews           ExpertReview[]
+  availabilitySlots   ExpertAvailabilitySlot[]
+  bookings            Booking[]
+  reviews             ExpertReview[]
   trainingValidations TrainingValidation[]
 
   @@index([specialty, status])
@@ -605,9 +625,21 @@ model ExpertAvailabilitySlot {
 // to create on success), and keeping it separate avoids touching the
 // already-shipped scan-pack payment/receipt pipeline.
 model Booking {
-  id       String                 @id @default(cuid())
-  userId   String
-  user     User                   @relation("BookingUser", fields: [userId], references: [id], onDelete: Cascade)
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation("BookingUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  /**
+   * The clinic whose environment this booking was made in.
+   *
+   * Null is a real state, not missing data: a consultation booked on the
+   * platform belongs to no clinic. The expert stays global — one expert serves
+   * many clinics — so tenancy is recorded on the booking, never on
+   * ExpertProfile.
+   */
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
   expertId String
   expert   ExpertProfile          @relation(fields: [expertId], references: [id], onDelete: Cascade)
   slotId   String                 @unique
@@ -629,8 +661,8 @@ model Booking {
 
   review ExpertReview?
 
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
   confirmedAt        DateTime?
   completedAt        DateTime?
   cancelledAt        DateTime?
@@ -639,6 +671,7 @@ model Booking {
   @@index([userId, createdAt])
   @@index([expertId, createdAt])
   @@index([status])
+  @@index([organizationId, createdAt])
   @@map("booking")
 }
 
@@ -838,31 +871,43 @@ model Report {
 }
 
 enum TrainingRecordStatus {
-  /** De-identified and waiting for a qualified expert to review it. */
+  /**
+   * De-identified and waiting for a qualified expert to review it.
+   */
   pending_validation
-  /** An expert confirmed or corrected it. Only these are ever exported. */
+  /**
+   * An expert confirmed or corrected it. Only these are ever exported.
+   */
   validated
-  /** An expert judged it unusable. Kept so it is not re-collected. */
+  /**
+   * An expert judged it unusable. Kept so it is not re-collected.
+   */
   rejected
-  /** Consent was revoked, or retention expired. Excluded and purgeable. */
+  /**
+   * Consent was revoked, or retention expired. Excluded and purgeable.
+   */
   withdrawn
 }
 
 enum TrainingVerdict {
-  /** The model's assessment was right. */
+  /**
+   * The model's assessment was right.
+   */
   confirmed
-  /** The assessment was wrong; the corrected band is stored alongside. */
+  /**
+   * The assessment was wrong; the corrected band is stored alongside.
+   */
   corrected
-  /** Unusable — poor input, ambiguous case, or not a real assessment. */
+  /**
+   * Unusable — poor input, ambiguous case, or not a real assessment.
+   */
   rejected
 }
 
 /**
  * One candidate example for model training.
- *
  * `payload` is de-identified: no names, emails, ids, free text, precise dates
  * or locations finer than country. That is what gets exported.
- *
  * The row itself is pseudonymous rather than anonymous — sourceUserId and
  * sourceScanId are deliberately kept so consent can be revoked and retention
  * enforced later. Without that link, a withdrawal request could not be honoured
@@ -870,21 +915,25 @@ enum TrainingVerdict {
  * never part of an export.
  */
 model TrainingRecord {
-  id           String              @id @default(cuid())
-  sourceScanId String              @unique
-  sourceScan   Scan                @relation(fields: [sourceScanId], references: [id], onDelete: Cascade)
-  sourceUserId String
-  sourceUser   User                @relation(fields: [sourceUserId], references: [id], onDelete: Cascade)
-  /** The clinic the scan belonged to, for tenant-scoped withdrawal. */
+  id             String        @id @default(cuid())
+  sourceScanId   String        @unique
+  sourceScan     Scan          @relation(fields: [sourceScanId], references: [id], onDelete: Cascade)
+  sourceUserId   String
+  sourceUser     User          @relation(fields: [sourceUserId], references: [id], onDelete: Cascade)
+  /**
+   * The clinic the scan belonged to, for tenant-scoped withdrawal.
+   */
   organizationId String?
-  organization   Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
 
-  status         TrainingRecordStatus @default(pending_validation)
-  payload        Json
-  /** Version of the de-identification rules used, so a later change is traceable. */
-  deidentVersion String
-  deidentifiedAt DateTime             @default(now())
-  withdrawnAt    DateTime?
+  status          TrainingRecordStatus @default(pending_validation)
+  payload         Json
+  /**
+   * Version of the de-identification rules used, so a later change is traceable.
+   */
+  deidentVersion  String
+  deidentifiedAt  DateTime             @default(now())
+  withdrawnAt     DateTime?
   withdrawnReason String?
 
   validation TrainingValidation?
@@ -897,12 +946,16 @@ model TrainingRecord {
   @@map("training_record")
 }
 
-/** A qualified expert's judgement on one candidate example. */
+/**
+ * A qualified expert's judgement on one candidate example.
+ */
 model TrainingValidation {
   id               String          @id @default(cuid())
   trainingRecordId String          @unique
   trainingRecord   TrainingRecord  @relation(fields: [trainingRecordId], references: [id], onDelete: Cascade)
-  /** The reviewing ExpertProfile, so provenance survives a role change. */
+  /**
+   * The reviewing ExpertProfile, so provenance survives a role change.
+   */
   expertId         String
   expert           ExpertProfile   @relation(fields: [expertId], references: [id], onDelete: Restrict)
   verdict          TrainingVerdict
@@ -916,21 +969,36 @@ model TrainingValidation {
 
 /**
  * Append-only record of who did what to sensitive data.
- *
  * Never updated or deleted by application code: an audit trail that can be
  * edited is not an audit trail. Retention purges it on a schedule instead.
  */
+/**
+ * Whether the audited action was carried out, refused, or failed.
+ */
+enum AuditResult {
+  success
+  denied
+  failure
+}
+
 model AuditLog {
-  id             String   @id @default(cuid())
-  /** Null for system actions such as a scheduled purge. */
+  id             String      @id @default(cuid())
+  /**
+   * Null for system actions such as a scheduled purge.
+   */
   actorId        String?
   actorRole      String?
   action         String
   subjectType    String
   subjectId      String?
   organizationId String?
+  result         AuditResult @default(success)
+  /**
+   * Correlates entries written while serving one request.
+   */
+  requestId      String?
   metadata       Json?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime    @default(now())
 
   @@index([action, createdAt])
   @@index([subjectType, subjectId])

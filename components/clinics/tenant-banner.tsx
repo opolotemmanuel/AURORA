@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { IconBuildingHospital } from "@tabler/icons-react"
 
-import { getAffiliationByUserId } from "@/lib/clinics/access-gate"
+import { belongsToTenant, getAffiliationByUserId } from "@/lib/clinics/access-gate"
 import { resolveTenant } from "@/lib/clinics/tenant"
 import { isPinnedTenancy } from "@/lib/clinics/tenant-mode"
 
@@ -29,7 +29,9 @@ export async function TenantBanner({ userId }: { userId: string }) {
   }
 
   const affiliation = await getAffiliationByUserId(userId)
-  const belongsHere = affiliation?.organizationId === organizationId
+  const belongsHere = affiliation
+    ? belongsToTenant(affiliation, organizationId)
+    : false
 
   // The pin is the only tenant selection a person can undo from inside the app.
   // On a real subdomain you leave by going to another host, so offering an

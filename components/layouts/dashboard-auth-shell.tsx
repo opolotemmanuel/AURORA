@@ -1,7 +1,9 @@
+import { Suspense } from "react"
 import type { ReactNode } from "react"
 import { cookies } from "next/headers"
 
 import { ImpersonationBanner } from "@/components/admin/impersonation-banner"
+import { TenantBanner } from "@/components/clinics/tenant-banner"
 import { EntitlementProvider } from "@/components/billing/entitlement-provider"
 import { DashboardShell } from "@/components/layouts/dashboard-shell"
 import { scheduleAiScanContextWarmup } from "@/lib/ai/context/warm"
@@ -71,6 +73,11 @@ async function DashboardAuthShellInner({
   return (
     <EntitlementProvider value={entitlement}>
       {isImpersonating ? <ImpersonationBanner /> : null}
+      {/* Says which clinic's site this is. Branding alone does not: it reads
+          as the clinic's product rather than as a context you are inside. */}
+      <Suspense fallback={null}>
+        <TenantBanner userId={ctx.userId} />
+      </Suspense>
       <DashboardShell
         role={ctx.role}
         userName={ctx.user.name}

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 
 import type { Booking } from "@/generated/prisma/client"
 import { requireSession } from "@/lib/auth/session"
+import { recordAudit } from "@/lib/audit/log"
 import { getTenantOrganizationIdSafe } from "@/lib/clinics/tenant"
 import { prisma } from "@/lib/db/client"
 import {
@@ -112,6 +113,22 @@ export async function startBookingCheckoutAction(
           paymentRef: intent.ref,
         },
       })
+    })
+
+    // Inside the try and after the transaction, so a booking that lost the
+    // slot race is never audited as created. Actor and tenant together;
+    // organizationId is null for a booking made on the platform, which is a
+    // real state rather than missing data.
+    await recordAudit({
+      action: "appointment.created",
+      subjectType: "booking",
+      subjectId: bookingId,
+      actorId: session.user.id,
+      organizationId,
+      metadata: {
+        expertId: slot.expertId,
+        amountCents: slot.expert.consultationPriceCents,
+      },
     })
   } catch (error) {
     // Distinguish a genuine double-booking from a transient DB error (the
@@ -276,6 +293,17 @@ export async function finalizeBookingIntent(
   })
 
   if (claimed.count > 0) {
+    // Only the attempt that actually flipped the row audits the transition,
+    // so a double submit leaves one entry rather than two.
+    await recordAudit({
+      action: "appointment.confirmed",
+      subjectType: "booking",
+      subjectId: booking.id,
+      actorId: booking.userId,
+      organizationId: booking.organizationId,
+      metadata: { amountCents: booking.amountCents },
+    })
+
     const slot = await prisma.expertAvailabilitySlot.findUnique({
       where: { id: booking.slotId },
     })

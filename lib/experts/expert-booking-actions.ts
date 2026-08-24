@@ -1,5 +1,6 @@
 "use server"
 
+import { recordAudit } from "@/lib/audit/log"
 import { revalidatePath } from "next/cache"
 
 import { requireExpert } from "@/lib/auth/session"
@@ -36,6 +37,18 @@ export async function markBookingCompletedAction(
   await prisma.booking.update({
     where: { id: bookingId },
     data: { status: "completed", completedAt: new Date() },
+  })
+
+  // The expert is the actor here, not the patient. The tenant comes off the
+  // booking rather than the request: an expert serves many clinics, so their
+  // own session says nothing about which clinic this consultation belonged to.
+  await recordAudit({
+    action: "appointment.completed",
+    subjectType: "booking",
+    subjectId: bookingId,
+    actorId: session.user.id,
+    actorRole: "expert",
+    organizationId: booking.organizationId,
   })
 
   revalidatePath("/expert")

@@ -87,3 +87,116 @@ export async function listClinicInvitations(organizationId: TenantScope) {
 export type ClinicInvitationRow = Awaited<
   ReturnType<typeof listClinicInvitations>
 >[number]
+
+/**
+ * People registered as patients of one clinic.
+ *
+ * ClinicPatient.organizationId is the authoritative patient-to-tenant boundary.
+ * Until now nothing queried it: the clinic dashboard listed *scans* and derived
+ * patient details from them, so a patient who had registered but not yet
+ * scanned was invisible to their own clinic.
+ */
+export async function listClinicPatients(organizationId: TenantScope, take = 200) {
+  const patients = await prisma.clinicPatient.findMany({
+    where: { organizationId },
+    orderBy: { createdAt: "desc" },
+    take,
+    select: {
+      id: true,
+      createdAt: true,
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          _count: { select: { scans: true } },
+        },
+      },
+    },
+  })
+
+  return patients.map((patient) => ({
+    id: patient.id,
+    userId: patient.user.id,
+    name: patient.user.name,
+    email: patient.user.email,
+    scanCount: patient.user._count.scans,
+    joinedAt: patient.createdAt,
+  }))
+}
+
+export type ClinicPatientRow = Awaited<ReturnType<typeof listClinicPatients>>[number]
+
+export async function countClinicPatients(organizationId: TenantScope) {
+  return prisma.clinicPatient.count({ where: { organizationId } })
+}
+
+/**
+ * Consultations booked inside one clinic.
+ *
+ * Booking.organizationId was added in Phase 2 and, until now, only written.
+ * The expert stays global — one expert serves many clinics — so the tenant
+ * boundary is the booking, never the expert.
+ */
+export async function listClinicAppointments(
+  organizationId: TenantScope,
+  take = 100,
+) {
+  const bookings = await prisma.booking.findMany({
+    where: { organizationId },
+    orderBy: { createdAt: "desc" },
+    take,
+    select: {
+      id: true,
+      status: true,
+      createdAt: true,
+      amountCents: true,
+      currency: true,
+      slot: { select: { startTime: true, endTime: true } },
+      user: { select: { name: true, email: true } },
+      expert: { select: { user: { select: { name: true } } } },
+    },
+  })
+
+  return bookings.map((booking) => ({
+    id: booking.id,
+    status: booking.status,
+    createdAt: booking.createdAt,
+    startTime: booking.slot.startTime,
+    endTime: booking.slot.endTime,
+    amountCents: booking.amountCents,
+    currency: booking.currency,
+    patientName: booking.user.name,
+    patientEmail: booking.user.email,
+    expertName: booking.expert.user.name,
+  }))
+}
+
+export type ClinicAppointmentRow = Awaited<
+  ReturnType<typeof listClinicAppointments>
+>[number]
+
+/**
+ * One consultation, but only if it belongs to this tenant.
+ *
+ * findFirst with the scope in the where clause, never findUnique on the id
+ * alone: an id is guessable, and a lookup by id that is filtered afterwards has
+ * already read another tenant's row by the time the check runs.
+ */
+export async function findClinicAppointment(
+  organizationId: TenantScope,
+  bookingId: string,
+) {
+  return prisma.booking.findFirst({
+    where: { id: bookingId, organizationId },
+    select: {
+      id: true,
+      status: true,
+      createdAt: true,
+      videoRoomUrl: true,
+      slot: { select: { startTime: true, endTime: true } },
+      user: { select: { name: true, email: true } },
+      expert: { select: { user: { select: { name: true } } } },
+    },
+  })
+}

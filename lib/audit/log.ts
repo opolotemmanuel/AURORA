@@ -41,6 +41,8 @@ export type AuditAction =
   | "report.viewed"
   // Appointments
   | "appointment.created"
+  | "appointment.viewed"
+  | "appointment.confirmed"
   | "appointment.cancelled"
   | "appointment.completed"
   // Money

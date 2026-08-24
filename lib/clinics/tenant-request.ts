@@ -26,7 +26,7 @@ export function isTenantRequest({
   /** Value of the tenant pin cookie, if the browser sent one. */
   pinnedTenant: string | null | undefined
 }): boolean {
-  if (extractSubdomain(host)) return true
+  if (selectedTenantSubdomain({ host, pinnedTenant })) return true
 
   // Verified custom domains are rows in the database, which is unreachable from
   // the edge. But when a root domain is configured the platform's own hosts are
@@ -42,8 +42,57 @@ export function isTenantRequest({
     }
   }
 
-  // Last, and only where the host can carry no tenant at all, so a cookie can
-  // never override real host-based routing.
-  if (hostBasedTenancyConfigured()) return false
-  return Boolean(pinnedTenant)
+  return false
+}
+
+/**
+ * The clinic subdomain identifying this request, or null for the platform.
+ *
+ * The single expression of "host first, pin cookie only where the host can
+ * carry no tenant". Anywhere that needs to know *which* clinic — as opposed to
+ * merely whether there is one — should resolve it through here, so a new caller
+ * cannot quietly reintroduce a host-only check.
+ *
+ * Says nothing about custom domains: those are rows in the database and cannot
+ * be recognised from a string. A caller that can query resolves them itself,
+ * after this returns null.
+ */
+export function selectedTenantSubdomain({
+  host,
+  pinnedTenant,
+}: {
+  host: string | null | undefined
+  pinnedTenant: string | null | undefined
+}): string | null {
+  const fromHost = extractSubdomain(host)
+  if (fromHost) return fromHost
+
+  // Only where the host can carry no tenant at all, so a cookie can never
+  // override real host-based routing.
+  if (hostBasedTenancyConfigured()) return null
+
+  const pinned = pinnedTenant?.trim().toLowerCase()
+  return pinned || null
+}
+
+/**
+ * One cookie value out of a raw Cookie header.
+ *
+ * The auth hook is handed the request's headers rather than running inside
+ * Next's request helpers, so there is no cookies() to call there.
+ */
+export function readCookie(
+  cookieHeader: string | null | undefined,
+  name: string,
+): string | null {
+  if (!cookieHeader) return null
+
+  for (const part of cookieHeader.split(";")) {
+    const eq = part.indexOf("=")
+    if (eq === -1) continue
+    if (part.slice(0, eq).trim() !== name) continue
+    return decodeURIComponent(part.slice(eq + 1).trim()) || null
+  }
+
+  return null
 }

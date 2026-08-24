@@ -1,7 +1,11 @@
 import assert from "node:assert/strict"
 import { afterEach, describe, it } from "node:test"
 
-import { isTenantRequest } from "@/lib/clinics/tenant-request"
+import {
+  isTenantRequest,
+  readCookie,
+  selectedTenantSubdomain,
+} from "@/lib/clinics/tenant-request"
 
 const ROOT = "NEXT_PUBLIC_TENANT_ROOT_DOMAIN"
 
@@ -89,5 +93,75 @@ describe("isTenantRequest — malformed input", () => {
     withRoot(undefined)
     assert.equal(isTenantRequest({ host: null, pinnedTenant: null }), false)
     assert.equal(isTenantRequest({ host: "", pinnedTenant: null }), false)
+  })
+})
+
+describe("selectedTenantSubdomain", () => {
+  it("reads the subdomain from the host", () => {
+    withRoot("aurora.app")
+    assert.equal(
+      selectedTenantSubdomain({ host: "wellderm.aurora.app", pinnedTenant: null }),
+      "wellderm",
+    )
+  })
+
+  // The sign-in gate depends on this. Without it hostOrganizationId returned
+  // null on every *.vercel.app deployment, so decideAccess was told the clinic
+  // account was being used on the platform and refused it.
+  it("falls back to the pin cookie where the host carries no tenant", () => {
+    withRoot(undefined)
+    assert.equal(
+      selectedTenantSubdomain({ host: "aurora-5spm-zeta.vercel.app", pinnedTenant: "wellderm" }),
+      "wellderm",
+    )
+  })
+
+  it("normalises a pinned value", () => {
+    withRoot(undefined)
+    assert.equal(
+      selectedTenantSubdomain({ host: "localhost:3000", pinnedTenant: "  WellDerm  " }),
+      "wellderm",
+    )
+    assert.equal(selectedTenantSubdomain({ host: "localhost:3000", pinnedTenant: "  " }), null)
+  })
+
+  it("never lets the cookie override a host that names a tenant", () => {
+    withRoot("aurora.app")
+    assert.equal(
+      selectedTenantSubdomain({ host: "wellderm.aurora.app", pinnedTenant: "edabo" }),
+      "wellderm",
+    )
+    // Host-based tenancy configured: the cookie is not a second mechanism.
+    assert.equal(
+      selectedTenantSubdomain({ host: "aurora.app", pinnedTenant: "edabo" }),
+      null,
+    )
+  })
+
+  it("is null for the platform", () => {
+    withRoot(undefined)
+    assert.equal(selectedTenantSubdomain({ host: "localhost:3000", pinnedTenant: null }), null)
+  })
+})
+
+describe("readCookie", () => {
+  it("finds the named cookie among others", () => {
+    assert.equal(readCookie("a=1; aurora-tenant=wellderm; b=2", "aurora-tenant"), "wellderm")
+    assert.equal(readCookie("aurora-tenant=edabo", "aurora-tenant"), "edabo")
+  })
+
+  it("does not match a cookie whose name merely ends with the target", () => {
+    assert.equal(readCookie("not-aurora-tenant=sneaky", "aurora-tenant"), null)
+  })
+
+  it("returns null for absent, empty or malformed headers", () => {
+    assert.equal(readCookie(null, "aurora-tenant"), null)
+    assert.equal(readCookie("", "aurora-tenant"), null)
+    assert.equal(readCookie("aurora-tenant=", "aurora-tenant"), null)
+    assert.equal(readCookie("novalue", "aurora-tenant"), null)
+  })
+
+  it("decodes an encoded value", () => {
+    assert.equal(readCookie("aurora-tenant=well%2Dderm", "aurora-tenant"), "well-derm")
   })
 })

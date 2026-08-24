@@ -8,7 +8,9 @@ import {
   decideAccess,
   getAffiliationByEmail,
 } from "@/lib/clinics/access-gate"
-import { extractSubdomain } from "@/lib/clinics/subdomain"
+import { normalizeHostname } from "@/lib/clinics/subdomain"
+import { readCookie, selectedTenantSubdomain } from "@/lib/clinics/tenant-request"
+import { TENANT_COOKIE } from "@/lib/clinics/tenant-cookie"
 import { requestOrigin } from "@/lib/clinics/request-origin"
 
 import { prisma } from "@/lib/db/client"
@@ -56,18 +58,47 @@ function tenantTrustedOrigins(): string[] {
 }
 
 /**
- * Resolves the clinic that owns the host this request arrived on, from the raw
- * Host header — the auth hook runs outside Next's request helpers.
+ * Resolves the clinic whose site this request is for, from the raw headers —
+ * the auth hook runs outside Next's request helpers, so there is no cookies()
+ * or headers() to call here.
+ *
+ * Reads the same host-then-pin-cookie precedence as lib/clinics/tenant.ts. It
+ * used to read the Host header alone, which made every clinic account
+ * unsignable-in on a deployment without a wildcard domain: the host is the
+ * platform's for every tenant there, so this returned null, and decideAccess
+ * correctly refused a clinic account on what it was told was the platform —
+ * "This account belongs to a clinic. Please sign in on your clinic's own site."
+ * The rule was right; the input was wrong.
+ *
+ * A verified custom domain identifies a clinic just as a subdomain does, and
+ * was missed here for the same reason.
  */
 async function hostOrganizationId(headers: Headers | undefined): Promise<string | null> {
-  const subdomain = extractSubdomain(headers?.get("host"))
-  if (!subdomain) return null
+  const host = headers?.get("host") ?? null
 
-  const clinic = await prisma.clinicSettings.findUnique({
-    where: { subdomain },
-    select: { organizationId: true },
+  const subdomain = selectedTenantSubdomain({
+    host,
+    pinnedTenant: readCookie(headers?.get("cookie"), TENANT_COOKIE),
   })
-  return clinic?.organizationId ?? null
+
+  if (subdomain) {
+    const clinic = await prisma.clinicSettings.findUnique({
+      where: { subdomain },
+      select: { organizationId: true },
+    })
+    return clinic?.organizationId ?? null
+  }
+
+  const normalized = normalizeHostname(host)
+  if (!normalized) return null
+
+  const byDomain = await prisma.clinicSettings.findUnique({
+    where: { customDomain: normalized },
+    select: { organizationId: true, customDomainVerifiedAt: true },
+  })
+
+  // An unproven domain is not this clinic's to be signed in on.
+  return byDomain?.customDomainVerifiedAt ? byDomain.organizationId : null
 }
 
 /**

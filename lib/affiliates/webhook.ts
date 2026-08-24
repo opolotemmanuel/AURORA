@@ -1,3 +1,4 @@
+import { SYSTEM_ACTOR, recordAudit } from "@/lib/audit/log"
 import { createHmac, timingSafeEqual } from "node:crypto"
 
 import { prisma } from "@/lib/db/client"
@@ -78,11 +79,17 @@ export async function processWooCommerceOrder(
   })
 
   if (existing) {
+    // Status and totals may move as the order progresses; the affiliate may
+    // not. A later webhook carrying a different coupon would otherwise hand
+    // the commission to someone else after the fact.
     await prisma.affiliateOrder.update({
       where: { id: existing.id },
       data: { status, orderTotalCents, currency: payload.currency },
     })
-    return { handled: true, affiliateId: affiliate.id, status }
+    // Reports the affiliate actually credited, not the one on this delivery —
+    // they differ precisely in the re-attribution case, which is the one worth
+    // being able to see in a log.
+    return { handled: true, affiliateId: existing.affiliateId, status }
   }
 
   const settings = await getAffiliateSettings()
@@ -102,6 +109,21 @@ export async function processWooCommerceOrder(
       commissionAmountCents,
       customerEmail: payload.billing?.email ?? null,
       placedAt: new Date(),
+    },
+  })
+
+  // Commission was created. The affiliate programme is platform-wide, so
+  // there is no organizationId here — attributing it to whichever clinic a
+  // shopper happened to browse would invent a relationship.
+  await recordAudit({
+    action: "affiliate.order_attributed",
+    subjectType: "affiliate",
+    subjectId: affiliate.id,
+    ...SYSTEM_ACTOR,
+    metadata: {
+      wooCommerceOrderId: payload.id,
+      status,
+      commissionAmountCents,
     },
   })
 

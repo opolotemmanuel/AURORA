@@ -1,5 +1,6 @@
 "use server"
 
+import { recordAudit } from "@/lib/audit/log"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
@@ -70,6 +71,23 @@ export async function deleteClinicAction(input: unknown) {
   console.warn(
     `[admin] Clinic deleted: ${clinic.displayName} (${clinic.subdomain}) by ${session.user.id}. ${detachedScans} scan(s) detached and retained for their patients.`,
   )
+
+  // Written before the rows go, and to the audit table rather than only to
+  // the server log: a console line is ephemeral and unqueryable, which is how
+  // a whole tenant can disappear leaving nothing to point at afterwards.
+  await recordAudit({
+    action: "tenant.deleted",
+    subjectType: "clinic",
+    subjectId: clinic.organizationId,
+    actorId: session.user.id,
+    actorRole: "admin",
+    organizationId: clinic.organizationId,
+    metadata: {
+      subdomain: clinic.subdomain,
+      displayName: clinic.displayName,
+      detachedScans,
+    },
+  })
 
   await prisma.organization.delete({ where: { id: clinic.organizationId } })
 

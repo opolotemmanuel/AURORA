@@ -1,5 +1,6 @@
 "use server"
 
+import { recordAudit } from "@/lib/audit/log"
 import { randomUUID } from "node:crypto"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
@@ -99,12 +100,23 @@ const statusSchema = z.object({
 })
 
 export async function setClinicStatusAction(input: unknown) {
-  await requireAdmin()
+  const session = await requireAdmin()
   const { clinicId, status } = statusSchema.parse(input)
 
-  await prisma.clinicSettings.update({
+  const clinic = await prisma.clinicSettings.update({
     where: { id: clinicId },
     data: { status },
+    select: { organizationId: true, subdomain: true },
+  })
+
+  await recordAudit({
+    action: status === "suspended" ? "tenant.suspended" : "tenant.updated",
+    subjectType: "clinic",
+    subjectId: clinic.organizationId,
+    actorId: session.user.id,
+    actorRole: "admin",
+    organizationId: clinic.organizationId,
+    metadata: { subdomain: clinic.subdomain, status },
   })
 
   revalidateClinics()
@@ -116,12 +128,23 @@ const planAssignSchema = z.object({
 })
 
 export async function setClinicPlanAction(input: unknown) {
-  await requireAdmin()
+  const session = await requireAdmin()
   const { clinicId, planId } = planAssignSchema.parse(input)
 
-  await prisma.clinicSettings.update({
+  const clinic = await prisma.clinicSettings.update({
     where: { id: clinicId },
     data: { planId },
+    select: { organizationId: true, subdomain: true },
+  })
+
+  await recordAudit({
+    action: "tenant.plan_changed",
+    subjectType: "clinic",
+    subjectId: clinic.organizationId,
+    actorId: session.user.id,
+    actorRole: "admin",
+    organizationId: clinic.organizationId,
+    metadata: { subdomain: clinic.subdomain, planId },
   })
 
   revalidateClinics()

@@ -1,3 +1,4 @@
+import { SYSTEM_ACTOR, recordAudit } from "@/lib/audit/log"
 import type Stripe from "stripe"
 
 import { prisma } from "@/lib/db/client"
@@ -22,7 +23,7 @@ export async function syncClinicSubscription(
         { stripeCustomerId: subscriptionCustomerId(subscription) ?? "__none__" },
       ],
     },
-    select: { id: true, currentPeriodEnd: true, planId: true },
+    select: { id: true, organizationId: true, currentPeriodEnd: true, planId: true },
   })
 
   if (!clinic) {
@@ -62,6 +63,21 @@ export async function syncClinicSubscription(
         : {}),
     },
   })
+  // A webhook has no browser user, so this is recorded as a system action
+  // rather than attributed to whoever happened to be signed in. The clinic
+  // came from a Stripe id in a signature-verified event, never from a caller.
+  await recordAudit({
+    action:
+      subscription.status === "canceled"
+        ? "subscription.cancelled"
+        : "subscription.updated",
+    subjectType: "subscription",
+    subjectId: subscription.id,
+    ...SYSTEM_ACTOR,
+    organizationId: clinic.organizationId,
+    metadata: { status: subscription.status },
+  })
+
 
   return { handled: true }
 }

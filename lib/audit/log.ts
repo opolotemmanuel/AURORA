@@ -26,6 +26,8 @@ export type AuditAction =
   | "tenant.created"
   | "tenant.updated"
   | "tenant.suspended"
+  | "tenant.deleted"
+  | "tenant.comp_access_changed"
   | "tenant.plan_changed"
   // Membership lifecycle — who may act inside a tenant
   | "membership.created"
@@ -48,6 +50,11 @@ export type AuditAction =
   // Money
   | "payment.completed"
   | "payment.failed"
+  | "subscription.created"
+  | "subscription.updated"
+  | "subscription.cancelled"
+  | "affiliate.order_attributed"
+  | "affiliate.payout_recorded"
   // Marketplace approvals
   | "expert.approved"
   | "expert.rejected"
@@ -78,6 +85,7 @@ export type AuditEntry = {
     | "payment"
     | "expert"
     | "affiliate"
+    | "subscription"
     | "training_record"
     | "dataset"
   subjectId?: string | null
@@ -98,6 +106,16 @@ export type AuditEntry = {
   /** Never put patient content, secrets or payment credentials here. */
   metadata?: Record<string, unknown>
 }
+
+/**
+ * A webhook or scheduled job has no browser user behind it.
+ *
+ * Recorded as actorId null with actorRole "system" rather than by inventing
+ * a user: a fabricated actor is worse than an honest absence, because it
+ * makes an unattributable action look attributable. The null actorId is the
+ * convention the schema already documents for a scheduled purge.
+ */
+export const SYSTEM_ACTOR = { actorId: null, actorRole: "system" } as const
 
 export async function recordAudit(entry: AuditEntry): Promise<void> {
   try {

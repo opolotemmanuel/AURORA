@@ -2,7 +2,8 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { getSessionCookie } from "better-auth/cookies"
 
-import { extractSubdomain } from "@/lib/clinics/subdomain"
+import { isTenantRequest } from "@/lib/clinics/tenant-request"
+import { TENANT_COOKIE } from "@/lib/clinics/tenant-cookie"
 
 /**
  * Next.js 16+: use `proxy.ts` (not `middleware.ts`).
@@ -23,12 +24,18 @@ export function proxy(request: NextRequest) {
 
   const sessionCookie = getSessionCookie(request)
 
-  // On a clinic's own subdomain, "/" is that clinic's front door rather than
+  // On a clinic's own site, "/" is that clinic's front door rather than
   // Aurora's marketing page, and it stays reachable signed in or out. Rewritten
-  // (not redirected) so the visitor keeps seeing the clinic's bare domain.
+  // (not redirected) so the visitor keeps seeing the clinic's own address.
   // /clinic-home renders not-found on the platform host, so this is the only
   // way to reach it.
-  if (pathname === "/" && extractSubdomain(request.headers.get("host"))) {
+  if (
+    pathname === "/" &&
+    isTenantRequest({
+      host: request.headers.get("host"),
+      pinnedTenant: request.cookies.get(TENANT_COOKIE)?.value,
+    })
+  ) {
     return NextResponse.rewrite(new URL("/clinic-home", request.url))
   }
 

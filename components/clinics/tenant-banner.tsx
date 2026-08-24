@@ -16,7 +16,7 @@ import { isPinnedTenancy } from "@/lib/clinics/tenant-mode"
  * It matters most for platform administrators, who are allowed onto every
  * tenant by lib/clinics/access-gate.ts. Records they create here are attributed
  * to the clinic, not to Aurora: a scan carries both the user who took it and
- * the organization it was taken on (lib/scan/actions.ts). That is what keeps
+ * the organization it was taken on (lib/scan/persist-scan-result.ts). That is what keeps
  * an administrator's actions auditable, and it should not be a surprise.
  */
 export async function TenantBanner({ userId }: { userId: string }) {

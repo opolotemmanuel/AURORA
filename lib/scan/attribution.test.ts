@@ -16,10 +16,10 @@ import { describe, it } from "node:test"
  * a real photograph and a live AI request.
  */
 
-const WRITE_PATHS = [
-  "lib/scan/actions.ts",
-  "lib/scan/persist-scan-result.ts",
-]
+// The single live write path. lib/scan/actions.ts held a second one until it
+// was removed as unreachable: nothing imported it, and it was absent from the
+// server-reference manifest, so it had no action id to be called by.
+const WRITE_PATHS = ["lib/scan/persist-scan-result.ts"]
 
 describe("scan attribution", () => {
   for (const path of WRITE_PATHS) {

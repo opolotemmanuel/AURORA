@@ -41,6 +41,11 @@ const fontMono = Geist_Mono({
 
 const SITE_TITLE = `${SITE_NAME} | ${SITE_TAGLINE}`
 
+// VERCEL_ENV is "production", "preview", or "development" on Vercel, and
+// unset locally — every case other than "production" must stay out of
+// search results, or a preview alias ends up indexed under its own URL.
+const isProductionDeployment = process.env.VERCEL_ENV === "production"
+
 // Painted by the browser outside the document (mobile status bar, installed
 // titlebar), so it has to follow the theme by media query rather than by the
 // `.dark` class next-themes toggles.
@@ -89,8 +94,8 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
   },
   robots: {
-    index: true,
-    follow: true,
+    index: isProductionDeployment,
+    follow: isProductionDeployment,
   },
 }
 

@@ -1,4 +1,5 @@
 import { Suspense } from "react"
+import { ClinicSummaryLoader } from "@/components/admin/clinic-summary-loader"
 
 import { AdminAnalytics } from "@/components/dashboard/admin-analytics"
 import { DashboardPageHeader } from "@/components/dashboard/page-header"
@@ -32,6 +33,10 @@ export default function AdminPage() {
         description="Platform usage, scan allowances, and AI cost at a glance."
         badge="Admin"
       />
+
+      <Suspense fallback={<Skeleton className="h-32 w-full rounded-xl" />}>
+        <ClinicSummaryLoader />
+      </Suspense>
 
       <Suspense fallback={<AdminAnalyticsSkeleton />}>
         <AdminAnalytics />

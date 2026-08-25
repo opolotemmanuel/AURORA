@@ -1,6 +1,12 @@
 "use server"
 
 import { recordAudit } from "@/lib/audit/log"
+import {
+  assertCanChangeRole,
+  assertCanRevoke,
+  assertCanSetStatus,
+  statusAuditAction,
+} from "@/lib/clinics/membership-rules"
 import { randomUUID } from "node:crypto"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
@@ -121,14 +127,11 @@ export async function updateClinicMemberRoleAction(input: unknown) {
 
   const member = await prisma.member.findFirst({
     where: { id: memberId, organizationId: session.scope },
-    select: { id: true, role: true },
+    select: { id: true, role: true, status: true },
   })
   if (!member) throw new Error("Member not found")
-  // The owner is the billing contact and the last line of control; demoting
-  // them would leave the clinic with no one guaranteed able to manage it.
-  if (member.role === "owner") {
-    throw new Error("The clinic owner's role cannot be changed.")
-  }
+  // Shared with the admin path so the two cannot drift apart.
+  assertCanChangeRole(member)
 
   await prisma.member.update({ where: { id: memberId }, data: { role } })
 
@@ -164,9 +167,7 @@ export async function removeClinicMemberAction(input: unknown) {
     select: { id: true, role: true, userId: true, status: true },
   })
   if (!member) throw new Error("Member not found")
-  if (member.role === "owner") {
-    throw new Error("The clinic owner cannot be removed.")
-  }
+  assertCanRevoke(member)
 
   await prisma.member.update({
     where: { id: memberId },
@@ -207,17 +208,12 @@ export async function setClinicMemberStatusAction(input: unknown) {
     select: { id: true, role: true, userId: true, status: true },
   })
   if (!member) throw new Error("Member not found")
-  if (member.role === "owner") {
-    throw new Error("The clinic owner cannot be suspended.")
-  }
-  if (member.status === "revoked") {
-    throw new Error("A revoked membership cannot be reinstated. Invite them again.")
-  }
+  assertCanSetStatus(member, status)
 
   await prisma.member.update({ where: { id: memberId }, data: { status } })
 
   await recordAudit({
-    action: status === "suspended" ? "membership.suspended" : "membership.reactivated",
+    action: statusAuditAction(status),
     subjectType: "membership",
     subjectId: member.id,
     actorId: session.userId,

@@ -186,6 +186,10 @@ export function ClinicsTable({
                 </Button>
 
                 <Button asChild size="sm" variant="outline">
+                  <a href={`/admin/clinics/${clinic.organizationId}`}>Details</a>
+                </Button>
+
+                <Button asChild size="sm" variant="outline">
                   <a href={`/api/admin/clinics/${clinic.id}/export`}>Export</a>
                 </Button>
 

@@ -1,6 +1,6 @@
 "use server"
 
-import { recordAudit } from "@/lib/audit/log"
+import { recordAudit, recordDenied } from "@/lib/audit/log"
 import {
   assertCanChangeRole,
   assertCanRevoke,
@@ -95,6 +95,20 @@ export async function inviteClinicMemberAction(input: unknown) {
     },
   })
 
+  // An invitation is a standing grant of future access to this tenant's data.
+  // The email is the subject of the grant rather than incidental detail, so it
+  // is recorded; it is a business contact the clinic itself supplied, not
+  // clinical information about a patient.
+  await recordAudit({
+    action: "membership.invited",
+    subjectType: "membership",
+    subjectId: invitation.id,
+    actorId: session.userId,
+    actorRole: session.role,
+    organizationId: session.tenant.organizationId,
+    metadata: { email, role, expiresAt: invitation.expiresAt.toISOString() },
+  })
+
   revalidateTeam()
   return { invitationId: invitation.id }
 }
@@ -111,7 +125,30 @@ export async function cancelClinicInvitationAction(input: unknown) {
     where: { id: invitationId, organizationId: session.scope },
     data: { status: "canceled" },
   })
-  if (result.count === 0) throw new Error("Invitation not found")
+  if (result.count === 0) {
+    // An id belonging to another clinic looks identical to one that does not
+    // exist. Recorded, because an id tried against the wrong tenant is worth
+    // being able to see later.
+    await recordDenied({
+      action: "membership.invitation_cancelled",
+      subjectType: "membership",
+      subjectId: invitationId,
+      actorId: session.userId,
+      actorRole: session.role,
+      organizationId: session.tenant.organizationId,
+      metadata: { reason: "not_in_tenant_or_missing" },
+    })
+    throw new Error("Invitation not found")
+  }
+
+  await recordAudit({
+    action: "membership.invitation_cancelled",
+    subjectType: "membership",
+    subjectId: invitationId,
+    actorId: session.userId,
+    actorRole: session.role,
+    organizationId: session.tenant.organizationId,
+  })
 
   revalidateTeam()
 }
@@ -260,10 +297,12 @@ export async function acceptClinicInvitationAction(input: unknown) {
     throw new Error("This invitation was sent to a different email address.")
   }
 
+  const memberId = randomUUID()
+
   await prisma.$transaction(async (tx) => {
     await tx.member.create({
       data: {
-        id: randomUUID(),
+        id: memberId,
         organizationId,
         userId: user.id,
         role: invitation.role ?? "member",
@@ -281,6 +320,27 @@ export async function acceptClinicInvitationAction(input: unknown) {
         data: { role: "company_admin" },
       })
     }
+  })
+
+  // The moment someone actually gains access to a tenant's data. Every other
+  // membership transition was already recorded; without this one the log shows
+  // people being invited, suspended and revoked but never arriving.
+  //
+  // The actor and the subject are the same person here — nobody grants this but
+  // the invitee, by accepting — so the inviter is carried in the metadata to
+  // keep the chain of authority readable.
+  await recordAudit({
+    action: "membership.created",
+    subjectType: "membership",
+    subjectId: memberId,
+    actorId: user.id,
+    actorRole: invitation.role ?? "member",
+    organizationId,
+    metadata: {
+      invitationId: invitation.id,
+      invitedBy: invitation.inviterId,
+      role: invitation.role ?? "member",
+    },
   })
 
   revalidateTeam()

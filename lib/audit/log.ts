@@ -43,6 +43,7 @@ export type AuditAction =
   | "membership.suspended"
   | "membership.reactivated"
   | "membership.invited"
+  | "membership.invitation_cancelled"
   | "membership.revoked"
   // Patient data
   | "patient.viewed"

@@ -1,8 +1,18 @@
+import path from "node:path"
 import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
   output: "standalone",
+  turbopack: {
+    // Pinned to this directory. Next infers the workspace root by walking up
+    // for lockfiles, and a stray package-lock.json in a parent directory makes
+    // it pick that parent instead — which changes what standalone output
+    // traces. The offending file is outside the repository, so a clone never
+    // sees it and CI is unaffected, but "correct only because of what is
+    // absent" is not a property worth relying on.
+    root: path.resolve(__dirname),
+  },
   outputFileTracingIncludes: {
     // lib/pdf/brand-logo.ts reads the letterhead mark from disk at runtime.
     // Standalone output does not copy `public/`, and file tracing cannot always

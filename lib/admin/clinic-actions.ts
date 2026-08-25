@@ -23,7 +23,7 @@ function revalidateClinics() {
  * half-created tenant holding a subdomain.
  */
 export async function createClinicAction(input: unknown) {
-  await requireAdmin()
+  const session = await requireAdmin()
   const data = createClinicSchema.parse(input)
 
   const owner = await prisma.user.findUnique({
@@ -88,6 +88,26 @@ export async function createClinicAction(input: unknown) {
         data: { role: "company_admin" },
       })
     }
+  })
+
+  // The counterpart of tenant.deleted. Without it a tenant's existence has a
+  // recorded end but no recorded beginning, and "who provisioned this clinic,
+  // and who did they make its owner" is answerable only from the rows that a
+  // later deletion would take with it.
+  await recordAudit({
+    action: "tenant.created",
+    subjectType: "clinic",
+    subjectId: organizationId,
+    actorId: session.user.id,
+    actorRole: "admin",
+    organizationId,
+    metadata: {
+      subdomain: data.subdomain,
+      displayName: data.displayName ?? data.name,
+      ownerUserId: owner.id,
+      planId: data.planId ?? null,
+      compAccess: Boolean(data.compAccess),
+    },
   })
 
   revalidateClinics()
@@ -161,12 +181,17 @@ const compAccessSchema = z.object({
  * be silently undone by the next webhook and give a misleading admin view.
  */
 export async function setClinicCompAccessAction(input: unknown) {
-  await requireAdmin()
+  const session = await requireAdmin()
   const { clinicId, comped } = compAccessSchema.parse(input)
 
   const clinic = await prisma.clinicSettings.findUnique({
     where: { id: clinicId },
-    select: { stripeSubscriptionId: true, periodStartedAt: true },
+    select: {
+      stripeSubscriptionId: true,
+      periodStartedAt: true,
+      organizationId: true,
+      subdomain: true,
+    },
   })
   if (!clinic) throw new Error("Clinic not found")
   if (clinic.stripeSubscriptionId) {
@@ -181,6 +206,18 @@ export async function setClinicCompAccessAction(input: unknown) {
       subscriptionStatus: comped ? "active" : "none",
       periodStartedAt: comped ? (clinic.periodStartedAt ?? new Date()) : null,
     },
+  })
+
+  // Granting free access is a billing decision made by a person, and revoking
+  // it takes a live clinic dark. Both need to be answerable later.
+  await recordAudit({
+    action: "tenant.comp_access_changed",
+    subjectType: "clinic",
+    subjectId: clinic.organizationId,
+    actorId: session.user.id,
+    actorRole: "admin",
+    organizationId: clinic.organizationId,
+    metadata: { subdomain: clinic.subdomain, comped },
   })
 
   revalidateClinics()

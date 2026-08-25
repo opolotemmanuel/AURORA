@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
 import { issueApiKey } from "@/lib/api-keys/keys"
-import { recordAudit, recordDenied } from "@/lib/audit/log"
+import { recordAudit, recordAuditIn, recordDenied } from "@/lib/audit/log"
+import { currentRequestId } from "@/lib/audit/request-id"
 import { requireClinicManager } from "@/lib/clinics/membership"
 import { prisma } from "@/lib/db/client"
 
@@ -76,10 +77,32 @@ export async function revokeClinicApiKeyAction(input: unknown) {
 
   // Scoped by organization so a manager of one clinic cannot revoke another
   // clinic's key by guessing an id.
-  const result = await prisma.apiKey.updateMany({
-    where: { id: apiKeyId, organizationId: session.scope, revokedAt: null },
-    data: { revokedAt: new Date() },
+  //
+  // Tier A: revoking a credential and recording the revocation commit
+  // together. A revoked key with no record of who revoked it, or a record of a
+  // revocation that did not happen, are both worse than the operation failing.
+  const requestId = await currentRequestId()
+  const result = await prisma.$transaction(async (tx) => {
+    const updated = await tx.apiKey.updateMany({
+      where: { id: apiKeyId, organizationId: session.scope, revokedAt: null },
+      data: { revokedAt: new Date() },
+    })
+
+    if (updated.count > 0) {
+      await recordAuditIn(tx, {
+        action: "apikey.revoked",
+        subjectType: "apikey",
+        subjectId: apiKeyId,
+        actorId: session.userId,
+        actorRole: session.role,
+        organizationId: session.tenant.organizationId,
+        requestId,
+      })
+    }
+
+    return updated
   })
+
   if (result.count === 0) {
     // Either no such key, an already-revoked one, or one belonging to another
     // clinic — the caller cannot tell which, and the attempt is recorded.
@@ -94,15 +117,6 @@ export async function revokeClinicApiKeyAction(input: unknown) {
     })
     throw new Error("Key not found")
   }
-
-  await recordAudit({
-    action: "apikey.revoked",
-    subjectType: "apikey",
-    subjectId: apiKeyId,
-    actorId: session.userId,
-    actorRole: session.role,
-    organizationId: session.tenant.organizationId,
-  })
 
   revalidatePath("/clinic/api")
 }

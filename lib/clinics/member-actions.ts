@@ -1,6 +1,7 @@
 "use server"
 
-import { recordAudit, recordDenied } from "@/lib/audit/log"
+import { recordAudit, recordAuditIn, recordDenied } from "@/lib/audit/log"
+import { currentRequestId } from "@/lib/audit/request-id"
 import {
   assertCanChangeRole,
   assertCanRevoke,
@@ -206,19 +207,24 @@ export async function removeClinicMemberAction(input: unknown) {
   if (!member) throw new Error("Member not found")
   assertCanRevoke(member)
 
-  await prisma.member.update({
-    where: { id: memberId },
-    data: { status: "revoked" },
-  })
+  // Tier A: revoking access and recording that it was revoked commit together.
+  const requestId = await currentRequestId()
+  await prisma.$transaction(async (tx) => {
+    await tx.member.update({
+      where: { id: memberId },
+      data: { status: "revoked" },
+    })
 
-  await recordAudit({
-    action: "membership.revoked",
-    subjectType: "membership",
-    subjectId: member.id,
-    actorId: session.userId,
-    actorRole: session.role,
-    organizationId: session.tenant.organizationId,
-    metadata: { targetUserId: member.userId, previousStatus: member.status },
+    await recordAuditIn(tx, {
+      action: "membership.revoked",
+      subjectType: "membership",
+      subjectId: member.id,
+      actorId: session.userId,
+      actorRole: session.role,
+      organizationId: session.tenant.organizationId,
+      requestId,
+      metadata: { targetUserId: member.userId, previousStatus: member.status },
+    })
   })
 
   revalidateTeam()
@@ -247,16 +253,24 @@ export async function setClinicMemberStatusAction(input: unknown) {
   if (!member) throw new Error("Member not found")
   assertCanSetStatus(member, status)
 
-  await prisma.member.update({ where: { id: memberId }, data: { status } })
+  // Tier A: suspension removes access, so its record must be as durable as the
+  // removal. Reinstatement travels the same path rather than being split out —
+  // one of the two being loseable would leave a trail that says access was
+  // taken away and never given back.
+  const requestId = await currentRequestId()
+  await prisma.$transaction(async (tx) => {
+    await tx.member.update({ where: { id: memberId }, data: { status } })
 
-  await recordAudit({
-    action: statusAuditAction(status),
-    subjectType: "membership",
-    subjectId: member.id,
-    actorId: session.userId,
-    actorRole: session.role,
-    organizationId: session.tenant.organizationId,
-    metadata: { targetUserId: member.userId, previousStatus: member.status },
+    await recordAuditIn(tx, {
+      action: statusAuditAction(status),
+      subjectType: "membership",
+      subjectId: member.id,
+      actorId: session.userId,
+      actorRole: session.role,
+      organizationId: session.tenant.organizationId,
+      requestId,
+      metadata: { targetUserId: member.userId, previousStatus: member.status },
+    })
   })
 
   revalidateTeam()

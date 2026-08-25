@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
-import { recordAudit, recordDenied } from "@/lib/audit/log"
+import { recordAudit, recordAuditIn, recordDenied } from "@/lib/audit/log"
+import { currentRequestId } from "@/lib/audit/request-id"
 import { requireAdmin } from "@/lib/auth/session"
 import {
   MembershipRuleError,
@@ -145,19 +146,25 @@ export async function adminSetMemberStatusAction(
   return withMember(parsed, session.user.id, action, async (member) => {
     assertCanSetStatus(member, parsed.status)
 
-    await prisma.member.update({
-      where: { id: member.id },
-      data: { status: parsed.status },
-    })
+    // Tier A, matching the clinic-side path: the status change and its record
+    // commit together.
+    const requestId = await currentRequestId()
+    await prisma.$transaction(async (tx) => {
+      await tx.member.update({
+        where: { id: member.id },
+        data: { status: parsed.status },
+      })
 
-    await recordAudit({
-      action,
-      subjectType: "membership",
-      subjectId: member.id,
-      actorId: session.user.id,
-      actorRole: "admin",
-      organizationId: parsed.organizationId,
-      metadata: { previousStatus: member.status, targetUserId: member.userId },
+      await recordAuditIn(tx, {
+        action,
+        subjectType: "membership",
+        subjectId: member.id,
+        actorId: session.user.id,
+        actorRole: "admin",
+        organizationId: parsed.organizationId,
+        requestId,
+        metadata: { previousStatus: member.status, targetUserId: member.userId },
+      })
     })
   })
 }
@@ -173,19 +180,25 @@ export async function adminRevokeMemberAction(
 
     // A state change, never a delete: the row is the record that this person
     // once had access to this clinic.
-    await prisma.member.update({
-      where: { id: member.id },
-      data: { status: "revoked" },
-    })
+    //
+    // Tier A — the revocation and its record commit together.
+    const requestId = await currentRequestId()
+    await prisma.$transaction(async (tx) => {
+      await tx.member.update({
+        where: { id: member.id },
+        data: { status: "revoked" },
+      })
 
-    await recordAudit({
-      action: "membership.revoked",
-      subjectType: "membership",
-      subjectId: member.id,
-      actorId: session.user.id,
-      actorRole: "admin",
-      organizationId: parsed.organizationId,
-      metadata: { previousStatus: member.status, targetUserId: member.userId },
+      await recordAuditIn(tx, {
+        action: "membership.revoked",
+        subjectType: "membership",
+        subjectId: member.id,
+        actorId: session.user.id,
+        actorRole: "admin",
+        organizationId: parsed.organizationId,
+        requestId,
+        metadata: { previousStatus: member.status, targetUserId: member.userId },
+      })
     })
   })
 }

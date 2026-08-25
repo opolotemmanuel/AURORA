@@ -1,5 +1,6 @@
 import assert from "node:assert/strict"
-import { readFileSync } from "node:fs"
+import { readFileSync, readdirSync } from "node:fs"
+import { join } from "node:path"
 import { describe, it } from "node:test"
 
 /**
@@ -27,6 +28,30 @@ const exportRoute = readFileSync(
 )
 
 const LIFECYCLE = [clinicActions, memberActions, adminMembership, domainActions, apiKeyActions, offboard, exportRoute].join("\n")
+
+/**
+ * Every source file that could hold an audit writer.
+ *
+ * Walked rather than listed: a hand-maintained list would quietly stop
+ * covering a file the day someone moves a writer, and the assertion that the
+ * backlog is exact depends on this being complete.
+ */
+const SOURCES: string[] = (function collect(dirs: string[]): string[] {
+  const out: string[] = []
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (entry.name === "node_modules" || entry.name.startsWith(".")) continue
+      const full = join(dir, entry.name)
+      if (entry.isDirectory()) walk(full)
+      else if (/\.tsx?$/.test(entry.name) && !entry.name.includes(".test.")) {
+        if (full.replace(/\\/g, "/").endsWith("lib/audit/log.ts")) continue
+        out.push(readFileSync(full, "utf8"))
+      }
+    }
+  }
+  for (const dir of dirs) walk(dir)
+  return out
+})(["lib", "app"])
 
 describe("every tenant lifecycle transition is auditable", () => {
   // A tenant's existence needs a recorded beginning as well as a recorded end.
@@ -73,22 +98,24 @@ describe("no declared audit action is dead", () => {
   /**
    * A closed union is only useful while every member of it is reachable. An
    * action nobody writes reads, in the viewer, as an event that never happens —
-   * which is indistinguishable from one that happens and is not recorded.
+   * indistinguishable from one that happens and is not recorded.
    *
-   * Actions outside the tenancy surface are listed as known-unwritten rather
-   * than silently tolerated, so adding one here is a deliberate act.
+   * The remaining backlog, each with a real code path that does not yet record
+   * itself. Kept explicit rather than tolerated by pattern: the second
+   * assertion checks this list is *exactly* the unwritten set, so implementing
+   * one of these fails the test until it is removed from here, and adding a new
+   * unwritten action fails it too.
+   *
+   * - report.viewed               clinic staff opening a patient's PDF report
+   * - appointment.cancelled       the payment-failure cancellation in booking-actions
+   * - payment.completed/.failed   the payment_intent events in the Stripe webhook
+   * - training.record.withdrawn   the withdrawal path in training/collect
    */
   const KNOWN_UNWRITTEN = new Set([
     "report.viewed",
     "appointment.cancelled",
     "payment.completed",
-    "subscription.created",
-    "affiliate.payout_recorded",
-    "expert.approved",
-    "expert.rejected",
-    "affiliate.approved",
-    "affiliate.rejected",
-    "admin.tenant_entered",
+    "payment.failed",
     "training.record.withdrawn",
   ])
 
@@ -98,21 +125,27 @@ describe("no declared audit action is dead", () => {
     assert.ok(declared.length >= 40, `expected the full union, saw ${declared.length}`)
   })
 
+  /** Every source file that could contain a writer, searched for the literal. */
+  function hasWriter(action: string): boolean {
+    const literal = new RegExp(`"${action.replace(/\./g, "\\.")}"`)
+    return SOURCES.some((src) => literal.test(src))
+  }
+
   it("every tenancy-surface action has a writer", () => {
-    const unwritten = declared.filter((action) => {
-      if (KNOWN_UNWRITTEN.has(action)) return false
-      const literal = new RegExp(`"${action.replace(/\./g, "\\.")}"`)
-      return !literal.test(LIFECYCLE) && !literal.test(
-        readFileSync("lib/clinics/membership-rules.ts", "utf8"),
-      )
-    })
-    // Actions written outside the lifecycle files (scans, patients, training)
-    // are allowed; they are checked by their own suites. Only the tenancy
-    // surface is enforced here.
-    const tenancy = unwritten.filter((a) =>
-      /^(tenant|membership|apikey)\./.test(a) || a === "admin.data_exported",
+    const unwritten = declared.filter(
+      (a) => !KNOWN_UNWRITTEN.has(a) && !hasWriter(a),
+    )
+    const tenancy = unwritten.filter(
+      (a) => /^(tenant|membership|apikey)\./.test(a) || a.startsWith("admin."),
     )
     assert.deepEqual(tenancy, [], `unwritten tenancy actions: ${tenancy.join(", ")}`)
+  })
+
+  // Both directions. A backlog entry that has since been implemented must be
+  // removed from the list, or it silently exempts a real regression later.
+  it("the backlog is exactly the unwritten set, no more and no less", () => {
+    const actuallyUnwritten = declared.filter((a) => !hasWriter(a)).sort()
+    assert.deepEqual([...KNOWN_UNWRITTEN].sort(), actuallyUnwritten)
   })
 })
 

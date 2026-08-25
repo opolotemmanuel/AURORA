@@ -1,4 +1,4 @@
-import type { AuditResult } from "@/generated/prisma/client"
+import type { AuditResult, PrismaClient } from "@/generated/prisma/client"
 import { prisma } from "@/lib/db/client"
 
 /**
@@ -7,11 +7,69 @@ import { prisma } from "@/lib/db/client"
  * Deliberately never updated or deleted here — an audit trail an application
  * can edit is not one. Rows age out through the retention purge, nowhere else.
  *
- * Writes are best-effort: a failure to record an audit line is logged loudly
- * but does not fail the action the user asked for. The alternative, refusing
- * the action, would mean a full log table could block patients from revoking
- * consent, which is worse than a gap in the trail.
+ * ## Two failure policies, chosen per operation
+ *
+ * `recordAudit` is best-effort: a failure is logged loudly but does not fail
+ * the action the user asked for. Refusing every action on a log failure would
+ * mean a full table could block a patient from revoking consent, which is
+ * worse than a gap in the trail.
+ *
+ * That trade is wrong for the operations where the record *is* the point.
+ * Deleting a tenant, revoking access, releasing a domain and exporting a
+ * clinic's patients are all things whose only lasting evidence is the audit
+ * row — and best-effort meant the mutation could succeed while the evidence
+ * of it silently vanished. That is precisely how a clinic once disappeared
+ * leaving nothing to point at.
+ *
+ * For those, `recordAuditIn` writes through the caller's transaction and
+ * throws on failure, so the mutation and its record commit together or not at
+ * all. See docs/audit-durability.md for the tiering.
  */
+
+/**
+ * Anything able to write an audit row: the client itself, or the transaction
+ * client handed to a `$transaction` callback. Structural, so both satisfy it
+ * without either being imported here.
+ */
+export type AuditWriter = Pick<PrismaClient, "auditLog">
+
+/** Shapes an entry into a row. The single place the mapping lives. */
+function auditRow(entry: AuditEntry) {
+  return {
+    action: entry.action,
+    subjectType: entry.subjectType,
+    subjectId: entry.subjectId ?? null,
+    actorId: entry.actorId ?? null,
+    actorRole: entry.actorRole ?? null,
+    organizationId: entry.organizationId ?? null,
+    result: entry.result ?? "success",
+    requestId: entry.requestId ?? null,
+    metadata: (entry.metadata ?? {}) as object,
+  }
+}
+
+/**
+ * Records an entry through the caller's transaction, failing loudly.
+ *
+ * Tier A. Call inside `prisma.$transaction` alongside the mutation: if this
+ * throws, the transaction rolls back and the mutation never happened, which is
+ * the point. An operation whose evidence could not be written is an operation
+ * that should not have completed.
+ */
+export async function recordAuditIn(
+  tx: AuditWriter,
+  entry: AuditEntry,
+): Promise<void> {
+  await tx.auditLog.create({ data: auditRow(entry) })
+}
+
+/** The denied counterpart of recordAuditIn. */
+export async function recordDeniedIn(
+  tx: AuditWriter,
+  entry: Omit<AuditEntry, "result">,
+): Promise<void> {
+  await recordAuditIn(tx, { ...entry, result: "denied" })
+}
 
 /**
  * A closed union, so a new event is a deliberate addition rather than a free
@@ -61,7 +119,10 @@ export type AuditAction =
   // Money
   | "payment.completed"
   | "payment.failed"
-  | "subscription.created"
+  // No "subscription.created": subscription-sync reports every Stripe state
+  // change as updated or cancelled, and a first sync is not distinguishable
+  // from a later one at the point the webhook arrives. Removed rather than
+  // left declared and unwritten.
   | "subscription.updated"
   | "subscription.cancelled"
   | "affiliate.order_attributed"
@@ -72,7 +133,13 @@ export type AuditAction =
   | "affiliate.approved"
   | "affiliate.rejected"
   // Platform control plane
-  | "admin.tenant_entered"
+  //
+  // "admin.tenant_entered" was declared here for a support-session feature that
+  // does not exist. Removed rather than left standing: an action nobody writes
+  // reads, in the viewer, as an event that never happens — indistinguishable
+  // from one that happens and is not recorded. If entering a tenant as a
+  // support action is ever built, it reintroduces this deliberately, along with
+  // the rule that a platform admin must never become a clinic member to do it.
   | "admin.data_exported"
   // AI training pipeline
   | "training.consent.granted"
@@ -131,19 +198,7 @@ export const SYSTEM_ACTOR = { actorId: null, actorRole: "system" } as const
 
 export async function recordAudit(entry: AuditEntry): Promise<void> {
   try {
-    await prisma.auditLog.create({
-      data: {
-        action: entry.action,
-        subjectType: entry.subjectType,
-        subjectId: entry.subjectId ?? null,
-        actorId: entry.actorId ?? null,
-        actorRole: entry.actorRole ?? null,
-        organizationId: entry.organizationId ?? null,
-        result: entry.result ?? "success",
-        requestId: entry.requestId ?? null,
-        metadata: (entry.metadata ?? {}) as object,
-      },
-    })
+    await recordAuditIn(prisma, entry)
   } catch (error) {
     console.error("[audit] Failed to record entry", { action: entry.action, error })
   }
@@ -154,19 +209,7 @@ export async function recordAuditMany(entries: AuditEntry[]): Promise<void> {
   if (entries.length === 0) return
 
   try {
-    await prisma.auditLog.createMany({
-      data: entries.map((entry) => ({
-        action: entry.action,
-        subjectType: entry.subjectType,
-        subjectId: entry.subjectId ?? null,
-        actorId: entry.actorId ?? null,
-        actorRole: entry.actorRole ?? null,
-        organizationId: entry.organizationId ?? null,
-        result: entry.result ?? "success",
-        requestId: entry.requestId ?? null,
-        metadata: (entry.metadata ?? {}) as object,
-      })),
-    })
+    await prisma.auditLog.createMany({ data: entries.map(auditRow) })
   } catch (error) {
     console.error("[audit] Failed to record batch", {
       count: entries.length,

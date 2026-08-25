@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
+import { recordAuditIn } from "@/lib/audit/log"
+import { currentRequestId } from "@/lib/audit/request-id"
 import { requireAdmin } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/client"
 
@@ -20,8 +22,13 @@ export async function approveExpertApplicationAction(expertProfileId: string) {
     throw new Error("Application not found")
   }
 
-  await prisma.$transaction([
-    prisma.expertProfile.update({
+  // Approval grants a platform role, so it belongs in the trail beside the
+  // other privilege grants. The transaction already existed — the record joins
+  // it rather than trailing behind it, which costs nothing and means the role
+  // and the reason it was granted can never disagree.
+  const requestId = await currentRequestId()
+  await prisma.$transaction(async (tx) => {
+    await tx.expertProfile.update({
       where: { id: expertProfileId },
       data: {
         status: "approved",
@@ -29,12 +36,23 @@ export async function approveExpertApplicationAction(expertProfileId: string) {
         reviewedAt: new Date(),
         reviewedById: session.user.id,
       },
-    }),
-    prisma.user.update({
+    })
+
+    await tx.user.update({
       where: { id: profile.userId },
       data: { role: "expert" },
-    }),
-  ])
+    })
+
+    await recordAuditIn(tx, {
+      action: "expert.approved",
+      subjectType: "expert",
+      subjectId: expertProfileId,
+      actorId: session.user.id,
+      actorRole: "admin",
+      requestId,
+      metadata: { targetUserId: profile.userId, grantedRole: "expert" },
+    })
+  })
 
   revalidateExperts()
 }
@@ -48,14 +66,31 @@ export async function rejectExpertApplicationAction(input: unknown) {
   const session = await requireAdmin()
   const { expertProfileId, reason } = rejectSchema.parse(input)
 
-  await prisma.expertProfile.update({
-    where: { id: expertProfileId },
-    data: {
-      status: "rejected",
-      rejectionReason: reason || null,
-      reviewedAt: new Date(),
-      reviewedById: session.user.id,
-    },
+  // The rejection reason is the applicant's own submission being judged, not
+  // third-party data, and it is already stored on the profile — recording it
+  // here keeps the decision and its stated grounds together.
+  const requestId = await currentRequestId()
+  await prisma.$transaction(async (tx) => {
+    const updated = await tx.expertProfile.update({
+      where: { id: expertProfileId },
+      data: {
+        status: "rejected",
+        rejectionReason: reason || null,
+        reviewedAt: new Date(),
+        reviewedById: session.user.id,
+      },
+      select: { userId: true },
+    })
+
+    await recordAuditIn(tx, {
+      action: "expert.rejected",
+      subjectType: "expert",
+      subjectId: expertProfileId,
+      actorId: session.user.id,
+      actorRole: "admin",
+      requestId,
+      metadata: { targetUserId: updated.userId, hasReason: Boolean(reason) },
+    })
   })
 
   revalidateExperts()

@@ -28,7 +28,15 @@ export const getWorkspaceCapabilities = cache(
         where: { userId, status: "approved" },
         select: { id: true },
       }),
-      prisma.member.findFirst({ where: { userId }, select: { id: true } }),
+      // Active only. A revoked or suspended membership grants nothing, and the
+      // route gate already refuses it — but without this filter the person kept
+      // seeing a Clinic workspace in their navigation and only discovered it
+      // was gone by clicking. Offering a door that will not open is its own
+      // small disclosure about a clinic they no longer belong to.
+      prisma.member.findFirst({
+        where: { userId, status: "active" },
+        select: { id: true },
+      }),
     ])
 
     return {

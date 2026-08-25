@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
-import { recordAudit, recordDenied } from "@/lib/audit/log"
+import { recordAudit, recordAuditIn, recordDenied } from "@/lib/audit/log"
+import { currentRequestId } from "@/lib/audit/request-id"
 import {
   generateVerificationToken,
   validateCustomDomain,
@@ -153,28 +154,33 @@ export async function removeClinicCustomDomainAction() {
     select: { customDomain: true, customDomainVerifiedAt: true },
   })
 
-  await prisma.clinicSettings.update({
-    where: { id: session.tenant.clinicId },
-    data: {
-      customDomain: null,
-      customDomainToken: null,
-      customDomainVerifiedAt: null,
-    },
-  })
+  // Tier A. Releasing a domain changes which hosts serve this clinic, and the
+  // entry names the domain that was released — without it the record would say
+  // a domain was removed without saying which host stopped answering.
+  const requestId = await currentRequestId()
+  await prisma.$transaction(async (tx) => {
+    await tx.clinicSettings.update({
+      where: { id: session.tenant.clinicId },
+      data: {
+        customDomain: null,
+        customDomainToken: null,
+        customDomainVerifiedAt: null,
+      },
+    })
 
-  // Names the domain that was released. Without it the entry would say a domain
-  // was removed without saying which host stopped serving this clinic.
-  await recordAudit({
-    action: "tenant.domain_removed",
-    subjectType: "clinic",
-    subjectId: session.tenant.clinicId,
-    actorId: session.userId,
-    actorRole: session.role,
-    organizationId: session.tenant.organizationId,
-    metadata: {
-      domain: previous?.customDomain ?? null,
-      wasVerified: Boolean(previous?.customDomainVerifiedAt),
-    },
+    await recordAuditIn(tx, {
+      action: "tenant.domain_removed",
+      subjectType: "clinic",
+      subjectId: session.tenant.clinicId,
+      actorId: session.userId,
+      actorRole: session.role,
+      organizationId: session.tenant.organizationId,
+      requestId,
+      metadata: {
+        domain: previous?.customDomain ?? null,
+        wasVerified: Boolean(previous?.customDomainVerifiedAt),
+      },
+    })
   })
 
   revalidateDomain()

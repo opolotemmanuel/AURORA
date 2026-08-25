@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
+import { recordAuditIn } from "@/lib/audit/log"
+import { currentRequestId } from "@/lib/audit/request-id"
 import { requireAdmin } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/client"
 import { generateCouponCode } from "@/lib/affiliates/coupon-code"
@@ -37,8 +39,13 @@ export async function approveAffiliateApplicationAction(
     discountPercent: settings.customerDiscountBps / 100,
   })
 
-  await prisma.$transaction([
-    prisma.affiliateProfile.update({
+  // Approval grants a platform role and issues a live discount code, so the
+  // record joins the transaction that does both. The coupon code is recorded
+  // deliberately: it is the attribution mechanism, not a secret, and tracing a
+  // disputed commission later means knowing which code was issued to whom.
+  const requestId = await currentRequestId()
+  await prisma.$transaction(async (tx) => {
+    await tx.affiliateProfile.update({
       where: { id: affiliateProfileId },
       data: {
         status: "approved",
@@ -48,12 +55,27 @@ export async function approveAffiliateApplicationAction(
         reviewedAt: new Date(),
         reviewedById: session.user.id,
       },
-    }),
-    prisma.user.update({
+    })
+
+    await tx.user.update({
       where: { id: profile.userId },
       data: { role: "affiliate" },
-    }),
-  ])
+    })
+
+    await recordAuditIn(tx, {
+      action: "affiliate.approved",
+      subjectType: "affiliate",
+      subjectId: affiliateProfileId,
+      actorId: session.user.id,
+      actorRole: "admin",
+      requestId,
+      metadata: {
+        targetUserId: profile.userId,
+        grantedRole: "affiliate",
+        couponCode: coupon.code,
+      },
+    })
+  })
 
   revalidateAffiliates()
 }
@@ -67,14 +89,28 @@ export async function rejectAffiliateApplicationAction(input: unknown) {
   const session = await requireAdmin()
   const { affiliateProfileId, reason } = rejectSchema.parse(input)
 
-  await prisma.affiliateProfile.update({
-    where: { id: affiliateProfileId },
-    data: {
-      status: "rejected",
-      rejectionReason: reason || null,
-      reviewedAt: new Date(),
-      reviewedById: session.user.id,
-    },
+  const requestId = await currentRequestId()
+  await prisma.$transaction(async (tx) => {
+    const updated = await tx.affiliateProfile.update({
+      where: { id: affiliateProfileId },
+      data: {
+        status: "rejected",
+        rejectionReason: reason || null,
+        reviewedAt: new Date(),
+        reviewedById: session.user.id,
+      },
+      select: { userId: true },
+    })
+
+    await recordAuditIn(tx, {
+      action: "affiliate.rejected",
+      subjectType: "affiliate",
+      subjectId: affiliateProfileId,
+      actorId: session.user.id,
+      actorRole: "admin",
+      requestId,
+      metadata: { targetUserId: updated.userId, hasReason: Boolean(reason) },
+    })
   })
 
   revalidateAffiliates()

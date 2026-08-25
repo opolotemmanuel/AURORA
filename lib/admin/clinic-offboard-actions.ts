@@ -1,6 +1,7 @@
 "use server"
 
-import { recordAudit } from "@/lib/audit/log"
+import { recordAuditIn } from "@/lib/audit/log"
+import { currentRequestId } from "@/lib/audit/request-id"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
@@ -72,24 +73,34 @@ export async function deleteClinicAction(input: unknown) {
     `[admin] Clinic deleted: ${clinic.displayName} (${clinic.subdomain}) by ${session.user.id}. ${detachedScans} scan(s) detached and retained for their patients.`,
   )
 
-  // Written before the rows go, and to the audit table rather than only to
-  // the server log: a console line is ephemeral and unqueryable, which is how
-  // a whole tenant can disappear leaving nothing to point at afterwards.
-  await recordAudit({
-    action: "tenant.deleted",
-    subjectType: "clinic",
-    subjectId: clinic.organizationId,
-    actorId: session.user.id,
-    actorRole: "admin",
-    organizationId: clinic.organizationId,
-    metadata: {
-      subdomain: clinic.subdomain,
-      displayName: clinic.displayName,
-      detachedScans,
-    },
-  })
+  // Tier A. The record and the deletion commit together or not at all.
+  //
+  // Previously the audit was written first and best-effort, so a failed write
+  // logged a line to stderr and let the deletion proceed anyway — the exact
+  // shape of the incident this entry exists to prevent. Now a failure to
+  // record rolls the transaction back and the tenant is still there.
+  //
+  // Safe to write inside the transaction that deletes the organization because
+  // AuditLog holds organizationId as a plain column with no foreign key, so the
+  // cascade cannot reach the row that describes the cascade.
+  await prisma.$transaction(async (tx) => {
+    await recordAuditIn(tx, {
+      action: "tenant.deleted",
+      subjectType: "clinic",
+      subjectId: clinic.organizationId,
+      actorId: session.user.id,
+      actorRole: "admin",
+      organizationId: clinic.organizationId,
+      requestId: await currentRequestId(),
+      metadata: {
+        subdomain: clinic.subdomain,
+        displayName: clinic.displayName,
+        detachedScans,
+      },
+    })
 
-  await prisma.organization.delete({ where: { id: clinic.organizationId } })
+    await tx.organization.delete({ where: { id: clinic.organizationId } })
+  })
 
   revalidatePath("/admin/clinics")
   return { subdomain: clinic.subdomain, detachedScans }

@@ -4,8 +4,19 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
 import { issueApiKey } from "@/lib/api-keys/keys"
+import { recordAudit, recordDenied } from "@/lib/audit/log"
 import { requireClinicManager } from "@/lib/clinics/membership"
 import { prisma } from "@/lib/db/client"
+
+/**
+ * An API key is programmatic access to one tenant's data, so issuing and
+ * revoking one is audited.
+ *
+ * The metadata carries the key's name and prefix only. The plaintext and the
+ * hash are both absent by design: the prefix is enough to tell two keys apart
+ * in a log, and neither of the other two can be used to authenticate from
+ * there.
+ */
 
 const MAX_ACTIVE_KEYS = 10
 
@@ -32,7 +43,7 @@ export async function createClinicApiKeyAction(input: unknown) {
 
   const issued = issueApiKey()
 
-  await prisma.apiKey.create({
+  const created = await prisma.apiKey.create({
     data: {
       organizationId: session.scope,
       name,
@@ -40,6 +51,17 @@ export async function createClinicApiKeyAction(input: unknown) {
       keyPrefix: issued.keyPrefix,
       createdById: session.userId,
     },
+    select: { id: true },
+  })
+
+  await recordAudit({
+    action: "apikey.created",
+    subjectType: "apikey",
+    subjectId: created.id,
+    actorId: session.userId,
+    actorRole: session.role,
+    organizationId: session.tenant.organizationId,
+    metadata: { name, keyPrefix: issued.keyPrefix },
   })
 
   revalidatePath("/clinic/api")
@@ -58,7 +80,29 @@ export async function revokeClinicApiKeyAction(input: unknown) {
     where: { id: apiKeyId, organizationId: session.scope, revokedAt: null },
     data: { revokedAt: new Date() },
   })
-  if (result.count === 0) throw new Error("Key not found")
+  if (result.count === 0) {
+    // Either no such key, an already-revoked one, or one belonging to another
+    // clinic — the caller cannot tell which, and the attempt is recorded.
+    await recordDenied({
+      action: "apikey.revoked",
+      subjectType: "apikey",
+      subjectId: apiKeyId,
+      actorId: session.userId,
+      actorRole: session.role,
+      organizationId: session.tenant.organizationId,
+      metadata: { reason: "not_in_tenant_or_already_revoked" },
+    })
+    throw new Error("Key not found")
+  }
+
+  await recordAudit({
+    action: "apikey.revoked",
+    subjectType: "apikey",
+    subjectId: apiKeyId,
+    actorId: session.userId,
+    actorRole: session.role,
+    organizationId: session.tenant.organizationId,
+  })
 
   revalidatePath("/clinic/api")
 }

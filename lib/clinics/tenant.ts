@@ -2,10 +2,8 @@ import { cache } from "react"
 import { cookies, headers } from "next/headers"
 
 import { extractSubdomain, normalizeHostname } from "@/lib/clinics/subdomain"
-import {
-  TENANT_COOKIE,
-  hostBasedTenancyConfigured,
-} from "@/lib/clinics/tenant-cookie"
+import { TENANT_COOKIE } from "@/lib/clinics/tenant-cookie"
+import { pinnedTenantCandidate } from "@/lib/clinics/tenant-request"
 import {
   resolveClinicAccess,
   resolveScanQuota,
@@ -86,10 +84,13 @@ export const resolveTenant = cache(async (): Promise<TenantResolveResult> => {
   // `{ customDomain: host }` and the pinned branch was unreachable. The
   // fallback that exists for deployments without a wildcard domain — which is
   // every *.vercel.app — therefore never ran at all.
-  const pinnedCandidate =
-    !subdomain && !hostBasedTenancyConfigured()
-      ? ((await cookies()).get(TENANT_COOKIE)?.value ?? null)
-      : null
+  // The "a cookie may never override the host" rule lives in tenant-request.ts
+  // and is asked for here rather than restated, so this resolver and the two
+  // database-free callers cannot drift apart about when a pin counts.
+  const pinnedCandidate = pinnedTenantCandidate({
+    host: headerList.get("host"),
+    pinnedTenant: (await cookies()).get(TENANT_COOKIE)?.value ?? null,
+  })
 
   type Match = "subdomain" | "customDomain" | "pin"
   const candidates: { by: Match; where: ClinicWhere }[] = []

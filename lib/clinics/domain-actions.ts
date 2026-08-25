@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
 
+import { recordAudit, recordDenied } from "@/lib/audit/log"
 import {
   generateVerificationToken,
   validateCustomDomain,
@@ -10,6 +11,13 @@ import {
 } from "@/lib/clinics/custom-domain"
 import { requireClinicManager } from "@/lib/clinics/membership"
 import { prisma } from "@/lib/db/client"
+
+/**
+ * A custom domain decides which hosts serve a tenant, so every transition is
+ * audited. The verification token is deliberately absent from the metadata: it
+ * is the secret that proves ownership, and an audit log is read by more people
+ * than are allowed to claim a domain.
+ */
 
 const domainSchema = z.object({ domain: z.string().trim().min(1).max(253) })
 
@@ -37,8 +45,26 @@ export async function setClinicCustomDomainAction(input: unknown) {
     select: { id: true },
   })
   if (taken) {
+    // Recorded: repeated attempts on a domain held by another clinic are worth
+    // being able to see, and the caller is told only that it is taken.
+    await recordDenied({
+      action: "tenant.domain_claimed",
+      subjectType: "clinic",
+      subjectId: session.tenant.clinicId,
+      actorId: session.userId,
+      actorRole: session.role,
+      organizationId: session.tenant.organizationId,
+      metadata: { domain, reason: "already_claimed" },
+    })
     throw new Error("That domain is already in use.")
   }
+
+  // Read before the write: update returns the row as it is afterwards, which
+  // would record the new domain as the one it replaced.
+  const previous = await prisma.clinicSettings.findUnique({
+    where: { id: session.tenant.clinicId },
+    select: { customDomain: true },
+  })
 
   await prisma.clinicSettings.update({
     where: { id: session.tenant.clinicId },
@@ -48,6 +74,16 @@ export async function setClinicCustomDomainAction(input: unknown) {
       // Re-verification is required whenever the domain changes.
       customDomainVerifiedAt: null,
     },
+  })
+
+  await recordAudit({
+    action: "tenant.domain_claimed",
+    subjectType: "clinic",
+    subjectId: session.tenant.clinicId,
+    actorId: session.userId,
+    actorRole: session.role,
+    organizationId: session.tenant.organizationId,
+    metadata: { domain, replaced: previous?.customDomain ?? null },
   })
 
   revalidateDomain()
@@ -72,12 +108,33 @@ export async function verifyClinicCustomDomainAction() {
     clinic.customDomainToken,
   )
   if (!result.verified) {
+    // A failed proof of ownership is the interesting one: it is what a clinic
+    // reaching for a domain it does not control looks like.
+    await recordDenied({
+      action: "tenant.domain_verified",
+      subjectType: "clinic",
+      subjectId: session.tenant.clinicId,
+      actorId: session.userId,
+      actorRole: session.role,
+      organizationId: session.tenant.organizationId,
+      metadata: { domain: clinic.customDomain, reason: "dns_proof_failed" },
+    })
     throw new Error(result.reason)
   }
 
   await prisma.clinicSettings.update({
     where: { id: session.tenant.clinicId },
     data: { customDomainVerifiedAt: new Date() },
+  })
+
+  await recordAudit({
+    action: "tenant.domain_verified",
+    subjectType: "clinic",
+    subjectId: session.tenant.clinicId,
+    actorId: session.userId,
+    actorRole: session.role,
+    organizationId: session.tenant.organizationId,
+    metadata: { domain: clinic.customDomain },
   })
 
   revalidateDomain()
@@ -91,12 +148,32 @@ export async function verifyClinicCustomDomainAction() {
 export async function removeClinicCustomDomainAction() {
   const session = await requireClinicManager()
 
+  const previous = await prisma.clinicSettings.findUnique({
+    where: { id: session.tenant.clinicId },
+    select: { customDomain: true, customDomainVerifiedAt: true },
+  })
+
   await prisma.clinicSettings.update({
     where: { id: session.tenant.clinicId },
     data: {
       customDomain: null,
       customDomainToken: null,
       customDomainVerifiedAt: null,
+    },
+  })
+
+  // Names the domain that was released. Without it the entry would say a domain
+  // was removed without saying which host stopped serving this clinic.
+  await recordAudit({
+    action: "tenant.domain_removed",
+    subjectType: "clinic",
+    subjectId: session.tenant.clinicId,
+    actorId: session.userId,
+    actorRole: session.role,
+    organizationId: session.tenant.organizationId,
+    metadata: {
+      domain: previous?.customDomain ?? null,
+      wasVerified: Boolean(previous?.customDomainVerifiedAt),
     },
   })
 

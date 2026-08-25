@@ -29,6 +29,14 @@ export type AuditAction =
   | "tenant.deleted"
   | "tenant.comp_access_changed"
   | "tenant.plan_changed"
+  // Tenant routing — which hosts serve this tenant. A custom domain changes
+  // where the clinic answers, so each transition is recorded on its own.
+  | "tenant.domain_claimed"
+  | "tenant.domain_verified"
+  | "tenant.domain_removed"
+  // Tenant credentials — programmatic access to one tenant's data
+  | "apikey.created"
+  | "apikey.revoked"
   // Membership lifecycle — who may act inside a tenant
   | "membership.created"
   | "membership.role_changed"
@@ -90,6 +98,7 @@ export type AuditEntry = {
     | "subscription"
     | "training_record"
     | "dataset"
+    | "apikey"
   subjectId?: string | null
   actorId?: string | null
   actorRole?: string | null

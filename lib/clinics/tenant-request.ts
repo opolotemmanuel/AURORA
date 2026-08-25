@@ -64,11 +64,34 @@ export function selectedTenantSubdomain({
   host: string | null | undefined
   pinnedTenant: string | null | undefined
 }): string | null {
-  const fromHost = extractSubdomain(host)
-  if (fromHost) return fromHost
+  return extractSubdomain(host) ?? pinnedTenantCandidate({ host, pinnedTenant })
+}
 
-  // Only where the host can carry no tenant at all, so a cookie can never
-  // override real host-based routing.
+/**
+ * The pin cookie, but only when it is allowed to be consulted at all.
+ *
+ * The one place the rule "a cookie may never override host-based routing" is
+ * written down. Two callers need it and neither can use selectedTenantSubdomain
+ * for it: resolveTenant tries a verified custom domain *between* the host and
+ * the pin, an ordering that cannot be expressed here because custom domains are
+ * database rows rather than anything readable from a string.
+ *
+ * That ordering was previously restated inline in resolveTenant. It agreed with
+ * this module, which is exactly the problem — two copies of a security rule
+ * agree right up until one of them is edited.
+ *
+ * Returns null when the host already names a tenant, and when a root domain is
+ * configured at all. The second case is what makes the fallback safe to ship:
+ * in production the pin is not lower priority, it is never read.
+ */
+export function pinnedTenantCandidate({
+  host,
+  pinnedTenant,
+}: {
+  host: string | null | undefined
+  pinnedTenant: string | null | undefined
+}): string | null {
+  if (extractSubdomain(host)) return null
   if (hostBasedTenancyConfigured()) return null
 
   const pinned = pinnedTenant?.trim().toLowerCase()

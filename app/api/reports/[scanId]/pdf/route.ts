@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
 
+import { recordAudit } from "@/lib/audit/log"
+import { currentRequestId } from "@/lib/audit/request-id"
 import { requireApiSession } from "@/lib/auth/api-session"
+import { normalizeRole } from "@/lib/auth/role"
 import { generateSkinReportPdf } from "@/lib/pdf/generate-skin-report"
 
 type RouteContext = {
@@ -17,13 +20,32 @@ export async function GET(_request: Request, context: RouteContext) {
   const { scanId } = await context.params
 
   try {
-    const pdf = await generateSkinReportPdf(scanId, session.user.id)
+    const report = await generateSkinReportPdf(scanId, session.user.id)
 
-    if (!pdf) {
+    if (!report) {
       return NextResponse.json({ error: "Report not found" }, { status: 404 })
     }
 
-    return new NextResponse(new Uint8Array(pdf), {
+    // A clinical report leaving as a file. Tier C: this is the patient reading
+    // their own record — the scan is scoped to session.user.id, so there is no
+    // cross-tenant reach to guard — and a log failure must not stand between
+    // someone and their own results.
+    //
+    // The tenant is recorded when the scan was taken through a clinic, so the
+    // clinic can answer who downloaded what without the entry ever carrying the
+    // assessment itself.
+    await recordAudit({
+      action: "report.viewed",
+      subjectType: "report",
+      subjectId: scanId,
+      actorId: session.user.id,
+      actorRole: normalizeRole(session.user.role),
+      organizationId: report.organizationId,
+      requestId: await currentRequestId(),
+      metadata: { format: "pdf" },
+    })
+
+    return new NextResponse(new Uint8Array(report.buffer), {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="aura-skin-report-${scanId}.pdf"`,

@@ -86,12 +86,28 @@ Audit failure is logged and the operation proceeds. Reads, and mutations whose
 own row is the evidence.
 
 Examples: `scan.viewed`, `patient.viewed`, `appointment.viewed`,
-`membership.invited`, `membership.created`, `tenant.created`,
-`tenant.domain_claimed`, `apikey.created`, every `recordDenied` call.
+`report.viewed`, `membership.invited`, `membership.created`, `tenant.created`,
+`tenant.domain_claimed`, `apikey.created`, `payment.completed`,
+`payment.failed`, `appointment.cancelled`, `training.record.withdrawn`, and
+every `recordDenied` call.
 
 Denials are Tier C deliberately. A denial means nothing changed; failing the
 request because the *refusal* could not be recorded would turn a log outage
 into an outage.
+
+The payment and booking events are Tier C for a sharper reason: both are
+reached from a Stripe webhook. A non-2xx response makes Stripe retry, so
+failing the request because the log write failed would turn a logging outage
+into repeated payment processing. The `Payment` and `Booking` rows are the
+authoritative record of the money either way.
+
+Three of these sit behind a compare-and-set, so the entry is written only by
+the attempt that actually changed the row — a webhook racing the client confirm
+leaves one entry, not two.
+
+**The union has no unwritten members.** Every declared action has a writer, and
+a test asserts that in both directions: declaring an action without one fails,
+and so does exempting one that is in fact written.
 
 ---
 

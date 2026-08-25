@@ -38,7 +38,10 @@ export async function setTrainingConsentAction(input: unknown) {
 
   let withdrawn = 0
   if (!granted) {
-    withdrawn = await withdrawTrainingRecordsForUser(ctx.userId, "consent_revoked")
+    withdrawn = await withdrawTrainingRecordsForUser(ctx.userId, "consent_revoked", {
+      actorId: ctx.userId,
+      actorRole: ctx.role,
+    })
   }
 
   await recordAudit({
@@ -75,10 +78,10 @@ export async function setClinicTrainingContributionAction(input: unknown) {
 
   let withdrawn = 0
   if (!granted) {
-    withdrawn = await withdrawTrainingRecordsForClinic(
-      session.scope,
-      "clinic_opted_out",
-    )
+    withdrawn = await withdrawTrainingRecordsForClinic(session.scope, "clinic_opted_out", {
+      actorId: session.userId,
+      actorRole: session.role,
+    })
   }
 
   await recordAudit({

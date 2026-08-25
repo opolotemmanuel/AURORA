@@ -100,24 +100,14 @@ describe("no declared audit action is dead", () => {
    * action nobody writes reads, in the viewer, as an event that never happens —
    * indistinguishable from one that happens and is not recorded.
    *
-   * The remaining backlog, each with a real code path that does not yet record
-   * itself. Kept explicit rather than tolerated by pattern: the second
-   * assertion checks this list is *exactly* the unwritten set, so implementing
-   * one of these fails the test until it is removed from here, and adding a new
-   * unwritten action fails it too.
+   * The backlog is empty: every declared action now has a writer.
    *
-   * - report.viewed               clinic staff opening a patient's PDF report
-   * - appointment.cancelled       the payment-failure cancellation in booking-actions
-   * - payment.completed/.failed   the payment_intent events in the Stripe webhook
-   * - training.record.withdrawn   the withdrawal path in training/collect
+   * Kept as an explicit set rather than deleted, because the assertion below
+   * checks it is *exactly* the unwritten set. Emptiness is therefore enforced
+   * in both directions — declaring an action without a writer fails, and so
+   * does exempting one here that is in fact written.
    */
-  const KNOWN_UNWRITTEN = new Set([
-    "report.viewed",
-    "appointment.cancelled",
-    "payment.completed",
-    "payment.failed",
-    "training.record.withdrawn",
-  ])
+  const KNOWN_UNWRITTEN = new Set<string>([])
 
   const declared = [...auditLog.matchAll(/^\s+\| "([a-z_]+\.[a-z_.]+)"/gm)].map((m) => m[1])
 

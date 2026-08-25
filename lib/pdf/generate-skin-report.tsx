@@ -113,5 +113,8 @@ export async function generateSkinReportPdf(scanId: string, userId: string) {
     />,
   )
 
-  return buffer
+  // The tenant travels back with the buffer so the caller can attribute the
+  // download without repeating the lookup. Null for a scan taken outside any
+  // clinic, which is a correct answer rather than a missing one.
+  return { buffer, organizationId: scan.organizationId }
 }

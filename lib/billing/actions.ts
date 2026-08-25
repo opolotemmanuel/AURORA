@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto"
 import { revalidatePath } from "next/cache"
 
 import type { Payment, BillingProfile, Prisma } from "@/generated/prisma/client"
+import { recordAudit } from "@/lib/audit/log"
 import { requireSession } from "@/lib/auth/session"
 import {
   billingProfileSchema,
@@ -255,6 +256,23 @@ export async function finalizePaymentIntent(
       },
     })
 
+    // requires_action is a step in the flow, not an outcome — recording it as
+    // a failure would fill the trail with payments that went on to succeed.
+    if (intent.status !== "requires_action") {
+      await recordAudit({
+        action: "payment.failed",
+        subjectType: "payment",
+        subjectId: payment.id,
+        actorId: payment.userId,
+        actorRole: "user",
+        metadata: {
+          amountCents: payment.amountCents,
+          currency: payment.currency,
+          failureReason: intent.failureReason ?? null,
+        },
+      })
+    }
+
     revalidatePath("/dashboard/billing")
     return intent.status === "requires_action"
       ? {
@@ -298,6 +316,27 @@ export async function finalizePaymentIntent(
       receiptNumber: payment.receiptNumber,
     }
   }
+
+  // Only the attempt that flipped the row records the completion, so a webhook
+  // racing the client confirm leaves one entry rather than two.
+  //
+  // Payment is user-owned rather than tenant-owned — every row is a scan-pack
+  // purchase — so there is no organizationId to carry here. Card brand and last
+  // four are stored on the payment for the buyer to recognise the charge and
+  // stay out of the trail.
+  await recordAudit({
+    action: "payment.completed",
+    subjectType: "payment",
+    subjectId: payment.id,
+    actorId: payment.userId,
+    actorRole: "user",
+    metadata: {
+      amountCents: payment.amountCents,
+      currency: payment.currency,
+      receiptNumber: payment.receiptNumber,
+      packId: payment.packId,
+    },
+  })
 
   if (!payment.packId) {
     return { ok: false, error: "This payment is not linked to a pack" }

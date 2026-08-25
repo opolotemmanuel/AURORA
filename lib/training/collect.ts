@@ -1,4 +1,4 @@
-import { recordAuditMany } from "@/lib/audit/log"
+import { recordAudit, recordAuditMany } from "@/lib/audit/log"
 import { DEIDENT_VERSION, deidentifyScan, findIdentifierLeaks } from "@/lib/training/deidentify"
 import { checkEligibility } from "@/lib/training/eligibility"
 import { prisma } from "@/lib/db/client"
@@ -150,10 +150,16 @@ export async function collectTrainingRecords(options?: {
 export async function withdrawTrainingRecordsForUser(
   userId: string,
   reason: string,
+  actor: TrainingActor,
 ): Promise<number> {
   const result = await prisma.trainingRecord.updateMany({
     where: { sourceUserId: userId, status: { not: "withdrawn" } },
     data: { status: "withdrawn", withdrawnAt: new Date(), withdrawnReason: reason },
+  })
+
+  await recordWithdrawal(result.count, reason, actor, {
+    subjectId: userId,
+    organizationId: null,
   })
   return result.count
 }
@@ -162,10 +168,51 @@ export async function withdrawTrainingRecordsForUser(
 export async function withdrawTrainingRecordsForClinic(
   organizationId: string,
   reason: string,
+  actor: TrainingActor,
 ): Promise<number> {
   const result = await prisma.trainingRecord.updateMany({
     where: { organizationId, status: { not: "withdrawn" } },
     data: { status: "withdrawn", withdrawnAt: new Date(), withdrawnReason: reason },
   })
+
+  await recordWithdrawal(result.count, reason, actor, {
+    subjectId: organizationId,
+    organizationId,
+  })
   return result.count
+}
+
+/** Who asked for the withdrawal. Pass SYSTEM_ACTOR for an unattended purge. */
+type TrainingActor = { actorId: string | null; actorRole: string | null }
+
+/**
+ * One entry per withdrawal, not per record.
+ *
+ * A clinic opting out can withdraw thousands of rows at once, and a row each
+ * would bury every other event in the viewer. The count and the reason are what
+ * a later question actually needs — which records they were is answerable from
+ * TrainingRecord.withdrawnAt, and that is the point of marking them withdrawn
+ * rather than deleting them.
+ *
+ * Recorded inside these functions rather than at the call sites so a future
+ * caller cannot withdraw records without leaving the trail. Silent when nothing
+ * changed: withdrawing zero records is not an event.
+ */
+async function recordWithdrawal(
+  count: number,
+  reason: string,
+  actor: TrainingActor,
+  subject: { subjectId: string; organizationId: string | null },
+): Promise<void> {
+  if (count === 0) return
+
+  await recordAudit({
+    action: "training.record.withdrawn",
+    subjectType: "training_record",
+    subjectId: subject.subjectId,
+    actorId: actor.actorId,
+    actorRole: actor.actorRole,
+    organizationId: subject.organizationId,
+    metadata: { reason, records: count },
+  })
 }

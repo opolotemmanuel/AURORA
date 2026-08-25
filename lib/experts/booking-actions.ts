@@ -251,7 +251,7 @@ export async function finalizeBookingIntent(
   if (intent.status !== "succeeded") {
     const isRequiresAction = intent.status === "requires_action"
 
-    await prisma.booking.updateMany({
+    const cancelled = await prisma.booking.updateMany({
       where: { id: booking.id, status: { in: ["pending_payment"] } },
       data: {
         status: isRequiresAction ? "pending_payment" : "cancelled",
@@ -270,6 +270,27 @@ export async function finalizeBookingIntent(
         where: { id: booking.slotId },
         data: { isBooked: false },
       })
+
+      // Mirrors the confirmed path: only the attempt that actually flipped the
+      // row records the transition, so a double submit leaves one entry.
+      //
+      // The decline code is an outcome, not card data — cardBrand and cardLast4
+      // are stored on the booking for the patient to recognise the attempt and
+      // deliberately stay out of the trail.
+      if (cancelled.count > 0) {
+        await recordAudit({
+          action: "appointment.cancelled",
+          subjectType: "booking",
+          subjectId: booking.id,
+          actorId: booking.userId,
+          actorRole: "user",
+          organizationId: booking.organizationId,
+          metadata: {
+            reason: "payment_failed",
+            failureReason: intent.failureReason ?? null,
+          },
+        })
+      }
     }
 
     revalidateBookings()

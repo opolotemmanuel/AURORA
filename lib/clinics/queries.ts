@@ -45,13 +45,21 @@ export async function countClinicScans(organizationId: TenantScope) {
 }
 
 /** Staff of one clinic, for the team page and seat-limit checks. */
+/**
+ * Staff of one clinic.
+ *
+ * Revoked memberships are excluded: the row is kept so the relationship stays
+ * on record and auditable, but a revoked person is not staff and must not
+ * appear in the team list or hold a seat.
+ */
 export async function listClinicMembers(organizationId: TenantScope) {
   const members = await prisma.member.findMany({
-    where: { organizationId },
+    where: { organizationId, status: { not: "revoked" } },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
       role: true,
+      status: true,
       createdAt: true,
       user: { select: { id: true, name: true, email: true } },
     },
@@ -60,6 +68,7 @@ export async function listClinicMembers(organizationId: TenantScope) {
   return members.map((member) => ({
     id: member.id,
     role: member.role,
+    status: member.status,
     joinedAt: member.createdAt,
     userId: member.user.id,
     name: member.user.name,

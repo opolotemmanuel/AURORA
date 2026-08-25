@@ -8,6 +8,7 @@ import {
   IconCoin,
   IconCreditCard,
   IconGift,
+  IconHistory,
   IconHome,
   IconLock,
   IconMessage,
@@ -123,6 +124,7 @@ const ADMIN: NavSection = {
     { href: "/admin/affiliates", label: "Affiliates", icon: IconGift },
     { href: "/admin/clinics", label: "Clinics", icon: IconBuildingHospital },
     { href: "/admin/training", label: "Training data", icon: IconShieldCheck },
+    { href: "/admin/audit", label: "Audit log", icon: IconHistory },
     { href: "/admin/feedback", label: "Feedback", icon: IconMessage },
   ],
 }

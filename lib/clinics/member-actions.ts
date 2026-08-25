@@ -1,5 +1,6 @@
 "use server"
 
+import { recordAudit } from "@/lib/audit/log"
 import { randomUUID } from "node:crypto"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
@@ -40,7 +41,11 @@ export async function inviteClinicMemberAction(input: unknown) {
   }
 
   const [memberCount, pendingCount] = await Promise.all([
-    prisma.member.count({ where: { organizationId } }),
+    // Only live memberships consume a seat. A revoked member keeps its row
+    // so the relationship stays on record, but it must not hold a seat.
+    prisma.member.count({
+      where: { organizationId, status: { in: ["active", "invited"] } },
+    }),
     prisma.invitation.count({ where: { organizationId, status: "pending" } }),
   ])
 
@@ -126,25 +131,101 @@ export async function updateClinicMemberRoleAction(input: unknown) {
   }
 
   await prisma.member.update({ where: { id: memberId }, data: { role } })
+
+  await recordAudit({
+    action: "membership.role_changed",
+    subjectType: "membership",
+    subjectId: member.id,
+    actorId: session.userId,
+    actorRole: session.role,
+    organizationId: session.tenant.organizationId,
+    metadata: { from: member.role, to: role },
+  })
+
   revalidateTeam()
 }
 
 const memberIdSchema = z.object({ memberId: z.string().trim().min(1) })
 
+/**
+ * Revokes a membership.
+ *
+ * A state change, not a delete. Removing the row would destroy the record
+ * that the relationship ever existed, which is exactly what an audit of who
+ * had access to a clinic needs to show. Member.status carries the lifecycle
+ * for this reason; nothing else was ever writing it.
+ */
 export async function removeClinicMemberAction(input: unknown) {
   const session = await requireClinicManager()
   const { memberId } = memberIdSchema.parse(input)
 
   const member = await prisma.member.findFirst({
     where: { id: memberId, organizationId: session.scope },
-    select: { id: true, role: true, userId: true },
+    select: { id: true, role: true, userId: true, status: true },
   })
   if (!member) throw new Error("Member not found")
   if (member.role === "owner") {
     throw new Error("The clinic owner cannot be removed.")
   }
 
-  await prisma.member.delete({ where: { id: memberId } })
+  await prisma.member.update({
+    where: { id: memberId },
+    data: { status: "revoked" },
+  })
+
+  await recordAudit({
+    action: "membership.revoked",
+    subjectType: "membership",
+    subjectId: member.id,
+    actorId: session.userId,
+    actorRole: session.role,
+    organizationId: session.tenant.organizationId,
+    metadata: { targetUserId: member.userId, previousStatus: member.status },
+  })
+
+  revalidateTeam()
+}
+
+const memberStatusSchema = z.object({
+  memberId: z.string().trim().min(1),
+  status: z.enum(["active", "suspended"]),
+})
+
+/**
+ * Suspends or reinstates a membership.
+ *
+ * Suspension is reversible and revocation is not, which is why they are
+ * separate actions rather than one status field the caller sets freely: a
+ * revoked membership cannot be handed back by flipping an enum.
+ */
+export async function setClinicMemberStatusAction(input: unknown) {
+  const session = await requireClinicManager()
+  const { memberId, status } = memberStatusSchema.parse(input)
+
+  const member = await prisma.member.findFirst({
+    where: { id: memberId, organizationId: session.scope },
+    select: { id: true, role: true, userId: true, status: true },
+  })
+  if (!member) throw new Error("Member not found")
+  if (member.role === "owner") {
+    throw new Error("The clinic owner cannot be suspended.")
+  }
+  if (member.status === "revoked") {
+    throw new Error("A revoked membership cannot be reinstated. Invite them again.")
+  }
+
+  await prisma.member.update({ where: { id: memberId }, data: { status } })
+
+  await recordAudit({
+    action: status === "suspended" ? "membership.suspended" : "membership.reactivated",
+    subjectType: "membership",
+    subjectId: member.id,
+    actorId: session.userId,
+    actorRole: session.role,
+    organizationId: session.tenant.organizationId,
+    metadata: { targetUserId: member.userId, previousStatus: member.status },
+  })
+
   revalidateTeam()
 }
 

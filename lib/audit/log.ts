@@ -33,6 +33,8 @@ export type AuditAction =
   | "membership.created"
   | "membership.role_changed"
   | "membership.suspended"
+  | "membership.reactivated"
+  | "membership.invited"
   | "membership.revoked"
   // Patient data
   | "patient.viewed"

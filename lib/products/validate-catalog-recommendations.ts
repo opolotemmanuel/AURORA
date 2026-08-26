@@ -53,10 +53,22 @@ export function filterCatalogRecommendations(
   return valid
 }
 
+/**
+ * The slugs a recommendation is allowed to name.
+ *
+ * Scoped to the caller's tenant. This set is the allowlist the model's output
+ * is checked against, so an unscoped version would accept another clinic's
+ * slug as valid and carry it straight through to the patient.
+ */
 export async function getActiveCatalogSlugs(): Promise<Set<string>> {
   const { prisma } = await import("@/lib/db/client")
+  const { currentCatalogueScope, recommendableProductsWhere } = await import(
+    "@/lib/products/catalogue-scope"
+  )
+
+  const scope = await currentCatalogueScope()
   const products = await prisma.product.findMany({
-    where: { isActive: true },
+    where: recommendableProductsWhere(scope),
     select: { slug: true },
   })
 

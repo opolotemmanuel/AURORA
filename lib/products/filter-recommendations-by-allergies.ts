@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/db/client"
+import {
+  currentCatalogueScope,
+  visibleProductsWhere,
+} from "@/lib/products/catalogue-scope"
 import { productIngredientListConflictsWithAllergies } from "@/lib/products/match-allergies"
 import type { ProductRecommendation } from "@/lib/scan/types"
 
@@ -24,8 +28,12 @@ export async function partitionRecommendationsByAllergies(
   }
 
   const slugs = [...new Set(recommendations.map((item) => item.id))]
+  // Tenant-scoped, which composes with the fail-closed rule above: a slug from
+  // another clinic is simply not found here, and an unfound slug is already
+  // treated as unsafe rather than waved through.
+  const scope = await currentCatalogueScope()
   const products = await prisma.product.findMany({
-    where: { slug: { in: slugs } },
+    where: { slug: { in: slugs }, ...visibleProductsWhere(scope) },
     select: {
       slug: true,
       ingredientList: true,

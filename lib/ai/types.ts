@@ -5,7 +5,12 @@ export type CatalogProductContext = {
   slug: string
   name: string
   description: string
+  /** WooCommerce merchandising taxonomy. Not a classification. */
   category: string
+  /** Structured product metadata: organic, ayurvedic, clinical and so on. */
+  classifications: string[]
+  /** Which catalogue this came from — the platform's, or the current clinic's. */
+  source: "aurora" | "clinic"
   ingredients: string | null
   ingredientList: string[]
   targetConcerns: string[]

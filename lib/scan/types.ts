@@ -96,6 +96,14 @@ export type ProductRecommendation = {
   applicationFrequency?: ApplicationFrequency
   imageUrl?: string | null
   storeUrl?: string | null
+  /**
+   * Which catalogue the product came from, so the patient can see whether
+   * their clinic stocks it or Aurora does. Resolved server-side from the
+   * product row; the organization id itself is never sent to the client.
+   */
+  source?: "aurora" | "clinic"
+  /** Structured product metadata, e.g. organic or ayurvedic. */
+  classifications?: string[]
 }
 
 /**

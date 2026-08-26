@@ -18,8 +18,27 @@ export function scanHistoryContextTag(userId: string): string {
   return `${SCAN_HISTORY_CONTEXT_PREFIX}:${userId}`
 }
 
+/**
+ * The cache key for one clinic's slice of the catalogue.
+ *
+ * The global catalogue is cached under one tag because every tenant sees the
+ * same rows. A clinic's own products are not the same for everyone, so they get
+ * a tag of their own — without this, the first tenant to warm the cache would
+ * serve its private catalogue to every other tenant, silently and until the TTL
+ * expired.
+ */
+export function tenantCatalogContextTag(organizationId: string): string {
+  return `${CATALOG_CONTEXT_TAG}:${organizationId}`
+}
+
+/** Invalidates the Aurora catalogue. Does not touch any clinic's own. */
 export function revalidateCatalogContext(): void {
   revalidateTag(CATALOG_CONTEXT_TAG, "max")
+}
+
+/** Invalidates one clinic's catalogue. Does not touch Aurora's or anyone else's. */
+export function revalidateTenantCatalogContext(organizationId: string): void {
+  revalidateTag(tenantCatalogContextTag(organizationId), "max")
 }
 
 export function revalidateUserScanContext(userId: string): void {

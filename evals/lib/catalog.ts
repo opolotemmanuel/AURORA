@@ -16,6 +16,8 @@ export const EVAL_CATALOG: CatalogProductContext[] = [
     name: "Calm Oat Cleanser",
     description: "Low-foam gel cleanser for reactive, easily flushed skin.",
     category: "cleanser",
+    classifications: [],
+    source: "aurora",
     ingredients: null,
     ingredientList: [
       "Aqua",
@@ -34,6 +36,8 @@ export const EVAL_CATALOG: CatalogProductContext[] = [
     name: "Clarify Willow Gel",
     description: "Lightweight gel for congested, blemish-prone areas.",
     category: "treatment",
+    classifications: [],
+    source: "aurora",
     ingredients: null,
     ingredientList: [
       "Aqua",
@@ -52,6 +56,8 @@ export const EVAL_CATALOG: CatalogProductContext[] = [
     name: "Almond Restore Balm",
     description: "Rich overnight balm for very dry, tight-feeling skin.",
     category: "moisturizer",
+    classifications: [],
+    source: "aurora",
     ingredients: null,
     // The nut allergy trap.
     ingredientList: [
@@ -70,6 +76,8 @@ export const EVAL_CATALOG: CatalogProductContext[] = [
     name: "Hydra Squalane Cream",
     description: "Fragrance-free daily moisturizer for dehydrated skin.",
     category: "moisturizer",
+    classifications: [],
+    source: "aurora",
     ingredients: null,
     ingredientList: [
       "Aqua",
@@ -88,6 +96,8 @@ export const EVAL_CATALOG: CatalogProductContext[] = [
     name: "Even Tone Vitamin C Serum",
     description: "Morning antioxidant serum for uneven tone and dark spots.",
     category: "serum",
+    classifications: [],
+    source: "aurora",
     ingredients: null,
     ingredientList: [
       "Aqua",
@@ -106,6 +116,8 @@ export const EVAL_CATALOG: CatalogProductContext[] = [
     name: "Rose Veil Mist",
     description: "Refreshing hydrating mist with a soft floral scent.",
     category: "mist",
+    classifications: [],
+    source: "aurora",
     ingredients: null,
     // The fragrance allergy trap.
     ingredientList: [
@@ -125,6 +137,8 @@ export const EVAL_CATALOG: CatalogProductContext[] = [
     name: "Daily Mineral SPF 40",
     description: "Lightweight mineral sunscreen for everyday protection.",
     category: "sunscreen",
+    classifications: [],
+    source: "aurora",
     ingredients: null,
     ingredientList: [
       "Zinc Oxide",
@@ -143,6 +157,8 @@ export const EVAL_CATALOG: CatalogProductContext[] = [
     name: "Smooth Lactic Serum",
     description: "Gentle evening exfoliant for rough texture and visible pores.",
     category: "serum",
+    classifications: [],
+    source: "aurora",
     ingredients: null,
     ingredientList: [
       "Aqua",

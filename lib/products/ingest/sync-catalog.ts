@@ -71,8 +71,15 @@ export async function syncProductCatalog(
   let skipped = 0
 
   for (const product of products) {
-    const existing = await prisma.product.findUnique({
-      where: { slug: product.slug },
+    // Global products only, matched explicitly rather than by slug alone.
+    //
+    // Slug is unique per owner now, so a clinic may hold the same slug as a
+    // WooCommerce product. Matching on slug alone would let a catalogue sync
+    // overwrite that clinic's own product with store data — and force it back
+    // to isActive along the way. The store owns the Aurora catalogue and
+    // nothing else.
+    const existing = await prisma.product.findFirst({
+      where: { slug: product.slug, organizationId: null },
       select: { id: true },
     })
 
@@ -93,7 +100,7 @@ export async function syncProductCatalog(
 
     if (existing) {
       await prisma.product.update({
-        where: { slug: product.slug },
+        where: { id: existing.id },
         data,
       })
       updated += 1

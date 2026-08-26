@@ -37,13 +37,15 @@ async function main() {
 
   for (const item of items) {
     const data = mapFallbackProduct(item)
-    const existing = await prisma.product.findUnique({
-      where: { slug: data.slug },
+    const existing = await prisma.product.findFirst({
+      // Global products only: the seed owns the Aurora catalogue, never a
+      // clinic's own products, which may hold the same slug.
+      where: { slug: data.slug, organizationId: null },
     })
 
     if (existing) {
       await prisma.product.update({
-        where: { slug: data.slug },
+        where: { id: existing.id },
         data: {
           sku: data.sku,
           name: data.name,

@@ -95,6 +95,13 @@ export type AuditAction =
   // Tenant credentials — programmatic access to one tenant's data
   | "apikey.created"
   | "apikey.revoked"
+  // Catalogue. Carries organizationId for a clinic's own product and null for
+  // an Aurora one, which is the same distinction the catalogue itself draws.
+  | "product.created"
+  | "product.updated"
+  | "product.archived"
+  | "product.recommendation_enabled"
+  | "product.recommendation_disabled"
   // Membership lifecycle — who may act inside a tenant
   | "membership.created"
   | "membership.role_changed"
@@ -167,6 +174,7 @@ export type AuditEntry = {
     | "training_record"
     | "dataset"
     | "apikey"
+    | "product"
   subjectId?: string | null
   actorId?: string | null
   actorRole?: string | null

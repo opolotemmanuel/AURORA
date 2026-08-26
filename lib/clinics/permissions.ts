@@ -29,6 +29,8 @@ export const TENANT_PERMISSIONS = [
   "REPORT_VIEW",
   "API_KEY_MANAGE",
   "DATA_SHARING_MANAGE",
+  "PRODUCT_VIEW",
+  "PRODUCT_MANAGE",
 ] as const
 
 export type TenantPermission = (typeof TENANT_PERMISSIONS)[number]
@@ -56,6 +58,8 @@ const CLINIC_ADMIN: readonly TenantPermission[] = [
   "REPORT_VIEW",
   "API_KEY_MANAGE",
   "DATA_SHARING_MANAGE",
+  "PRODUCT_VIEW",
+  "PRODUCT_MANAGE",
 ]
 
 const MEMBER: readonly TenantPermission[] = [
@@ -65,6 +69,7 @@ const MEMBER: readonly TenantPermission[] = [
   "SCAN_VIEW",
   "APPOINTMENT_VIEW",
   "REPORT_VIEW",
+  "PRODUCT_VIEW",
 ]
 
 const BY_ROLE: Record<string, readonly TenantPermission[]> = {

@@ -507,21 +507,37 @@ model Payment {
   @@map("payment")
 }
 
+/// A catalogue entry, owned either by the platform or by one clinic.
+///
+/// organizationId null means an Aurora product: global, administered by the
+/// platform, offered to every eligible patient. Non-null means the product
+/// belongs to exactly one clinic and may only ever be seen, edited or
+/// recommended inside that tenant.
 model Product {
   id                String        @id @default(cuid())
-  sku               String        @unique
+  sku               String
   name              String
-  slug              String        @unique
+  slug              String
   description       String
+  /// WooCommerce merchandising taxonomy ("face-hands"). Not a classification —
+  /// see `classifications`, which is a separate axis and must not overwrite it.
   category          String
   ingredients       String?
   ingredientList    String[]      @default([])
   targetConcerns    String[]      @default([])
   suitableSkinTypes String[]      @default([])
   climateTags       String[]      @default([])
+  /// Structured metadata for the recommendation engine. An empty array means
+  /// unclassified, which is deliberately distinct from `other`: one says nobody
+  /// has judged the product yet, the other says it was judged and fits nothing.
+  classifications   ProductClassification[] @default([])
   imageUrl          String?
   storeUrl          String?
   isActive          Boolean       @default(true)
+  /// Whether the product may enter new recommendations. Separate from
+  /// isActive so a clinic can keep a product listed while withdrawing it from
+  /// the engine.
+  isRecommendable   Boolean       @default(true)
   createdById       String
   createdBy         User          @relation("ProductCreator", fields: [createdById], references: [id])
   organizationId    String?
@@ -529,9 +545,31 @@ model Product {
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
+  /// Scoped to the owner so two clinics can both sell "vitamin-c-serum".
+  /// Postgres treats NULLs as distinct, so these do NOT constrain Aurora
+  /// products against each other — a partial unique index added in the same
+  /// migration covers that case.
+  @@unique([organizationId, sku])
+  @@unique([organizationId, slug])
   @@index([isActive])
   @@index([organizationId])
+  @@index([organizationId, isActive, isRecommendable])
   @@map("product")
+}
+
+/// What a product is, for the recommendation engine to reason about.
+///
+/// Organic and natural are deliberately separate: organic speaks to how the
+/// inputs were farmed, natural to whether they were synthesised. A product can
+/// carry several of these at once, which is why the column is an array.
+enum ProductClassification {
+  organic
+  natural
+  synthetic
+  dermatological
+  ayurvedic
+  clinical
+  other
 }
 
 model Ingredient {

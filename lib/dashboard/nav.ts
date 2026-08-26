@@ -102,6 +102,7 @@ const CLINIC: NavSection = {
     { href: "/clinic", label: "Patients", icon: IconUsers },
     { href: "/clinic/analytics", label: "Analytics", icon: IconChartBar },
     { href: "/clinic/team", label: "Team", icon: IconUserCheck },
+    { href: "/clinic/products", label: "Products", icon: IconPackage },
     { href: "/clinic/branding", label: "Branding", icon: IconPalette },
     { href: "/clinic/domain", label: "Domain", icon: IconWorld },
     { href: "/clinic/data", label: "Data sharing", icon: IconShieldCheck },

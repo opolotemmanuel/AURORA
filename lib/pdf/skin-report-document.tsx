@@ -383,6 +383,17 @@ export function SkinReportDocument({
                   ) : null}
                   <View style={reportStyles.productBody}>
                     <Text style={reportStyles.rowLabel}>{item.name}</Text>
+                    {/* Whose product this is. brandName is already the clinic's
+                        display name on a clinic-branded report, so the source
+                        reads naturally without exposing any identifier.
+                        Omitted on older recommendations, which carry no flag. */}
+                    {item.source ? (
+                      <Text style={[reportStyles.meta, { marginBottom: 2 }]}>
+                        {item.source === "clinic"
+                          ? `Recommended by ${brandName}`
+                          : "Aurora Catalogue"}
+                      </Text>
+                    ) : null}
                     {scheduleLabel ? (
                       <Text style={[reportStyles.meta, { marginBottom: 2 }]}>
                         {scheduleLabel}

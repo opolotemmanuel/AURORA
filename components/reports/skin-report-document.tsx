@@ -20,12 +20,15 @@ type SkinReportDocumentProps = {
   assessment: SkinAssessment
   climateContext?: ScanClimateContext | null
   className?: string
+  /** Names the clinic when one of its own products was recommended. */
+  clinicName?: string | null
 }
 
 export function SkinReportDocument({
   assessment,
   climateContext = null,
   className,
+  clinicName = null,
 }: SkinReportDocumentProps) {
   return (
     <div className={cn("space-y-8 font-sans", className)}>
@@ -113,7 +116,10 @@ export function SkinReportDocument({
         <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
           {RECOMMENDATION_SECTIONS.recommendedProducts.description}
         </p>
-        <ReportProductList products={assessment.recommendations} />
+        <ReportProductList
+          products={assessment.recommendations}
+          clinicName={clinicName}
+        />
       </ReportSection>
 
       <ReportDisclaimer />

@@ -9,11 +9,47 @@ import { cn } from "@/lib/utils"
 type ReportProductListProps = {
   products: ProductRecommendation[]
   className?: string
+  /**
+   * The clinic whose site this report is being read on, used to name the
+   * source of its own products. Absent on the platform, where every
+   * recommendation is Aurora's.
+   */
+  clinicName?: string | null
+}
+
+/**
+ * Where a recommended product came from.
+ *
+ * A patient seeing "Recommended by Wellderm" is being told their clinic chose
+ * this, which is different from Aurora suggesting it — so the two are always
+ * distinguishable. The source is a plain flag resolved on the server; the
+ * organization id never reaches the client.
+ *
+ * Silent on older recommendations, which predate source attribution and carry
+ * no flag. Guessing a source for them would be worse than omitting it.
+ */
+function ProductSource({
+  source,
+  clinicName,
+}: {
+  source: ProductRecommendation["source"]
+  clinicName?: string | null
+}) {
+  if (!source) return null
+
+  return (
+    <p className="text-[0.7rem] font-medium tracking-wide text-muted-foreground uppercase">
+      {source === "clinic"
+        ? `Recommended by ${clinicName?.trim() || "your clinic"}`
+        : "Aurora Catalogue"}
+    </p>
+  )
 }
 
 export function ReportProductList({
   products,
   className,
+  clinicName,
 }: ReportProductListProps) {
   if (products.length === 0) {
     return (
@@ -48,6 +84,7 @@ export function ReportProductList({
               <p className="text-sm font-medium text-foreground">
                 {product.name}
               </p>
+              <ProductSource source={product.source} clinicName={clinicName} />
               <ReportApplicationSchedule
                 applicationTime={product.applicationTime}
                 applicationFrequency={product.applicationFrequency}

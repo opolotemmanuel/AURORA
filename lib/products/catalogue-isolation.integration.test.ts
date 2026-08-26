@@ -311,6 +311,71 @@ describe("archived and withdrawn products", () => {
   })
 })
 
+describe("a WooCommerce sync cannot reach a clinic's product", () => {
+  /**
+   * The sync matches on slug, and a clinic may legitimately hold the same slug
+   * as a store product. This reproduces the lookup the sync performs and proves
+   * it selects the global row — matching on slug alone would return two rows
+   * here, and updating by slug would have overwritten the clinic's own.
+   */
+  it("the sync lookup selects the global row when a clinic shares the slug", async () => {
+    const shared = `sync-collision-${RUN}`
+
+    const global = await prisma.product.create({
+      data: {
+        sku: `SYNC-GLOBAL-${RUN}`,
+        slug: shared,
+        name: "Store Product",
+        description: "Owned by the WooCommerce catalogue.",
+        category: "face-hands",
+        createdById: created.userIds[0],
+        organizationId: null,
+      },
+      select: { id: true },
+    })
+
+    const clinicOwned = await prisma.product.create({
+      data: {
+        sku: `SYNC-CLINIC-${RUN}`,
+        slug: shared,
+        name: "Clinic Product",
+        description: "Owned by clinic A, same slug.",
+        category: "face-hands",
+        createdById: created.userIds[0],
+        organizationId: clinicA.organizationId,
+      },
+      select: { id: true, name: true, updatedAt: true },
+    })
+
+    // Exactly the where clause lib/products/ingest/sync-catalog.ts uses.
+    const matched = await prisma.product.findFirst({
+      where: { slug: shared, organizationId: null },
+      select: { id: true },
+    })
+    assert.equal(matched?.id, global.id, "the sync must match the global product")
+
+    // Apply a sync-shaped update through that match, then check the clinic's
+    // product is byte-for-byte where it was.
+    await prisma.product.update({
+      where: { id: matched!.id },
+      data: { name: "Store Product (synced)", isActive: true },
+    })
+
+    const after = await prisma.product.findUniqueOrThrow({
+      where: { id: clinicOwned.id },
+      select: { name: true, updatedAt: true },
+    })
+    assert.equal(after.name, clinicOwned.name, "the clinic's product must be untouched")
+    assert.equal(
+      after.updatedAt.getTime(),
+      clinicOwned.updatedAt.getTime(),
+      "the clinic's product must not even have been written to",
+    )
+
+    await prisma.product.deleteMany({ where: { id: { in: [global.id, clinicOwned.id] } } })
+  })
+})
+
 describe("the existing Aurora catalogue is untouched", () => {
   it("all 24 seeded products remain global and active", async () => {
     const seeded = await prisma.product.count({

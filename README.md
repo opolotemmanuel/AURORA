@@ -1,4 +1,4 @@
-# Aura
+# Aurora
 
 Web-based AI skin intelligence for Aurora Organics. Users scan their face, receive a cosmetic skin assessment, and get personalized product recommendations — plus a downloadable PDF report, scan history, and follow-up chat in the dashboard.
 
@@ -77,7 +77,7 @@ The scan wizard runs in the browser; analysis and persistence happen server-side
 - **Upload** — still photo from disk
 - **Camera** — live preview with quality hints (camera mounts only when the Camera tab is active)
 - **Live** — Pro-tier real-time scan (`ScanLivePanel` → `/api/scan/live/complete`)
-- **Advice** — chat with Aura without starting a new scan
+- **Advice** — chat with Aurora without starting a new scan
 
 **Privacy:** Photos stay in browser memory for the session and are **not** stored in the database (`imageRetained: false`). Only the assessment text, recommendations, and report metadata are persisted.
 
@@ -188,7 +188,7 @@ For production, prefer injecting vars from your platform's secret store (`-e` fl
 
 ## Aurora Organics website integration
 
-Aura links **out** to Aurora product pages and can be embedded on the store site:
+Aurora links **out** to Aurora product pages and can be embedded on the store site:
 
 - Product cards use `storeUrl` / `AURORA_STORE_ORIGIN` (`https://www.auroraorganics.co`)
 - **Embed page:** [`/embed/scan`](http://localhost:3000/embed/scan) — minimal CTA for an iframe on auroraorganics.co

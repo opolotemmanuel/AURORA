@@ -48,7 +48,7 @@ export async function GET(_request: Request, context: RouteContext) {
     return new NextResponse(new Uint8Array(report.buffer), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="aura-skin-report-${scanId}.pdf"`,
+        "Content-Disposition": `attachment; filename="aurora-skin-report-${scanId}.pdf"`,
         "Cache-Control": "private, no-cache",
       },
     })

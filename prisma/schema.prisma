@@ -1,4 +1,4 @@
-// Aura — better-auth + domain models
+// Aurora — better-auth + domain models
 
 generator client {
   provider = "prisma-client"
@@ -180,7 +180,7 @@ model Invitation {
   @@map("invitation")
 }
 
-// ─── Aura domain ────────────────────────────────────────────────────────────
+// ─── Aurora domain ────────────────────────────────────────────────────────────
 
 enum BiologicalSex {
   female

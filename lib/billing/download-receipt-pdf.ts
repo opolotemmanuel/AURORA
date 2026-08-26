@@ -29,7 +29,7 @@ export async function downloadReceiptPdf(
     const url = URL.createObjectURL(blob)
     const anchor = document.createElement("a")
     anchor.href = url
-    anchor.download = `aura-receipt-${receiptNumber}.pdf`
+    anchor.download = `aurora-receipt-${receiptNumber}.pdf`
     document.body.appendChild(anchor)
     anchor.click()
     document.body.removeChild(anchor)

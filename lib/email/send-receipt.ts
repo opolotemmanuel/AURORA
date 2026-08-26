@@ -89,7 +89,7 @@ export async function sendReceiptEmail(
       html: buildReceiptEmailHtml(data),
       attachments: [
         {
-          filename: `aura-receipt-${payment.receiptNumber}.pdf`,
+          filename: `aurora-receipt-${payment.receiptNumber}.pdf`,
           content: receipt.buffer.toString("base64"),
         },
       ],

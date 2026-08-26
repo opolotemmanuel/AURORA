@@ -236,7 +236,7 @@ export function LandingBenefits() {
             variants={itemVariants}
             className="text-muted-foreground mt-4 max-w-md text-sm leading-relaxed sm:text-base"
           >
-            Most skincare advice is written for an average face. Aura reads
+            Most skincare advice is written for an average face. Aurora reads
             yours, then filters every recommendation through your allergies,
             your climate, and what your skin is doing today.
           </motion.p>

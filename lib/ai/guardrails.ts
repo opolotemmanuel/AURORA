@@ -51,8 +51,11 @@ export const MEDICAL_OUTPUT_PATTERNS: RegExp[] = [
   /\b(tretinoin|isotretinoin|accutane|tazarotene|hydroquinone|clindamycin|spironolactone|mupirocin|fluocinonide|triamcinolone)\b/i,
 ]
 
+// "aura" is kept alongside "aurora": the product was called Aura, people who
+// used it then still greet it that way, and dropping the old name would start
+// classifying "hi aura" as off-topic rather than as a greeting.
 const GREETING_PATTERN =
-  /^(hi|hello|hey|howdy|yo|sup|greetings|good\s+(morning|afternoon|evening|day)|what'?s\s+up)(?:\s+(there|aura))?[!.?]*$/i
+  /^(hi|hello|hey|howdy|yo|sup|greetings|good\s+(morning|afternoon|evening|day)|what'?s\s+up)(?:\s+(there|aurora|aura))?[!.?]*$/i
 
 const SOCIAL_ACK_PATTERN =
   /^(thanks?|thank\s+you|thx|ty|ok|okay|got\s+it|cool|sounds\s+good|great|nice|perfect)[!.?]*$/i

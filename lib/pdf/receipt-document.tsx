@@ -167,8 +167,8 @@ export function ReceiptDocument({ data }: { data: ReceiptData }) {
 
   return (
     <Document
-      title={`Aura receipt ${data.receiptNumber}`}
-      author="Aura"
+      title={`Aurora receipt ${data.receiptNumber}`}
+      author="Aurora"
       subject="Payment receipt"
     >
       <Page size="A4" style={styles.page}>
@@ -176,7 +176,7 @@ export function ReceiptDocument({ data }: { data: ReceiptData }) {
           <View>
             {/* eslint-disable-next-line jsx-a11y/alt-text */}
             <Image src={data.logoDataUri} style={styles.logo} />
-            <Text style={styles.brand}>Aura</Text>
+            <Text style={styles.brand}>Aurora</Text>
             <Text style={styles.muted}>AI skin analysis</Text>
           </View>
           <View style={styles.headerRight}>
@@ -240,7 +240,7 @@ export function ReceiptDocument({ data }: { data: ReceiptData }) {
         <Text style={styles.paidBadge}>PAID</Text>
 
         <Text style={styles.footer} fixed>
-          Thank you for using Aura. Questions about this receipt? Reply to the
+          Thank you for using Aurora. Questions about this receipt? Reply to the
           email address on your account and quote {data.receiptNumber}.
         </Text>
       </Page>

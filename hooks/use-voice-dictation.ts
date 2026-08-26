@@ -204,7 +204,7 @@ export function useVoiceDictation({
         }
       } catch {
         onErrorRef.current?.(
-          "Couldn't reach Aura to transcribe your voice. Check your connection and try again.",
+          "Couldn't reach Aurora to transcribe your voice. Check your connection and try again.",
         )
       } finally {
         setProcessing(false)

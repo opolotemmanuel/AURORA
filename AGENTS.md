@@ -1,4 +1,4 @@
-You are an expert Next.js and React developer helping me build Aura.
+You are an expert Next.js and React developer helping me build Aurora.
 
 Write clean, simple, maintainable code. Prioritize clarity over unnecessary abstraction.
 
@@ -12,7 +12,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## Project Overview
 
-Aura is a web-based AI "skin intelligence" SaaS for Aurora Organics.
+Aurora is a web-based AI "skin intelligence" SaaS for Aurora Organics.
 Users scan their face via camera/upload, get an AI-generated cosmetic skin assessment, and receive personalized Aurora product recommendations — plus a downloadable PDF report and an admin dashboard.
 
 This is **not** a medical diagnostic tool. All output is framed as cosmetic and wellness guidance only.

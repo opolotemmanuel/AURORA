@@ -26,7 +26,7 @@ export async function GET(_request: Request, context: RouteContext) {
     return new NextResponse(new Uint8Array(receipt.buffer), {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="aura-receipt-${receipt.receiptNumber}.pdf"`,
+        "Content-Disposition": `attachment; filename="aurora-receipt-${receipt.receiptNumber}.pdf"`,
         "Cache-Control": "private, no-cache",
       },
     })

@@ -41,7 +41,7 @@ export async function createVideoRoomForBooking(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      name: `aura-consult-${bookingId}`,
+      name: `aurora-consult-${bookingId}`,
       privacy: "public",
       properties: {
         nbf: nbfUnix,

@@ -14,7 +14,7 @@ import reportDark from "../../assets/cta-report-dark.webp"
 import reportLight from "../../assets/cta-report-light.webp"
 
 const SCREENSHOT_ALT =
-  "Aura skin report on a phone, showing band levels across six key skin areas"
+  "Aurora skin report on a phone, showing band levels across six key skin areas"
 
 const SCREEN_SIZES = "(max-width: 640px) 230px, (max-width: 1024px) 248px, 264px"
 

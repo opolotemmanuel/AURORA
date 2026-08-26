@@ -26,6 +26,20 @@ model User {
   onboardingCompleted Boolean?  @default(false)
   scanTier            ScanTier  @default(starter)
 
+  /// An uploaded profile picture, stored as bytes rather than a URL.
+  ///
+  /// `image` above stays the render source for every existing surface: on
+  /// upload it is set to this user's avatar route, so a federated sign-in that
+  /// supplies a remote URL and a picture someone uploaded here are read the
+  /// same way by the sidebar and the expert cards.
+  ///
+  /// Bytes in the row follow Scan.imageData, which already stores photographs
+  /// this way — there is no object store configured, and inventing one for
+  /// avatars would be a larger change than the feature.
+  avatarData          Bytes?
+  avatarMimeType      String?
+  avatarUpdatedAt     DateTime?
+
   sessions                      Session[]
   accounts                      Account[]
   members                       Member[]

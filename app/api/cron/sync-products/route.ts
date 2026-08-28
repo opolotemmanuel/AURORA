@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server"
 
+import { authorizeCronRequest } from "@/lib/cron/authorize"
 import { prisma } from "@/lib/db/client"
 import { syncProductCatalog } from "@/lib/products/ingest/sync-catalog"
 
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET
-  const authHeader = request.headers.get("authorization")
-
-  if (!secret || authHeader !== `Bearer ${secret}`) {
-    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 })
-  }
+  const authorized = authorizeCronRequest(request)
+  if (!authorized.ok) return authorized.response
 
   const email = process.env.BOOTSTRAP_ADMIN_EMAIL
   if (!email) {

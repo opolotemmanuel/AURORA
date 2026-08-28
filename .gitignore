@@ -42,3 +42,7 @@ next-env.d.ts
 # Eval fixture photos are special-category data and stay out of git.
 evals/fixtures/images/*
 !evals/fixtures/images/.gitkeep
+
+# Dev-server logs from local verification runs.
+.next-*.log
+.next-*.err

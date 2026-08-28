@@ -5,8 +5,21 @@ export const CATALOG_CONTEXT_TAG = "catalog-context"
 const USER_SCAN_CONTEXT_PREFIX = "user-scan-context"
 const SCAN_HISTORY_CONTEXT_PREFIX = "scan-history-context"
 
-/** Safety TTL when tag revalidation is missed (seconds). */
-export const CATALOG_CACHE_REVALIDATE_SECONDS = 3600
+/**
+ * Safety TTL when tag revalidation is missed (seconds).
+ *
+ * One minute rather than an hour, because tag revalidation is only reliable
+ * within a single process. On Vercel the platform shares the cache; self-hosted
+ * across two or more container instances it does not, so a product edit
+ * revalidates the instance that served the edit and no other. This bounds how
+ * long the others can disagree.
+ *
+ * The cost is a single indexed findMany per minute per instance, which is
+ * cheap next to a clinic adding a product, not seeing it recommended, and
+ * adding it again. It is a mitigation, not a fix — see docs/aws-deployment.md
+ * for why the deployment runs one instance until a shared cache handler exists.
+ */
+export const CATALOG_CACHE_REVALIDATE_SECONDS = 60
 export const USER_SCAN_CONTEXT_REVALIDATE_SECONDS = 300
 export const SCAN_HISTORY_CACHE_REVALIDATE_SECONDS = 300
 

@@ -15,7 +15,7 @@ import { requestOrigin } from "@/lib/clinics/request-origin"
 
 import { prisma } from "@/lib/db/client"
 import { sendOtpEmail } from "@/lib/email/send-otp"
-import { getPlatformOrigins, getSiteUrl } from "@/lib/site-url"
+import { configuredOrigin, getSiteUrl } from "@/lib/site-url"
 
 const googleConfigured =
   Boolean(process.env.GOOGLE_CLIENT_ID) &&
@@ -147,17 +147,23 @@ const clinicIsolationHook = createAuthMiddleware(async (ctx) => {
 async function trustedOriginsForRequest(request?: Request): Promise<string[]> {
   const origins = tenantTrustedOrigins()
 
-  // Trust the origin this request actually arrived on, but only when it is
-  // one this deployment can prove it owns: the production alias, the
-  // git-branch alias, or this specific deployment's own URL (all injected
-  // by the Vercel platform, never by the client), or the resolved
-  // getSiteUrl() origin. The Host header itself is client-supplied, so this
-  // allowlist check — not unconditional trust — is what keeps a spoofed
-  // Host from ever being accepted.
+  // Trust the origin this request arrived on, but only when configuration says
+  // this deployment answers there: the canonical origin, anything in
+  // TRUSTED_ORIGINS, or — on Vercel — a platform-injected alias.
+  //
+  // The Host header is client-supplied everywhere, and behind an ALB or App
+  // Runner there is no platform value to check it against. So the match is
+  // against configuration and nothing else. With nothing configured the set
+  // still holds getSiteUrl(), which means an unrecognised Host is refused
+  // rather than trusted — the failure mode is "cannot sign in", not "anyone
+  // can name themselves the origin".
+  // The normalised origin is what gets trusted, not the raw candidate: a
+  // request arriving with X-Forwarded-Proto: http on a real host would
+  // otherwise add a plaintext origin to the trusted set.
   try {
-    const candidate = await requestOrigin()
-    if (getPlatformOrigins().includes(candidate)) {
-      origins.push(candidate)
+    const trusted = configuredOrigin(await requestOrigin())
+    if (trusted) {
+      origins.push(trusted)
     }
   } catch (error) {
     console.error("[auth] Request origin resolution failed", error)

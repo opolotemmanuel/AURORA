@@ -1,5 +1,7 @@
 import { z } from "zod"
 
+import { PRODUCT_BENEFIT_OPTIONS } from "@/lib/products/constants"
+
 const productFields = {
   sku: z.string().max(64).optional(),
   slug: z.string().max(200).optional(),
@@ -44,6 +46,33 @@ export const PRODUCT_CLASSIFICATIONS = [
   "other",
 ] as const
 
+export const ROUTINE_CATEGORIES = [
+  "cleanser",
+  "exfoliant",
+  "toner",
+  "essence",
+  "serum",
+  "treatment",
+  "moisturiser",
+  "oil",
+  "mask",
+  "sunscreen",
+  "haircare",
+  "bodycare",
+  "other",
+] as const
+
+export const PRODUCT_AVAILABILITY = [
+  "in_stock",
+  "low_stock",
+  "out_of_stock",
+  "discontinued",
+  "unknown",
+] as const
+
+/** Mirrors the ClimateBand enum UserLocation already stores. */
+export const CLIMATE_BANDS = ["low", "moderate", "high", "extreme"] as const
+
 export type ProductClassificationValue = (typeof PRODUCT_CLASSIFICATIONS)[number]
 
 /**
@@ -67,7 +96,25 @@ export const clinicProductFormSchema = z.object({
   climateTags: productFields.climateTags,
   imageUrl: productFields.imageUrl,
   storeUrl: productFields.storeUrl,
+  /**
+   * Every classification that applies, and which of them is principal.
+   *
+   * Sent as a set plus a nominated primary rather than an ordered list: a
+   * checkbox row has no meaningful order, so inferring the primary from
+   * position would make it depend on the order the options happen to render in.
+   */
   classifications: z.array(z.enum(PRODUCT_CLASSIFICATIONS)).default([]),
+  primaryClassification: z.enum(PRODUCT_CLASSIFICATIONS).nullish(),
+  cosmeticBenefits: z.array(z.enum(PRODUCT_BENEFIT_OPTIONS)).default([]),
+  routineCategory: z.enum(ROUTINE_CATEGORIES).nullish(),
+  brand: z.string().trim().max(120).optional(),
+  priceCents: z.number().int().nonnegative().nullish(),
+  currency: z.string().trim().length(3).nullish(),
+  availability: z.enum(PRODUCT_AVAILABILITY).default("unknown"),
+  suitableHumidity: z.array(z.enum(CLIMATE_BANDS)).default([]),
+  suitableTemperature: z.array(z.enum(CLIMATE_BANDS)).default([]),
+  suitableUv: z.array(z.enum(CLIMATE_BANDS)).default([]),
+  environmentalNotes: z.string().trim().max(2000).optional(),
   isRecommendable: z.boolean().default(true),
 })
 

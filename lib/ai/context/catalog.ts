@@ -8,6 +8,7 @@ import {
   CATALOG_CONTEXT_TAG,
   tenantCatalogContextTag,
 } from "@/lib/ai/context/cache-tags"
+import { allClassifications } from "@/lib/products/classification"
 import { resolveIngredientList } from "@/lib/products/parse-inci"
 import { resolveStoreUrl } from "@/lib/products/store-url"
 import {
@@ -34,7 +35,11 @@ const PRODUCT_FIELDS = {
   name: true,
   description: true,
   category: true,
-  classifications: true,
+  primaryClassification: true,
+  secondaryClassifications: true,
+  cosmeticBenefits: true,
+  routineCategory: true,
+  completenessScore: true,
   ingredients: true,
   ingredientList: true,
   targetConcerns: true,
@@ -49,7 +54,11 @@ type ProductRow = {
   name: string
   description: string
   category: string
-  classifications: string[]
+  primaryClassification: string | null
+  secondaryClassifications: string[]
+  cosmeticBenefits: string[]
+  routineCategory: string | null
+  completenessScore: number
   ingredients: string | null
   ingredientList: string[]
   targetConcerns: string[]
@@ -65,7 +74,10 @@ function toContext(product: ProductRow): CatalogProductContext {
     name: product.name,
     description: product.description,
     category: product.category,
-    classifications: product.classifications,
+    classifications: allClassifications(product),
+    cosmeticBenefits: product.cosmeticBenefits,
+    routineCategory: product.routineCategory,
+    completenessScore: product.completenessScore,
     // Tells the model which catalogue a product came from, so advice can say
     // "your clinic stocks this" without the model inventing the relationship.
     source: product.organizationId ? "clinic" : "aurora",

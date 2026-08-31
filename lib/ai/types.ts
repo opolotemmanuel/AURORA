@@ -9,6 +9,16 @@ export type CatalogProductContext = {
   category: string
   /** Structured product metadata: organic, ayurvedic, clinical and so on. */
   classifications: string[]
+  /** What the product is claimed to do, in shared benefit vocabulary. */
+  cosmeticBenefits: string[]
+  /** Where it sits in a routine — cleanser, serum, sunscreen. */
+  routineCategory: string | null
+  /**
+   * 0–100, how much of this product's recommendation-relevant data is filled
+   * in. Carried so a future engine can tell "does not suit dry skin" apart from
+   * "nobody recorded which skin types it suits".
+   */
+  completenessScore: number
   /** Which catalogue this came from — the platform's, or the current clinic's. */
   source: "aurora" | "clinic"
   ingredients: string | null

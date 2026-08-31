@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/client"
+import { allClassifications } from "@/lib/products/classification"
 import {
   currentCatalogueScope,
   visibleProductsWhere,
@@ -13,7 +14,8 @@ type CatalogProductFields = {
   imageUrl: string | null
   storeUrl: string | null
   organizationId: string | null
-  classifications: string[]
+  primaryClassification: string | null
+  secondaryClassifications: string[]
 }
 
 /**
@@ -40,7 +42,8 @@ async function getCatalogProductMap(
       imageUrl: true,
       storeUrl: true,
       organizationId: true,
-      classifications: true,
+      primaryClassification: true,
+      secondaryClassifications: true,
     },
   })
 
@@ -62,7 +65,7 @@ function applyCatalogFields(
       // id itself never leaves the server — only which of the two catalogues
       // it came from, and the clinic's display name is resolved separately.
       source: catalog ? (catalog.organizationId ? "clinic" : "aurora") : undefined,
-      classifications: catalog?.classifications ?? undefined,
+      classifications: catalog ? allClassifications(catalog) : undefined,
       storeUrl:
         item.storeUrl ??
         resolveStoreUrl({

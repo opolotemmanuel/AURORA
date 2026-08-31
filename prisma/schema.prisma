@@ -533,18 +533,71 @@ model Product {
   name              String
   slug              String
   description       String
+  /// Who makes it. Distinct from the clinic that stocks it (organizationId).
+  brand             String?
   /// WooCommerce merchandising taxonomy ("face-hands"). Not a classification —
-  /// see `classifications`, which is a separate axis and must not overwrite it.
+  /// classification is a separate axis and must not overwrite it.
   category          String
-  ingredients       String?
-  ingredientList    String[]      @default([])
+
+  // ── Classification ────────────────────────────────────────────────────────
+  /// What this product principally is. Null means nobody has judged it, which
+  /// is deliberately distinct from `other` — one says unassessed, the other
+  /// says assessed and fitting nothing.
+  primaryClassification    ProductClassification?
+  /// Further true statements about the same product. Organic and natural are
+  /// separate claims: organic speaks to how inputs were farmed, natural to
+  /// whether they were synthesised, and a product can be either without being
+  /// both. Excludes the primary, which is not repeated here.
+  secondaryClassifications ProductClassification[] @default([])
+  /// How much the classification can be relied on. A band rather than a
+  /// percentage: a number here would imply a precision nobody measured, which
+  /// the project forbids for exactly this reason.
+  classificationConfidence DataConfidence @default(unverified)
+
+  // ── Skin compatibility ────────────────────────────────────────────────────
   targetConcerns    String[]      @default([])
   suitableSkinTypes String[]      @default([])
+  /// What the product is claimed to do, as cosmetic benefit vocabulary.
+  cosmeticBenefits  String[]      @default([])
+
+  // ── Ingredients ───────────────────────────────────────────────────────────
+  /// Free-text INCI list as supplied by the store. Kept because it is the only
+  /// ingredient data most products have, and the allergy filter reads it.
+  ingredients       String?
+  /// Parsed INCI names. Still a string array: the structured relation is
+  /// `ingredientLinks`, and this stays as the fallback the allergy filter uses
+  /// when no ingredient row has been matched yet.
+  ingredientList    String[]      @default([])
+  ingredientLinks   ProductIngredient[]
+
+  // ── Climate compatibility ─────────────────────────────────────────────────
+  /// Coarse tags, matched against tags derived from a user's live climate.
   climateTags       String[]      @default([])
-  /// Structured metadata for the recommendation engine. An empty array means
-  /// unclassified, which is deliberately distinct from `other`: one says nobody
-  /// has judged the product yet, the other says it was judged and fits nothing.
-  classifications   ProductClassification[] @default([])
+  /// Bands this product suits, drawn from the same ClimateBand vocabulary
+  /// UserLocation already stores — so a future engine can compare a user's
+  /// band against these directly rather than translating between two scales.
+  suitableHumidity    ClimateBand[] @default([])
+  suitableTemperature ClimateBand[] @default([])
+  suitableUv          ClimateBand[] @default([])
+  /// Anything environmental that does not fit a band, e.g. "not for use under
+  /// occlusive layers in high pollution".
+  environmentalNotes  String?
+
+  // ── Routine ───────────────────────────────────────────────────────────────
+  routineCategory   RoutineCategory?
+  /// Order within a routine, low to high — cleanser before serum before
+  /// sunscreen. Null means unplaced rather than first.
+  routineStep       Int?
+  amSuitable        Boolean       @default(true)
+  pmSuitable        Boolean       @default(true)
+
+  // ── Commercial ────────────────────────────────────────────────────────────
+  /// Minor units. Aurora products are also priced in WooCommerce; this column
+  /// is authoritative only where it is set, and a clinic's own products have
+  /// nowhere else to carry a price.
+  priceCents        Int?
+  currency          String?
+  availability      ProductAvailability @default(unknown)
   imageUrl          String?
   storeUrl          String?
   isActive          Boolean       @default(true)
@@ -552,6 +605,15 @@ model Product {
   /// isActive so a clinic can keep a product listed while withdrawing it from
   /// the engine.
   isRecommendable   Boolean       @default(true)
+
+  // ── Data quality ──────────────────────────────────────────────────────────
+  /// 0–100, recomputed on every write from which recommendation-relevant
+  /// fields are populated. Honest to state numerically because it counts
+  /// filled fields rather than judging them — see lib/products/completeness.ts.
+  completenessScore Int           @default(0)
+  verificationStatus DataConfidence @default(unverified)
+  lastVerifiedAt    DateTime?
+
   createdById       String
   createdBy         User          @relation("ProductCreator", fields: [createdById], references: [id])
   organizationId    String?
@@ -568,7 +630,102 @@ model Product {
   @@index([isActive])
   @@index([organizationId])
   @@index([organizationId, isActive, isRecommendable])
+  @@index([primaryClassification])
+  @@index([routineCategory])
   @@map("product")
+}
+
+/// One ingredient's place in one product.
+///
+/// The join exists so "which ingredient provides this benefit" is answerable.
+/// Product.ingredientList is a bag of strings that cannot say whether an INCI
+/// name is a headline active or the preservative at the end of the list, and a
+/// recommendation that cites an ingredient needs to know the difference.
+model ProductIngredient {
+  id           String     @id @default(cuid())
+  productId    String
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ingredientId String
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+  /// Position on the INCI list, 1-based. Concentration descends with position,
+  /// so this is the only ordering signal a label actually gives.
+  position     Int?
+  role         IngredientRole @default(unspecified)
+  /// Marks the ingredients a recommendation may reasonably cite as the reason.
+  isKeyActive  Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+
+  @@unique([productId, ingredientId])
+  @@index([ingredientId])
+  @@index([productId, isKeyActive])
+  @@map("product_ingredient")
+}
+
+/// What an ingredient is doing in a formulation.
+enum IngredientRole {
+  active
+  humectant
+  emollient
+  occlusive
+  exfoliant
+  antioxidant
+  surfactant
+  preservative
+  fragrance
+  solvent
+  unspecified
+}
+
+/// Where an ingredient comes from. Separate from classification: a botanical
+/// extract can appear in a conventional formulation, and a synthetic can appear
+/// in one marketed as natural.
+enum IngredientSource {
+  botanical
+  mineral
+  marine
+  microbial
+  synthetic
+  animal_derived
+  unspecified
+}
+
+/// How far a piece of product data can be trusted.
+///
+/// A band rather than a score. "62% confident" would be a number nobody
+/// measured; "imported, not yet checked by a person" is something that can
+/// actually be established.
+enum DataConfidence {
+  /// Nothing has been asserted.
+  unverified
+  /// Populated by an automated import or inference.
+  imported
+  /// Checked by a person against the label or supplier data.
+  confirmed
+}
+
+/// Where a product sits in a routine, coarse enough to order steps by.
+enum RoutineCategory {
+  cleanser
+  exfoliant
+  toner
+  essence
+  serum
+  treatment
+  moisturiser
+  oil
+  mask
+  sunscreen
+  haircare
+  bodycare
+  other
+}
+
+enum ProductAvailability {
+  in_stock
+  low_stock
+  out_of_stock
+  discontinued
+  unknown
 }
 
 /// What a product is, for the recommendation engine to reason about.
@@ -595,7 +752,18 @@ model Ingredient {
   suitableSkinTypes String[] @default([])
   climateTags       String[] @default([])
   doshaAffinities   String[] @default([])
+  /// What it does in a formulation. An array because one ingredient commonly
+  /// serves several purposes — glycerin is both humectant and solvent.
+  functions         IngredientRole[] @default([])
+  source            IngredientSource @default(unspecified)
+  /// Cosmetic benefits attributable to this ingredient, in the same vocabulary
+  /// as Product.cosmeticBenefits so the two can be compared.
+  benefits          String[] @default([])
+  /// Ingredients or conditions this should not be combined with. Cosmetic
+  /// guidance only — never a medical contraindication.
+  avoidWith         String[] @default([])
   notes             String?
+  productLinks      ProductIngredient[]
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

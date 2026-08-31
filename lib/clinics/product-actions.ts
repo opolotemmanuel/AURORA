@@ -9,6 +9,7 @@ import { currentRequestId } from "@/lib/audit/request-id"
 import { requireClinicMember } from "@/lib/clinics/membership"
 import { requirePermission } from "@/lib/clinics/permissions"
 import { prisma } from "@/lib/db/client"
+import { productIntelligenceFields } from "@/lib/products/intelligence-fields"
 import { normalizeProductInput } from "@/lib/products/normalize"
 import { clinicProductFormSchema } from "@/lib/products/schemas"
 
@@ -46,8 +47,17 @@ export async function listClinicProductsAction() {
       slug: true,
       sku: true,
       description: true,
+      brand: true,
       category: true,
-      classifications: true,
+      primaryClassification: true,
+      secondaryClassifications: true,
+      classificationConfidence: true,
+      cosmeticBenefits: true,
+      routineCategory: true,
+      priceCents: true,
+      currency: true,
+      availability: true,
+      completenessScore: true,
       ingredients: true,
       ingredientList: true,
       targetConcerns: true,
@@ -70,6 +80,7 @@ export async function createClinicProductAction(input: unknown) {
   // isActive is not the clinic's to set through this form: creation is always
   // active and withdrawal goes through archiveClinicProductAction.
   const normalized = normalizeProductInput({ ...form, isActive: true })
+  const intelligence = productIntelligenceFields(form)
 
   const product = await prisma.product.create({
     data: {
@@ -78,7 +89,7 @@ export async function createClinicProductAction(input: unknown) {
       slug: normalized.slug,
       description: normalized.description,
       category: normalized.category,
-      classifications: form.classifications,
+      ...intelligence,
       ingredients: normalized.ingredients || null,
       ingredientList: normalized.ingredientList,
       targetConcerns: normalized.targetConcerns,
@@ -173,7 +184,7 @@ export async function updateClinicProductAction(input: unknown) {
       name: normalized.name,
       description: normalized.description,
       category: normalized.category,
-      classifications: form.classifications,
+      ...productIntelligenceFields(form),
       ingredients: normalized.ingredients || null,
       ingredientList: normalized.ingredientList,
       targetConcerns: normalized.targetConcerns,

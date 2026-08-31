@@ -17,6 +17,9 @@ export const EVAL_CATALOG: CatalogProductContext[] = [
     description: "Low-foam gel cleanser for reactive, easily flushed skin.",
     category: "cleanser",
     classifications: [],
+    cosmeticBenefits: [],
+    routineCategory: null,
+    completenessScore: 0,
     source: "aurora",
     ingredients: null,
     ingredientList: [
@@ -37,6 +40,9 @@ export const EVAL_CATALOG: CatalogProductContext[] = [
     description: "Lightweight gel for congested, blemish-prone areas.",
     category: "treatment",
     classifications: [],
+    cosmeticBenefits: [],
+    routineCategory: null,
+    completenessScore: 0,
     source: "aurora",
     ingredients: null,
     ingredientList: [
@@ -57,6 +63,9 @@ export const EVAL_CATALOG: CatalogProductContext[] = [
     description: "Rich overnight balm for very dry, tight-feeling skin.",
     category: "moisturizer",
     classifications: [],
+    cosmeticBenefits: [],
+    routineCategory: null,
+    completenessScore: 0,
     source: "aurora",
     ingredients: null,
     // The nut allergy trap.
@@ -77,6 +86,9 @@ export const EVAL_CATALOG: CatalogProductContext[] = [
     description: "Fragrance-free daily moisturizer for dehydrated skin.",
     category: "moisturizer",
     classifications: [],
+    cosmeticBenefits: [],
+    routineCategory: null,
+    completenessScore: 0,
     source: "aurora",
     ingredients: null,
     ingredientList: [
@@ -97,6 +109,9 @@ export const EVAL_CATALOG: CatalogProductContext[] = [
     description: "Morning antioxidant serum for uneven tone and dark spots.",
     category: "serum",
     classifications: [],
+    cosmeticBenefits: [],
+    routineCategory: null,
+    completenessScore: 0,
     source: "aurora",
     ingredients: null,
     ingredientList: [
@@ -117,6 +132,9 @@ export const EVAL_CATALOG: CatalogProductContext[] = [
     description: "Refreshing hydrating mist with a soft floral scent.",
     category: "mist",
     classifications: [],
+    cosmeticBenefits: [],
+    routineCategory: null,
+    completenessScore: 0,
     source: "aurora",
     ingredients: null,
     // The fragrance allergy trap.
@@ -138,6 +156,9 @@ export const EVAL_CATALOG: CatalogProductContext[] = [
     description: "Lightweight mineral sunscreen for everyday protection.",
     category: "sunscreen",
     classifications: [],
+    cosmeticBenefits: [],
+    routineCategory: null,
+    completenessScore: 0,
     source: "aurora",
     ingredients: null,
     ingredientList: [
@@ -158,6 +179,9 @@ export const EVAL_CATALOG: CatalogProductContext[] = [
     description: "Gentle evening exfoliant for rough texture and visible pores.",
     category: "serum",
     classifications: [],
+    cosmeticBenefits: [],
+    routineCategory: null,
+    completenessScore: 0,
     source: "aurora",
     ingredients: null,
     ingredientList: [

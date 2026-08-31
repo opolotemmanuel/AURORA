@@ -84,6 +84,9 @@ export async function createClinicProductAction(input: unknown) {
 
   const product = await prisma.product.create({
     data: {
+      // A clinic product is entered by a person in the clinic editor. It has
+      // no store origin, so a WooCommerce sync never touches it.
+      source: "manual",
       sku: normalized.sku,
       name: normalized.name,
       slug: normalized.slug,

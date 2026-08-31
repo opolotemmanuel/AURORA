@@ -530,6 +530,33 @@ model Payment {
 /// recommended inside that tenant.
 model Product {
   id                String        @id @default(cuid())
+
+  // ── Provenance ────────────────────────────────────────────────────────────
+  /// Where this product came from. WooCommerce is the ecommerce source of
+  /// truth; Aurora is the application source of truth for what the engine
+  /// reads. The recommendation engine never asks which of these a product is.
+  source            ProductSource @default(manual)
+  /// The stable identifier in the system named by `source`.
+  ///
+  /// For WooCommerce this is the numeric product id as a string. It exists so
+  /// a re-sync updates the same row: matching on slug would create a duplicate
+  /// the moment somebody renames a product in the store, because the slug is
+  /// derived from the name.
+  externalId        String?
+  /// When the source system last reported this product changed.
+  sourceUpdatedAt   DateTime?
+  /// When Aurora last saw this product in a sync.
+  lastSyncedAt      DateTime?
+  /// Digest of the source fields intelligence is derived from.
+  ///
+  /// Name, description and categories — not price or stock. A price change is
+  /// a source change that tells the extraction pipeline nothing, and
+  /// re-extracting on one would spend a model call to rewrite the same answer.
+  sourceHash        String?
+  /// Set when the source changed in a way that could alter the intelligence.
+  /// Cleared by a successful extraction.
+  intelligenceStale Boolean       @default(false)
+
   sku               String
   name              String
   slug              String
@@ -628,6 +655,10 @@ model Product {
   /// migration covers that case.
   @@unique([organizationId, sku])
   @@unique([organizationId, slug])
+  /// One Aurora row per external product. Postgres treats NULLs as distinct,
+  /// so manual and fallback products — which have no external id — never
+  /// collide with each other under this.
+  @@unique([source, externalId])
   @@index([isActive])
   @@index([organizationId])
   @@index([organizationId, isActive, isRecommendable])
@@ -1634,4 +1665,64 @@ enum RecommendationVerdict {
   already_use
   /// Cosmetic mismatch — too rich, too drying, disliked texture.
   did_not_suit
+}
+
+// ─── product ingestion ──────────────────────────────────────────────────────
+
+/// Where a product entered Aurora from.
+///
+/// `fallback` is not a synonym for `manual`. The seed file is a snapshot of
+/// the store catalogue used when WooCommerce is unreachable, so a product from
+/// it was neither typed in by an administrator nor fetched from the store —
+/// and calling it either would misreport how it arrived. It also has no
+/// external id, which is exactly why a re-sync cannot yet match it.
+enum ProductSource {
+  woocommerce
+  manual
+  fallback
+}
+
+enum ProductSyncStatus {
+  running
+  succeeded
+  failed
+}
+
+/// One catalogue synchronisation, and what it did.
+///
+/// Persisted rather than derived so the admin surface reports real numbers
+/// instead of counting rows and guessing. A run row is written when the sync
+/// starts and finished when it ends, so a sync that dies mid-flight is visible
+/// as `running` long after it stopped rather than silently absent.
+model ProductSyncRun {
+  id     String            @id @default(cuid())
+  source ProductSource
+  status ProductSyncStatus @default(running)
+
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  /// Products the source reported.
+  discovered Int @default(0)
+  created    Int @default(0)
+  updated    Int @default(0)
+  /// Present in the source and identical to what Aurora already held.
+  unchanged  Int @default(0)
+  /// Aurora products the source no longer lists. Archived, never deleted:
+  /// historical recommendations must keep resolving.
+  archived   Int @default(0)
+  /// Products whose source changed in a way that invalidates their intelligence.
+  markedStale Int @default(0)
+  failed     Int @default(0)
+
+  /// First error, for a failed run. Never carries credentials.
+  error String?
+
+  /// Who started it. A plain id rather than a relation, so sync history
+  /// survives the administrator's account being deleted.
+  actorId String?
+
+  @@index([startedAt])
+  @@index([status])
+  @@map("product_sync_run")
 }

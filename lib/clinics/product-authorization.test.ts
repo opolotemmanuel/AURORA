@@ -19,6 +19,7 @@ const schemas = readFileSync("lib/products/schemas.ts", "utf8")
 const scope = readFileSync("lib/products/catalogue-scope.ts", "utf8")
 const catalog = readFileSync("lib/ai/context/catalog.ts", "utf8")
 const syncCatalog = readFileSync("lib/products/ingest/sync-catalog.ts", "utf8")
+const reconcile = readFileSync("lib/products/ingest/reconcile.ts", "utf8")
 
 describe("a clinic acts only on its own catalogue", () => {
   it("every mutation authorizes as a member and checks a permission", () => {
@@ -85,11 +86,21 @@ describe("the Aurora catalogue stays platform-administered", () => {
     assert.doesNotMatch(clinicActions, /requireAdmin/)
   })
 
-  // The store owns the Aurora catalogue and nothing else. Matching on slug
-  // alone would let a sync overwrite a clinic product that shares the name.
-  it("the WooCommerce sync only ever matches global products", () => {
-    assert.match(syncCatalog, /where: \{ slug: product\.slug, organizationId: null \}/)
-    assert.doesNotMatch(syncCatalog, /where: \{ slug: product\.slug \}/)
+  // The store owns the Aurora catalogue and nothing else. A sync that read the
+  // whole product table could overwrite — or archive — a clinic product that
+  // happens to share a slug with something on the shelf.
+  it("the WooCommerce sync only ever loads global products", () => {
+    assert.match(syncCatalog, /where: \{ organizationId: null \}/)
+    // No unscoped read of the product table anywhere in the sync.
+    assert.doesNotMatch(syncCatalog, /prisma\.product\.findMany\(\{\s*select/)
+  })
+
+  // Identity moved from slug to the source's own id. A slug is derived from the
+  // product name, so matching on it created a duplicate Aurora row the moment
+  // somebody renamed a product upstream.
+  it("the sync matches products by their source identity, not their name", () => {
+    assert.match(reconcile, /row\.externalId === input\.externalId/)
+    assert.doesNotMatch(syncCatalog, /where: \{ slug: product\.slug/)
   })
 })
 

@@ -3,6 +3,9 @@
  * Run: npm run db:sync-products
  */
 import "dotenv/config"
+import { config } from "dotenv"
+
+config({ path: ".env.local", override: true })
 
 import { prisma } from "../lib/db/client"
 import { syncProductCatalog } from "../lib/products/ingest/sync-catalog"
@@ -20,9 +23,24 @@ async function main() {
     process.exit(1)
   }
 
-  const result = await syncProductCatalog(admin.id)
+  // --fallback populates from the bundled seed file without reaching the
+  // store. Never a silent substitute for a failed store call.
+  const mode = process.argv.includes("--fallback") ? "fallback" : "auto"
+  const result = await syncProductCatalog(admin.id, mode)
+
   console.log(
-    `Catalog sync complete (${result.source}): ${result.created} created, ${result.updated} updated, ${result.total} total.`,
+    [
+      `Catalog sync complete (${result.source}, run ${result.runId}):`,
+      `  discovered ${result.discovered}`,
+      `  created    ${result.created}`,
+      `  updated    ${result.updated}`,
+      `  unchanged  ${result.unchanged}`,
+      // Archived, never deleted — historical recommendations name products by
+      // slug and must keep resolving.
+      `  archived   ${result.archived}`,
+      `  stale      ${result.markedStale}  (queued for re-extraction)`,
+      `  failed     ${result.failed}`,
+    ].join("\n"),
   )
 }
 

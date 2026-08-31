@@ -17,7 +17,7 @@ export async function syncProductsFromStoreAction() {
 
   return {
     ...result,
-    message: `Synced ${result.total} products from ${result.source} (${result.created} created, ${result.updated} updated).`,
+    message: `Synced ${result.discovered} products from ${result.source}: ${result.created} created, ${result.updated} updated, ${result.unchanged} unchanged, ${result.archived} archived, ${result.markedStale} need re-extraction.`,
   }
 }
 

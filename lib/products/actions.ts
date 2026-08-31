@@ -33,6 +33,9 @@ export async function createProductAction(input: unknown) {
       ingredientList: normalized.ingredientList,
       imageUrl: data.imageUrl || null,
       storeUrl: data.storeUrl || null,
+      // Typed in by a person rather than fetched from the store. Recorded so a
+      // store sync can never adopt, overwrite or archive it.
+      source: "manual",
       createdById: session.user.id,
     },
   })

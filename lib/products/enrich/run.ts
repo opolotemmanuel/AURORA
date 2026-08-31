@@ -7,6 +7,7 @@ import {
   DailyQuotaExhausted,
   withRateLimitRetry,
 } from "@/lib/products/enrich/rate-limit"
+import { sourceHash } from "@/lib/products/ingest/source-hash"
 import { parseInciList } from "@/lib/products/parse-inci"
 
 /**
@@ -62,10 +63,13 @@ export async function enrichCatalogue(
   const products = await prisma.product.findMany({
     where: {
       ...(options.slugs?.length ? { slug: { in: options.slugs } } : {}),
-      // Re-running must be cheap and safe. Without `force`, a product that
-      // already has a classification is left alone, so an interrupted pass can
-      // simply be run again rather than paying for the whole catalogue twice.
-      ...(options.force ? {} : { primaryClassification: null }),
+      // Re-running must be cheap and safe. Without `force` this takes the
+      // products that need extraction — never classified, or classified from
+      // source text that has since changed — so an interrupted pass can be run
+      // again without paying for the whole catalogue twice.
+      ...(options.force
+        ? {}
+        : { OR: [{ primaryClassification: null }, { intelligenceStale: true }] }),
     },
     orderBy: { name: "asc" },
     select: {
@@ -147,7 +151,22 @@ export async function enrichCatalogue(
       if (!options.dryRun) {
         await prisma.product.update({
           where: { id: product.id },
-          data: { ...update, ingredientList, completenessScore: score },
+          data: {
+            ...update,
+            ingredientList,
+            completenessScore: score,
+            // Records what this intelligence was derived from, and clears the
+            // stale flag. Without the hash a later sync cannot tell whether the
+            // source text has moved on, so every sync would re-extract every
+            // product — the cost this flag exists to avoid.
+            sourceHash: sourceHash({
+              name: product.name,
+              description: product.description,
+              category: product.category,
+              ingredients: product.ingredients ?? undefined,
+            }),
+            intelligenceStale: false,
+          },
         })
       }
 

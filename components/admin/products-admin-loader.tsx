@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/auth/session"
 import { ProductsAdminClient } from "@/components/admin/products-admin-client"
 import { listProductsAction } from "@/lib/products/actions"
+import { loadCatalogueQuality } from "@/lib/products/catalogue-health"
 
 export async function ProductsAdminLoader() {
   // Asserted here, not left to the layout's AdminAuthGate. A layout and the
@@ -9,6 +10,10 @@ export async function ProductsAdminLoader() {
   // already on the wire and readable by anyone who requests the URL.
   await requireAdmin()
 
-  const products = await listProductsAction()
-  return <ProductsAdminClient products={products} />
+  const [products, { rows, health }] = await Promise.all([
+    listProductsAction(),
+    loadCatalogueQuality(),
+  ])
+
+  return <ProductsAdminClient products={products} rows={rows} health={health} />
 }

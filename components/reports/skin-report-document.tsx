@@ -7,6 +7,7 @@ import { ReportDisclaimer } from "@/components/reports/report-disclaimer"
 import { ReportDoshaBlock } from "@/components/reports/report-dosha-block"
 import { ReportProductList } from "@/components/reports/report-product-list"
 import { ReportSection } from "@/components/reports/report-section"
+import { ReportProductsWithFeedback } from "@/components/reports/report-products-with-feedback"
 import {
   CONCERNS_NOT_VISIBLE_TITLE,
   RECOMMENDATION_SECTIONS,
@@ -22,6 +23,13 @@ type SkinReportDocumentProps = {
   className?: string
   /** Names the clinic when one of its own products was recommended. */
   clinicName?: string | null
+  /**
+   * The saved scan, when there is one.
+   *
+   * Present enables the per-product feedback controls. Absent — a scan not yet
+   * persisted, or a PDF render — the report is identical minus the controls.
+   */
+  scanId?: string | null
 }
 
 export function SkinReportDocument({
@@ -29,6 +37,7 @@ export function SkinReportDocument({
   climateContext = null,
   className,
   clinicName = null,
+  scanId = null,
 }: SkinReportDocumentProps) {
   return (
     <div className={cn("space-y-8 font-sans", className)}>
@@ -116,10 +125,18 @@ export function SkinReportDocument({
         <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
           {RECOMMENDATION_SECTIONS.recommendedProducts.description}
         </p>
-        <ReportProductList
-          products={assessment.recommendations}
-          clinicName={clinicName}
-        />
+        {scanId ? (
+          <ReportProductsWithFeedback
+            products={assessment.recommendations}
+            scanId={scanId}
+            clinicName={clinicName}
+          />
+        ) : (
+          <ReportProductList
+            products={assessment.recommendations}
+            clinicName={clinicName}
+          />
+        )}
       </ReportSection>
 
       <ReportDisclaimer />

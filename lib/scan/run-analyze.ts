@@ -6,7 +6,8 @@ import {
 import { prisma } from "@/lib/db/client"
 import { getScanModelForTier, getUserScanTier } from "@/lib/models/queries"
 import { enrichRecommendationsWithImages } from "@/lib/products/enrich-recommendations"
-import { filterRecommendationsByAllergies } from "@/lib/products/filter-recommendations-by-allergies"
+import { selectGapFills } from "@/lib/recommendation/gap-fill"
+import { recommendForScan } from "@/lib/recommendation/recommend"
 import {
   logScanAnalysisError,
   toUserFacingScanError,
@@ -71,10 +72,26 @@ export async function runAnalyzeScan(
     where: { userId: input.userId },
   })
 
-  const allergySafeRecommendations = await filterRecommendationsByAllergies(
-    analysis.assessment.recommendations,
-    profile?.allergies ?? null,
-  )
+  // Aurora decides which products; the model that just read the photograph does
+  // not. Its own selection is kept only to fill slots the engine could not,
+  // and every such fill is recorded on the run.
+  const engine = await recommendForScan({
+    assessment: analysis.assessment,
+    profile,
+    location,
+    modelId: activeModel.modelId,
+  })
+
+  const gapFilled = engine.gapFillReason
+    ? await selectGapFills({
+        modelRecommendations: analysis.assessment.recommendations,
+        alreadySelected: engine.recommendations,
+        needed: engine.gapFillCount,
+        allergies: profile?.allergies ?? null,
+      })
+    : []
+
+  const allergySafeRecommendations = [...engine.recommendations, ...gapFilled]
 
   const enrichedAssessment = {
     ...analysis.assessment,
@@ -94,6 +111,17 @@ export async function runAnalyzeScan(
       captureMode: "still",
       location,
       profile,
+      engine: {
+        result: engine.result,
+        candidateCount: engine.candidateCount,
+        usedClinicWeights: engine.usedClinicWeights,
+        gapFillReason: engine.gapFillReason,
+        gapFilled: gapFilled.map((item) => ({
+          productSlug: item.id,
+          productName: item.name,
+          source: item.source ?? "aurora",
+        })),
+      },
     })
 
     return {

@@ -65,6 +65,7 @@ model User {
   apiKeysCreated                ApiKey[]           @relation("ApiKeyCreatedBy")
   clinicPatient                 ClinicPatient?
   trainingRecords               TrainingRecord[]
+  recommendationFeedback        RecommendationFeedback[]
 
   @@unique([email])
   @@map("user")
@@ -1028,6 +1029,8 @@ model Scan {
   report            Report?
   trainingRecord    TrainingRecord?
   feedback          ScanFeedback?
+  recommendations   ScanRecommendation[]
+  recommendationRun ScanRecommendationRun?
   scanLedgers       ScanLedger[]
   chatConversations ChatConversation[]
 
@@ -1414,6 +1417,14 @@ model ClinicSettings {
   trainingContributionSetAt   DateTime?
   trainingContributionSetById String?
 
+  /// This clinic’s own scoring weights, or null to use Aurora’s defaults.
+  ///
+  /// Json rather than columns because the axis set changes with the engine and
+  /// a migration per axis would be a schema change per tuning release. Read
+  /// through resolveWeights, which merges field by field over the defaults and
+  /// refuses values that would invert the ranking.
+  recommendationWeights Json?
+
   @@index([status])
   @@map("clinic_settings")
 }
@@ -1459,4 +1470,168 @@ model ApiKey {
 
   @@index([organizationId, revokedAt])
   @@map("api_key")
+}
+
+// ─── recommendation engine ──────────────────────────────────────────────────
+
+/// How a product came to be recommended on a scan.
+///
+/// The distinction is the point of recording anything here. Aurora's engine is
+/// the source of truth; a model filling a gap is a fallback, and a fallback
+/// nobody can count is a fallback nobody can fix.
+enum RecommendationOrigin {
+  /// Chosen and ranked by Aurora's deterministic engine.
+  engine
+  /// Supplied by the model because the engine could not fill the slot.
+  model_gap_fill
+}
+
+/// Why the engine could not fill a slot itself.
+enum GapFillReason {
+  /// The engine returned fewer than the minimum it considers confident.
+  below_minimum
+  /// Every candidate was excluded before scoring.
+  no_safe_candidates
+  /// The engine ran but nothing scored above the floor.
+  no_relevant_candidates
+}
+
+/// One product recommended on one scan, with the reasoning that produced it.
+///
+/// Persisted per product rather than as a JSON blob on ScanResult because this
+/// is what the feedback loop attaches to and what analytics aggregates. A blob
+/// can be displayed; it cannot be joined, counted, or asked which axis carried
+/// a recommendation that nobody found useful.
+///
+/// ScanResult.recommendations stays as the rendered payload the report reads.
+/// These rows are the record of how that payload was decided.
+model ScanRecommendation {
+  id     String @id @default(cuid())
+  scanId String
+  scan   Scan   @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  /// The product's slug, not a foreign key.
+  ///
+  /// Deliberate: a recommendation is a record of what was advised at a moment,
+  /// and it must survive the product being deleted or a clinic being removed.
+  /// A cascade here would erase the evidence for advice a person still holds.
+  productSlug String
+  /// Denormalised so the record reads correctly after a rename.
+  productName String
+
+  /// 1-based position as shown. Unique per scan, so ordering cannot drift.
+  rank   Int
+  origin RecommendationOrigin @default(engine)
+  /// Set only when origin is model_gap_fill.
+  gapFillReason GapFillReason?
+
+  /// Final weighted score. Null for a gap fill, which was never scored —
+  /// zero would claim the engine assessed it and found nothing.
+  score    Float?
+  /// Score before the confidence multipliers, so data quality's effect is visible.
+  rawScore Float?
+  /// Per-axis breakdown: fit, weight, points and what matched, one entry per
+  /// axis. The whole reason a ranking can be explained rather than asserted.
+  components Json?
+  /// The concerns this product was selected to address, strongest first.
+  addresses  String[] @default([])
+  /// Key actives whose own concerns matched, cited as the reason.
+  citedActives String[] @default([])
+
+  /// The weights that produced this score, snapshotted.
+  ///
+  /// Stored per recommendation, not referenced. Weights are tenant-editable, so
+  /// a reference would let a clinic retune and silently rewrite the explanation
+  /// of every recommendation it had already given.
+  weights        Json?
+  weightsVersion String?
+
+  /// Which catalogue the product came from. Never the organization id.
+  source String @default("aurora")
+
+  createdAt DateTime @default(now())
+
+  feedback RecommendationFeedback?
+
+  @@unique([scanId, rank])
+  @@unique([scanId, productSlug])
+  @@index([productSlug])
+  @@index([origin])
+  @@index([createdAt])
+  @@map("scan_recommendation")
+}
+
+/// What the engine did on one scan, whether or not it produced anything.
+///
+/// One row per scan, written even when the engine selected nothing. An empty
+/// result is the outcome most worth knowing about, and a table that only
+/// records successes cannot report how often the deterministic path was
+/// bypassed — which is the whole risk of letting a model fill gaps.
+model ScanRecommendationRun {
+  id     String @id @default(cuid())
+  scanId String @unique
+  scan   Scan   @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  /// Candidates the engine considered after tenant scoping.
+  candidateCount Int @default(0)
+  /// How many the safety and relevance passes removed, by reason.
+  exclusions     Json?
+  /// Slots the engine filled itself.
+  engineCount    Int @default(0)
+  /// Slots handed to the model because the engine could not fill them.
+  gapFillCount   Int @default(0)
+  gapFillReason  GapFillReason?
+  /// Whether the engine reached its own minimum for a confident answer.
+  confident      Boolean @default(false)
+
+  weightsVersion String?
+  /// Set when a clinic's own weights were used rather than Aurora's defaults.
+  usedClinicWeights Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([confident])
+  @@map("scan_recommendation_run")
+}
+
+/// What a person thought of one recommendation.
+///
+/// Attached to the recommendation rather than the scan, because "this scan was
+/// useful" cannot tell you which of four products was the useful one. That
+/// distinction is the only thing that makes the feedback loop able to inform
+/// the weights.
+model RecommendationFeedback {
+  id               String             @id @default(cuid())
+  recommendationId String             @unique
+  recommendation   ScanRecommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  verdict RecommendationVerdict
+  /// Optional free text. Never required, so a verdict is always cheap to give.
+  note    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([verdict])
+  @@index([createdAt])
+  @@map("recommendation_feedback")
+}
+
+/// A person's judgement of one recommendation.
+///
+/// `already_use` is separate from `helpful` on purpose: it says the engine
+/// agreed with a choice the person had already made, which is corroboration
+/// rather than a new suggestion they acted on. Counting the two together would
+/// overstate how often the engine told anyone something they did not know.
+enum RecommendationVerdict {
+  helpful
+  not_relevant
+  already_use
+  /// Cosmetic mismatch — too rich, too drying, disliked texture.
+  did_not_suit
 }

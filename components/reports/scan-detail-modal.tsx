@@ -116,6 +116,7 @@ export function ScanDetailModal({
               <SkinReportDocument
                 assessment={assessment}
                 climateContext={climateContext}
+                scanId={scan.id}
               />
             </div>
           </div>

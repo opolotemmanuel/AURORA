@@ -95,6 +95,7 @@ export function ScanReportModal({
                 <SkinReportDocument
                   assessment={assessment}
                   climateContext={climateContext}
+                  scanId={scanId}
                 />
               </div>
             </ScanReportLayout>

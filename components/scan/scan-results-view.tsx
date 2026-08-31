@@ -83,6 +83,7 @@ export function ScanResultsView({
             <SkinReportDocument
               assessment={assessment}
               climateContext={climateContext}
+              scanId={scanId}
             />
           </div>
 

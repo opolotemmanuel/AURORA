@@ -16,6 +16,10 @@ import type { UsageInput } from "@/lib/scans/cost"
 import { getUsageTotalTokens } from "@/lib/tokens/format-usage"
 import { debitScanInTransaction } from "@/lib/scans/balance"
 import { toLocationSnapshot } from "@/lib/climate/context"
+import {
+  persistRecommendations,
+  type PersistInput,
+} from "@/lib/recommendation/persist"
 import type { UserLocation } from "@/generated/prisma/client"
 
 type PersistScanResultInput = {
@@ -27,6 +31,8 @@ type PersistScanResultInput = {
   latencyMs: number
   captureMode?: ScanCaptureMode
   location: UserLocation | null
+  /// What the engine decided, so the reasoning is stored with the scan it explains.
+  engine?: RecommendationRecord | null
   profile: {
     ageBand: string | null
     skinType: string | null
@@ -115,6 +121,16 @@ export async function persistScanResult(input: PersistScanResultInput) {
         },
       })
 
+      // Inside the same transaction as the result it explains. A scan whose
+      // recommendations were saved but whose reasoning was not is a scan
+      // nobody can answer questions about.
+      if (input.engine) {
+        await persistRecommendations(tx, {
+          scanId: created.id,
+          ...input.engine,
+        })
+      }
+
       const totalTokens = getUsageTotalTokens(input.usage)
 
       if (totalTokens > 0) {
@@ -177,3 +193,6 @@ export async function persistScanResult(input: PersistScanResultInput) {
     return saved
   })
 }
+
+/** What the engine decided, minus the scan id the transaction supplies. */
+export type RecommendationRecord = Omit<PersistInput, "scanId">

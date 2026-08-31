@@ -1,7 +1,9 @@
 import { IconExternalLink } from "@tabler/icons-react"
 import Image from "next/image"
 
+import { RecommendationFeedback } from "@/components/reports/recommendation-feedback"
 import { ReportApplicationSchedule } from "@/components/reports/report-application-schedule"
+import type { RecommendationFeedbackState } from "@/lib/recommendation/feedback-queries"
 import { PRODUCT_IMAGE_PLACEHOLDER } from "@/lib/products/placeholder"
 import type { ProductRecommendation } from "@/lib/scan/types"
 import { cn } from "@/lib/utils"
@@ -15,6 +17,13 @@ type ReportProductListProps = {
    * recommendation is Aurora's.
    */
   clinicName?: string | null
+  /**
+   * The stored recommendation row per product slug, when one exists.
+   *
+   * Absent for scans taken before the engine, which have nothing to attach a
+   * verdict to. Those render without the controls rather than with dead ones.
+   */
+  feedback?: Map<string, RecommendationFeedbackState> | null
 }
 
 /**
@@ -50,6 +59,7 @@ export function ReportProductList({
   products,
   className,
   clinicName,
+  feedback = null,
 }: ReportProductListProps) {
   if (products.length === 0) {
     return (
@@ -92,6 +102,12 @@ export function ReportProductList({
               <p className="text-xs leading-relaxed text-muted-foreground">
                 {product.reason}
               </p>
+              {feedback?.get(product.id) ? (
+                <RecommendationFeedback
+                  recommendationId={feedback.get(product.id)!.recommendationId}
+                  initialVerdict={feedback.get(product.id)!.verdict}
+                />
+              ) : null}
               {product.storeUrl ? (
                 <a
                   href={product.storeUrl}

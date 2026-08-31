@@ -1,3 +1,6 @@
+import type { IngredientRole, IngredientSource } from "@/generated/prisma/client"
+import type { ProductBenefit } from "@/lib/products/constants"
+
 export type IngredientReferenceSeed = {
   inciName: string
   displayName?: string
@@ -6,6 +9,24 @@ export type IngredientReferenceSeed = {
   suitableSkinTypes?: string[]
   climateTags?: string[]
   doshaAffinities?: string[]
+  /**
+   * What it does in a formulation. Several are normal — glycerin is a humectant
+   * and a solvent — and the engine reads this to tell a headline active from
+   * the preservative at the end of the list.
+   */
+  functions?: IngredientRole[]
+  source?: IngredientSource
+  /**
+   * Cosmetic benefits attributable to this ingredient, in the same vocabulary
+   * as Product.cosmeticBenefits so a product’s claims can be checked against
+   * the claims of what is actually in it.
+   */
+  benefits?: ProductBenefit[]
+  /**
+   * Cosmetic layering guidance only, never a medical contraindication. Names
+   * the INCI names of other seeded ingredients.
+   */
+  avoidWith?: string[]
   notes?: string
 }
 
@@ -17,6 +38,9 @@ export const INGREDIENT_REFERENCE_SEED: IngredientReferenceSeed[] = [
     suitableSkinTypes: ["dry", "combination", "normal"],
     climateTags: ["dry", "cold"],
     doshaAffinities: ["vata"],
+    functions: ["humectant"],
+    source: "microbial",
+    benefits: ["hydration", "smoothing"],
   },
   {
     inciName: "Niacinamide",
@@ -25,6 +49,10 @@ export const INGREDIENT_REFERENCE_SEED: IngredientReferenceSeed[] = [
     suitableSkinTypes: ["oily", "combination", "normal"],
     climateTags: ["humid", "polluted"],
     doshaAffinities: ["pitta", "kapha"],
+    functions: ["active", "antioxidant"],
+    source: "synthetic",
+    benefits: ["brightening", "oil_balancing", "barrier_support"],
+    avoidWith: ["Ascorbic Acid"],
   },
   {
     inciName: "Glycerin",
@@ -33,6 +61,9 @@ export const INGREDIENT_REFERENCE_SEED: IngredientReferenceSeed[] = [
     suitableSkinTypes: ["dry", "sensitive", "normal"],
     climateTags: ["dry", "cold"],
     doshaAffinities: ["vata"],
+    functions: ["humectant", "solvent"],
+    source: "synthetic",
+    benefits: ["hydration", "barrier_support"],
   },
   {
     inciName: "Aloe Barbadensis Leaf Juice",
@@ -41,6 +72,9 @@ export const INGREDIENT_REFERENCE_SEED: IngredientReferenceSeed[] = [
     suitableSkinTypes: ["sensitive", "dry", "normal"],
     climateTags: ["high_uv", "humid"],
     doshaAffinities: ["pitta"],
+    functions: ["humectant", "solvent"],
+    source: "botanical",
+    benefits: ["soothing", "hydration"],
   },
   {
     inciName: "Butyrospermum Parkii Butter",
@@ -49,6 +83,9 @@ export const INGREDIENT_REFERENCE_SEED: IngredientReferenceSeed[] = [
     suitableSkinTypes: ["dry", "sensitive"],
     climateTags: ["cold", "dry"],
     doshaAffinities: ["vata"],
+    functions: ["emollient", "occlusive"],
+    source: "botanical",
+    benefits: ["barrier_support", "conditioning"],
   },
   {
     inciName: "Melaleuca Alternifolia Leaf Oil",
@@ -57,6 +94,10 @@ export const INGREDIENT_REFERENCE_SEED: IngredientReferenceSeed[] = [
     suitableSkinTypes: ["oily", "combination"],
     climateTags: ["humid"],
     doshaAffinities: ["kapha", "pitta"],
+    functions: ["active", "fragrance"],
+    source: "botanical",
+    benefits: ["oil_balancing"],
+    avoidWith: ["Salicylic Acid"],
   },
   {
     inciName: "Tocopherol",
@@ -65,6 +106,9 @@ export const INGREDIENT_REFERENCE_SEED: IngredientReferenceSeed[] = [
     suitableSkinTypes: ["dry", "normal", "sensitive"],
     climateTags: ["high_uv", "polluted"],
     doshaAffinities: ["vata"],
+    functions: ["antioxidant", "emollient"],
+    source: "botanical",
+    benefits: ["antioxidant_support", "barrier_support"],
   },
   {
     inciName: "Ascorbic Acid",
@@ -73,6 +117,10 @@ export const INGREDIENT_REFERENCE_SEED: IngredientReferenceSeed[] = [
     suitableSkinTypes: ["normal", "combination"],
     climateTags: ["high_uv", "polluted"],
     doshaAffinities: ["pitta"],
+    functions: ["active", "antioxidant"],
+    source: "synthetic",
+    benefits: ["brightening", "antioxidant_support"],
+    avoidWith: ["Niacinamide", "Salicylic Acid"],
   },
   {
     inciName: "Centella Asiatica Extract",
@@ -81,6 +129,9 @@ export const INGREDIENT_REFERENCE_SEED: IngredientReferenceSeed[] = [
     suitableSkinTypes: ["sensitive", "dry", "normal"],
     climateTags: ["polluted", "humid"],
     doshaAffinities: ["pitta", "vata"],
+    functions: ["active", "antioxidant"],
+    source: "botanical",
+    benefits: ["soothing", "barrier_support"],
   },
   {
     inciName: "Squalane",
@@ -88,6 +139,9 @@ export const INGREDIENT_REFERENCE_SEED: IngredientReferenceSeed[] = [
     suitableSkinTypes: ["dry", "sensitive", "normal"],
     climateTags: ["dry", "cold"],
     doshaAffinities: ["vata"],
+    functions: ["emollient"],
+    source: "botanical",
+    benefits: ["hydration", "barrier_support", "conditioning"],
   },
   {
     inciName: "Salicylic Acid",
@@ -95,6 +149,10 @@ export const INGREDIENT_REFERENCE_SEED: IngredientReferenceSeed[] = [
     suitableSkinTypes: ["oily", "combination"],
     climateTags: ["humid"],
     doshaAffinities: ["kapha"],
+    functions: ["exfoliant", "active"],
+    source: "synthetic",
+    benefits: ["oil_balancing", "smoothing"],
+    avoidWith: ["Ascorbic Acid", "Melaleuca Alternifolia Leaf Oil"],
   },
   {
     inciName: "Panthenol",
@@ -103,6 +161,9 @@ export const INGREDIENT_REFERENCE_SEED: IngredientReferenceSeed[] = [
     suitableSkinTypes: ["sensitive", "dry", "normal"],
     climateTags: ["dry", "cold"],
     doshaAffinities: ["vata", "pitta"],
+    functions: ["humectant", "emollient"],
+    source: "synthetic",
+    benefits: ["soothing", "barrier_support", "hydration"],
   },
   {
     inciName: "Ceramide NP",
@@ -111,6 +172,9 @@ export const INGREDIENT_REFERENCE_SEED: IngredientReferenceSeed[] = [
     suitableSkinTypes: ["dry", "sensitive"],
     climateTags: ["cold", "dry"],
     doshaAffinities: ["vata"],
+    functions: ["emollient", "occlusive"],
+    source: "synthetic",
+    benefits: ["barrier_support", "hydration"],
   },
   {
     inciName: "Zinc Oxide",
@@ -118,10 +182,188 @@ export const INGREDIENT_REFERENCE_SEED: IngredientReferenceSeed[] = [
     suitableSkinTypes: ["sensitive", "normal"],
     climateTags: ["high_uv"],
     doshaAffinities: ["pitta"],
+    functions: ["active", "occlusive"],
+    source: "mineral",
+    benefits: ["uv_protection", "soothing"],
+  },
+  // ── Botanicals Aurora actually formulates with ──────────────────────────────
+  // The reference table began as Western INCI actives, which described almost
+  // none of this catalogue: only 6 of 24 products named any of them. These are
+  // the ingredients the products are actually built on, so that a citation like
+  // "the neem in this cleanser" is a fact the join can support rather than a
+  // sentence the model made up.
+  {
+    inciName: "Azadirachta Indica Leaf Extract",
+    displayName: "Neem",
+    synonyms: ["Neem", "Neem Extract", "Neem Oil", "Azadirachta Indica"],
+    targetConcerns: ["acne", "oiliness", "dandruff"],
+    suitableSkinTypes: ["oily", "combination"],
+    climateTags: ["humid", "polluted"],
+    doshaAffinities: ["kapha", "pitta"],
+    functions: ["active", "antioxidant"],
+    source: "botanical",
+    benefits: ["oil_balancing", "soothing", "scalp_comfort"],
+  },
+  {
+    inciName: "Santalum Album Oil",
+    displayName: "Sandalwood",
+    synonyms: ["Sandal", "Sandalwood", "Santalum Album", "Sandal Oil"],
+    targetConcerns: ["redness", "sensitivity", "hyperpigmentation"],
+    suitableSkinTypes: ["sensitive", "dry", "normal"],
+    climateTags: ["high_uv", "humid"],
+    doshaAffinities: ["pitta"],
+    functions: ["active", "fragrance"],
+    source: "botanical",
+    benefits: ["soothing", "brightening"],
+  },
+  {
+    inciName: "Curcuma Longa Root Extract",
+    displayName: "Turmeric",
+    synonyms: ["Turmeric", "Curcuma Longa", "Curcumin", "Haldi"],
+    targetConcerns: ["hyperpigmentation", "acne", "redness"],
+    suitableSkinTypes: ["oily", "combination", "normal"],
+    climateTags: ["high_uv", "polluted"],
+    doshaAffinities: ["kapha", "vata"],
+    functions: ["active", "antioxidant"],
+    source: "botanical",
+    benefits: ["brightening", "soothing", "antioxidant_support"],
+  },
+  {
+    inciName: "Lavandula Angustifolia Oil",
+    displayName: "Lavender",
+    synonyms: ["Lavender", "Lavender Oil", "Lavandula Angustifolia", "Lavandula"],
+    targetConcerns: ["redness", "sensitivity", "acne"],
+    suitableSkinTypes: ["sensitive", "combination", "normal"],
+    climateTags: ["humid"],
+    doshaAffinities: ["vata", "pitta"],
+    functions: ["active", "fragrance"],
+    source: "botanical",
+    benefits: ["soothing"],
+  },
+  {
+    inciName: "Rosa Damascena Flower Water",
+    displayName: "Rose",
+    synonyms: ["Rose", "Rose Water", "Rosa Damascena", "Rose Extract", "Rosa Centifolia"],
+    targetConcerns: ["dryness", "redness", "sensitivity"],
+    suitableSkinTypes: ["dry", "sensitive", "normal"],
+    climateTags: ["dry", "cold"],
+    doshaAffinities: ["pitta", "vata"],
+    functions: ["humectant", "fragrance"],
+    source: "botanical",
+    benefits: ["hydration", "soothing"],
+  },
+  {
+    inciName: "Rosmarinus Officinalis Leaf Extract",
+    displayName: "Rosemary",
+    synonyms: ["Rosemary", "Rosemary Oil", "Rosmarinus Officinalis"],
+    targetConcerns: ["hair_fall", "dandruff", "oiliness"],
+    suitableSkinTypes: ["oily", "combination"],
+    climateTags: ["humid"],
+    doshaAffinities: ["kapha"],
+    functions: ["antioxidant", "active"],
+    source: "botanical",
+    benefits: ["scalp_comfort", "antioxidant_support"],
+  },
+  {
+    inciName: "Charcoal Powder",
+    displayName: "Activated Charcoal",
+    synonyms: ["Charcoal", "Activated Charcoal", "Carbon", "Activated Carbon"],
+    targetConcerns: ["oiliness", "acne", "texture"],
+    suitableSkinTypes: ["oily", "combination"],
+    climateTags: ["polluted", "humid"],
+    doshaAffinities: ["kapha"],
+    functions: ["active"],
+    source: "mineral",
+    benefits: ["gentle_cleansing", "oil_balancing"],
+  },
+  {
+    inciName: "Eucalyptus Globulus Leaf Oil",
+    displayName: "Eucalyptus",
+    synonyms: ["Eucalyptus", "Eucalyptus Oil", "Eucalyptus Globulus"],
+    targetConcerns: ["dandruff", "oiliness"],
+    suitableSkinTypes: ["oily", "combination"],
+    climateTags: ["humid"],
+    doshaAffinities: ["kapha"],
+    functions: ["active", "fragrance"],
+    source: "botanical",
+    benefits: ["scalp_comfort"],
+  },
+  {
+    inciName: "Citrus Aurantium Dulcis Peel Oil",
+    displayName: "Sweet Orange",
+    synonyms: ["Orange", "Orange Oil", "Sweet Orange", "Citrus Aurantium Dulcis", "Citrus Sinensis"],
+    targetConcerns: ["hyperpigmentation", "texture"],
+    suitableSkinTypes: ["normal", "combination"],
+    climateTags: ["humid"],
+    doshaAffinities: ["kapha"],
+    functions: ["antioxidant", "fragrance"],
+    source: "botanical",
+    benefits: ["brightening"],
+  },
+  {
+    inciName: "Mentha Piperita Oil",
+    displayName: "Peppermint",
+    synonyms: ["Peppermint", "Mint", "Peppermint Oil", "Mentha Piperita"],
+    targetConcerns: ["oiliness", "dandruff"],
+    suitableSkinTypes: ["oily", "combination"],
+    climateTags: ["humid"],
+    doshaAffinities: ["kapha", "pitta"],
+    functions: ["active", "fragrance"],
+    source: "botanical",
+    benefits: ["scalp_comfort", "oil_balancing"],
+  },
+  {
+    inciName: "Ricinus Communis Seed Oil",
+    displayName: "Castor Oil",
+    synonyms: ["Castor Oil", "Castor", "Ricinus Communis"],
+    targetConcerns: ["dryness", "hair_fall", "barrier_support"],
+    suitableSkinTypes: ["dry", "normal"],
+    climateTags: ["dry", "cold"],
+    doshaAffinities: ["vata"],
+    functions: ["emollient", "occlusive"],
+    source: "botanical",
+    benefits: ["conditioning", "barrier_support"],
+  },
+  {
+    inciName: "Kaolin",
+    displayName: "Kaolin Clay",
+    synonyms: ["Kaolin", "Clay", "China Clay", "Multani Mitti", "Bentonite"],
+    targetConcerns: ["oiliness", "acne", "texture"],
+    suitableSkinTypes: ["oily", "combination"],
+    climateTags: ["humid", "polluted"],
+    doshaAffinities: ["kapha"],
+    functions: ["active"],
+    source: "mineral",
+    benefits: ["gentle_cleansing", "oil_balancing"],
+  },
+  {
+    inciName: "Glutathione",
+    synonyms: ["Glutathione", "L-Glutathione", "Reduced Glutathione"],
+    targetConcerns: ["hyperpigmentation", "aging"],
+    suitableSkinTypes: ["normal", "combination", "dry"],
+    climateTags: ["high_uv", "polluted"],
+    doshaAffinities: ["pitta"],
+    functions: ["antioxidant", "active"],
+    source: "synthetic",
+    benefits: ["brightening", "antioxidant_support"],
+  },
+  {
+    inciName: "Cocos Nucifera Oil",
+    displayName: "Coconut Oil",
+    synonyms: ["Coconut Oil", "Coconut", "Cocos Nucifera", "Virgin Coconut Oil"],
+    targetConcerns: ["dryness", "barrier_support"],
+    suitableSkinTypes: ["dry", "normal"],
+    climateTags: ["dry", "cold"],
+    doshaAffinities: ["vata", "pitta"],
+    functions: ["emollient", "occlusive"],
+    source: "botanical",
+    benefits: ["conditioning", "barrier_support", "makeup_removal"],
   },
   {
     inciName: "Parfum",
     synonyms: ["Fragrance", "Perfume", "Aroma"],
     notes: "Common allergen — use for allergy cross-check normalization only.",
+    functions: ["fragrance"],
+    source: "unspecified",
   },
 ]

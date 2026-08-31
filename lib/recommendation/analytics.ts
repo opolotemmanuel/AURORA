@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/client"
+import { withDbRetry } from "@/lib/db/retry"
 import type { CatalogueScope } from "@/lib/products/catalogue-scope"
 
 /**
@@ -53,17 +54,19 @@ export async function engineHealth(
     ...(since ? { createdAt: { gte: since } } : {}),
   }
 
-  const runs = await prisma.scanRecommendationRun.findMany({
-    where,
-    select: {
-      confident: true,
-      gapFillCount: true,
-      gapFillReason: true,
-      engineCount: true,
-      candidateCount: true,
-      usedClinicWeights: true,
-    },
-  })
+  const runs = await withDbRetry(() =>
+    prisma.scanRecommendationRun.findMany({
+      where,
+      select: {
+        confident: true,
+        gapFillCount: true,
+        gapFillReason: true,
+        engineCount: true,
+        candidateCount: true,
+        usedClinicWeights: true,
+      },
+    }),
+  )
 
   const gapFillsByReason: Record<string, number> = {}
   let confidentRuns = 0
@@ -130,15 +133,17 @@ export async function productPerformance(
   scope: CatalogueScope,
   limit = 20,
 ): Promise<ProductPerformance[]> {
-  const rows = await prisma.scanRecommendation.findMany({
-    where: scopeFilter(scope),
-    select: {
-      productSlug: true,
-      productName: true,
-      rank: true,
-      feedback: { select: { verdict: true } },
-    },
-  })
+  const rows = await withDbRetry(() =>
+    prisma.scanRecommendation.findMany({
+      where: scopeFilter(scope),
+      select: {
+        productSlug: true,
+        productName: true,
+        rank: true,
+        feedback: { select: { verdict: true } },
+      },
+    }),
+  )
 
   const byProduct = new Map<string, ProductPerformance & { rankTotal: number }>()
 
@@ -207,13 +212,15 @@ export async function exclusionSummary(
   scope: CatalogueScope,
   since?: Date,
 ): Promise<ExclusionSummary> {
-  const runs = await prisma.scanRecommendationRun.findMany({
-    where: {
-      ...scopeFilter(scope),
-      ...(since ? { createdAt: { gte: since } } : {}),
-    },
-    select: { exclusions: true },
-  })
+  const runs = await withDbRetry(() =>
+    prisma.scanRecommendationRun.findMany({
+      where: {
+        ...scopeFilter(scope),
+        ...(since ? { createdAt: { gte: since } } : {}),
+      },
+      select: { exclusions: true },
+    }),
+  )
 
   const totals: ExclusionSummary = {}
 
@@ -254,14 +261,16 @@ export type AxisContribution = {
 export async function axisContribution(
   scope: CatalogueScope,
 ): Promise<AxisContribution[]> {
-  const rows = await prisma.scanRecommendation.findMany({
-    where: {
-      ...scopeFilter(scope),
-      origin: "engine",
-      feedback: { isNot: null },
-    },
-    select: { components: true, feedback: { select: { verdict: true } } },
-  })
+  const rows = await withDbRetry(() =>
+    prisma.scanRecommendation.findMany({
+      where: {
+        ...scopeFilter(scope),
+        origin: "engine",
+        feedback: { isNot: null },
+      },
+      select: { components: true, feedback: { select: { verdict: true } } },
+    }),
+  )
 
   const byAxis = new Map<string, AxisContribution>()
 

@@ -1,4 +1,4 @@
-import type { ClinicProductFormInput } from "@/lib/products/schemas"
+import type { ClinicProductFormInput, ProductFormInput } from "@/lib/products/schemas"
 import { completenessScore } from "@/lib/products/completeness"
 import { splitClassifications } from "@/lib/products/classification"
 import { ROUTINE_STEP_BY_CATEGORY } from "@/lib/products/constants"
@@ -11,7 +11,9 @@ import { ROUTINE_STEP_BY_CATEGORY } from "@/lib/products/constants"
  * looked up from the category, and the completeness score is recomputed. Doing
  * that at two call sites is how a product ends up saved with a stale score.
  */
-export function productIntelligenceFields(form: ClinicProductFormInput) {
+export function productIntelligenceFields(
+  form: ClinicProductFormInput | ProductFormInput,
+) {
   const classification = splitClassifications(
     form.classifications,
     form.primaryClassification ?? null,

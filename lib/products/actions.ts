@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { revalidateCatalogContext } from "@/lib/ai/context/cache-tags"
 import { requireAdmin } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/client"
+import { productIntelligenceFields } from "@/lib/products/intelligence-fields"
 import { normalizeProductInput } from "@/lib/products/normalize"
 import { productFormSchema, productSchema } from "@/lib/products/schemas"
 
@@ -24,6 +25,10 @@ export async function createProductAction(input: unknown) {
   const product = await prisma.product.create({
     data: {
       ...data,
+      // Derived rather than copied: the classification is split, the routine
+      // step looked up, and the completeness score recomputed. Shared with the
+      // clinic editor so both catalogues are described identically.
+      ...productIntelligenceFields(form),
       ingredients: data.ingredients || null,
       ingredientList: normalized.ingredientList,
       imageUrl: data.imageUrl || null,
@@ -60,6 +65,10 @@ export async function updateProductAction(id: string, input: unknown) {
     where: { id },
     data: {
       ...data,
+      // Derived rather than copied: the classification is split, the routine
+      // step looked up, and the completeness score recomputed. Shared with the
+      // clinic editor so both catalogues are described identically.
+      ...productIntelligenceFields(form),
       ingredients: data.ingredients || null,
       ingredientList: normalized.ingredientList,
       imageUrl: data.imageUrl || null,

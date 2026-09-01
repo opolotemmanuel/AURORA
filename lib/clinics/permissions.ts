@@ -31,6 +31,8 @@ export const TENANT_PERMISSIONS = [
   "DATA_SHARING_MANAGE",
   "PRODUCT_VIEW",
   "PRODUCT_MANAGE",
+  "RECOMMENDATION_VIEW",
+  "RECOMMENDATION_CONFIGURE",
 ] as const
 
 export type TenantPermission = (typeof TENANT_PERMISSIONS)[number]
@@ -60,6 +62,8 @@ const CLINIC_ADMIN: readonly TenantPermission[] = [
   "DATA_SHARING_MANAGE",
   "PRODUCT_VIEW",
   "PRODUCT_MANAGE",
+  "RECOMMENDATION_VIEW",
+  "RECOMMENDATION_CONFIGURE",
 ]
 
 const MEMBER: readonly TenantPermission[] = [
@@ -70,6 +74,10 @@ const MEMBER: readonly TenantPermission[] = [
   "APPOINTMENT_VIEW",
   "REPORT_VIEW",
   "PRODUCT_VIEW",
+  // Read without write, matching PRODUCT_VIEW/PRODUCT_MANAGE. Staff may see
+  // how their clinic tunes recommendations; changing it is an owner or admin
+  // act, because it changes the advice every patient receives.
+  "RECOMMENDATION_VIEW",
 ]
 
 const BY_ROLE: Record<string, readonly TenantPermission[]> = {

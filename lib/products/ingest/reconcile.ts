@@ -30,6 +30,18 @@ export type ExistingProduct = {
   sourceHash: string | null
   /** Whether a person has confirmed this product's intelligence. */
   verified: boolean
+  /**
+   * Whether the extraction pass has already produced intelligence for this
+   * product.
+   *
+   * Separate from `verified`, and for a reason found by running a sync: the
+   * store mapper infers concerns and climate tags from tag names, the
+   * extraction pass infers them from the full product prose, and the second is
+   * strictly better informed. Treating "not yet confirmed by a person" as
+   * licence to overwrite let a crude inference replace a careful one and cost
+   * the catalogue five points of completeness in a single run.
+   */
+  extracted: boolean
 }
 
 export type ReconcileAction =
@@ -44,7 +56,10 @@ export type ReconcileAction =
       /** Whether derived fields may be written from this sync's inference. */
       mayWriteDerived: boolean
     }
-  | { kind: "unchanged"; id: string }
+  // Carries the input even though nothing about the source changed: the
+  // caller still recomputes derived columns from it, and re-deriving which
+  // source product a row came from would mean running this matching twice.
+  | { kind: "unchanged"; id: string; input: IngestProductInput }
 
 /**
  * Finds the Aurora row a source product corresponds to.
@@ -92,7 +107,7 @@ export function reconcileProduct(
   // `updated` so a sync that genuinely changed nothing says so, rather than
   // claiming it updated the whole catalogue.
   if (!markStale && match.sourceHash === hash) {
-    return { kind: "unchanged", id: match.id }
+    return { kind: "unchanged", id: match.id, input }
   }
 
   return {
@@ -101,10 +116,11 @@ export function reconcileProduct(
     input,
     hash,
     markStale,
-    // A person's confirmation outranks a sync's inference. Once intelligence is
-    // verified, the store may keep updating the product's name, price, image
-    // and stock — but not what Aurora believes the product is for.
-    mayWriteDerived: !match.verified,
+    // The sync's hints seed a product nothing has assessed yet. Once anything
+    // better exists — an extraction, or a person's confirmation — the store may
+    // keep updating the product's name, price, image and stock, but not what
+    // Aurora believes the product is for.
+    mayWriteDerived: !match.verified && !match.extracted,
   }
 }
 

@@ -42,6 +42,7 @@ function existing(over: Partial<ExistingProduct> & { id: string }): ExistingProd
     sku: "SKU-1",
     sourceHash: null,
     verified: false,
+    extracted: false,
     ...over,
   }
 }
@@ -106,8 +107,22 @@ test("a sync never overwrites intelligence a person confirmed", () => {
   assert.equal(action.kind === "update" && action.mayWriteDerived, false)
 })
 
-test("unverified intelligence may still be refreshed by a sync", () => {
-  const rows = [existing({ id: "p1", externalId: "1234", verified: false })]
+test("a sync never overwrites what the extraction pass produced", () => {
+  // Found by running a sync and watching the number move: the mapper infers
+  // concerns from tag names, the extraction pass infers them from the full
+  // product prose, and letting the first overwrite the second cost the
+  // catalogue five points of average completeness in one run.
+  const rows = [existing({ id: "p1", externalId: "1234", extracted: true })]
+
+  const action = reconcileProduct(input({ description: "Changed." }), rows)
+
+  assert.equal(action.kind === "update" && action.mayWriteDerived, false)
+})
+
+test("a product nothing has assessed yet takes the sync's hints", () => {
+  const rows = [
+    existing({ id: "p1", externalId: "1234", verified: false, extracted: false }),
+  ]
 
   const action = reconcileProduct(input({ description: "Changed." }), rows)
 

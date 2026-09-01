@@ -11,7 +11,12 @@ import {
 import { mapWooCommerceProduct } from "@/lib/products/ingest/map-woocommerce"
 import { planSync, type ExistingProduct } from "@/lib/products/ingest/reconcile"
 import { mapFallbackProduct, type FallbackProduct } from "@/lib/products/seed-map"
-import type { ProductSource } from "@/generated/prisma/client"
+import type {
+  ProductClassification,
+  ProductSource,
+  RoutineCategory,
+} from "@/generated/prisma/client"
+import { assessCompleteness } from "@/lib/products/completeness"
 import type {
   CatalogSyncResult,
   IngestProductInput,
@@ -87,6 +92,54 @@ async function loadIngestProducts(
   return loadFallbackProducts()
 }
 
+/**
+ * The intelligence a product already holds, for recomputing completeness.
+ *
+ * The sync changes fields the completeness score counts — price, image, name,
+ * ingredient text — so leaving the stored score untouched lets it drift from
+ * the row it describes. An administrator reading a stale 63% while the product
+ * actually scores 58% is being shown the one number this view exists to make
+ * trustworthy.
+ */
+type ExistingIntelligence = {
+  brand: string | null
+  primaryClassification: ProductClassification | null
+  suitableSkinTypes: string[]
+  cosmeticBenefits: string[]
+  targetConcerns: string[]
+  climateTags: string[]
+  routineCategory: RoutineCategory | null
+}
+
+/** Completeness of the row as it will be after this sync writes. */
+function completenessAfterWrite(
+  input: IngestProductInput,
+  existing: ExistingIntelligence | null,
+  mayWriteDerived: boolean,
+): number {
+  return assessCompleteness({
+    // Source fields, always taken from the incoming product.
+    name: input.name,
+    description: input.description,
+    imageUrl: input.imageUrl ?? null,
+    ingredients: input.ingredients ?? null,
+    priceCents: input.priceCents ?? null,
+    // Intelligence the sync does not write, carried through unchanged.
+    brand: existing?.brand ?? null,
+    primaryClassification: existing?.primaryClassification ?? null,
+    suitableSkinTypes: existing?.suitableSkinTypes ?? [],
+    cosmeticBenefits: existing?.cosmeticBenefits ?? [],
+    routineCategory: existing?.routineCategory ?? null,
+    // Hints, which the sync writes only when nothing better has assessed them.
+    targetConcerns: mayWriteDerived
+      ? input.targetConcerns
+      : (existing?.targetConcerns ?? input.targetConcerns),
+    climateTags: mayWriteDerived
+      ? input.climateTags
+      : (existing?.climateTags ?? input.climateTags),
+  }).score
+}
+
 /** Source fields. Always written — the store owns these. */
 function sourceData(input: IngestProductInput) {
   return {
@@ -113,11 +166,15 @@ function sourceData(input: IngestProductInput) {
 /**
  * Derived fields the sync may write.
  *
- * Only the two the source genuinely supports — concerns and climate hints read
- * off the merchant's own tags — and only for products no person has confirmed.
- * Classification, skin types, benefits and routine position are never written
- * here: nothing in a WooCommerce payload establishes them, and writing a guess
- * would make an inference indistinguishable from a fact.
+ * Only what the source genuinely supports — concerns and climate hints read off
+ * the merchant's own tag names — and only for a product nothing better has
+ * assessed yet. Classification, skin types, benefits and routine position are
+ * never written here: nothing in a WooCommerce payload establishes them, and
+ * writing a guess would make an inference indistinguishable from a fact.
+ *
+ * These are seed values, not an update. The extraction pass reads the full
+ * product prose and is strictly better informed than a tag name, so once it has
+ * run these must not overwrite it — see `mayWriteDerived`.
  */
 function derivedData(input: IngestProductInput) {
   return {
@@ -165,6 +222,13 @@ export async function syncProductCatalog(
         sku: true,
         sourceHash: true,
         verificationStatus: true,
+        primaryClassification: true,
+        brand: true,
+        suitableSkinTypes: true,
+        cosmeticBenefits: true,
+        targetConcerns: true,
+        climateTags: true,
+        routineCategory: true,
       },
     })
 
@@ -176,16 +240,48 @@ export async function syncProductCatalog(
       sku: row.sku,
       sourceHash: row.sourceHash,
       verified: row.verificationStatus === "confirmed",
+      // A classification is only ever set by the extraction pass or by an
+      // administrator in the editor. Either way something better informed than
+      // a tag-name inference has already spoken.
+      extracted: row.primaryClassification !== null,
     }))
 
+    const intelligenceById = new Map(
+      existingRows.map((row) => [
+        row.id,
+        {
+          brand: row.brand,
+          primaryClassification: row.primaryClassification,
+          suitableSkinTypes: row.suitableSkinTypes,
+          cosmeticBenefits: row.cosmeticBenefits,
+          targetConcerns: row.targetConcerns,
+          climateTags: row.climateTags,
+          routineCategory: row.routineCategory,
+        },
+      ]),
+    )
+
     const plan = planSync(inputs, existing)
+
 
     for (const action of plan.actions) {
       try {
         if (action.kind === "unchanged") {
           await prisma.product.update({
             where: { id: action.id },
-            data: { lastSyncedAt: new Date() },
+            data: {
+              lastSyncedAt: new Date(),
+              // Recomputed even here, where the source did not change. The
+              // engine reads this column for its confidence multiplier, so a
+              // value that has drifted from the row it describes changes what
+              // gets recommended. "Unchanged" is a statement about the source,
+              // not a licence to leave a derived column wrong.
+              completenessScore: completenessAfterWrite(
+                action.input,
+                intelligenceById.get(action.id) ?? null,
+                false,
+              ),
+            },
           })
           result.unchanged += 1
           continue
@@ -198,6 +294,7 @@ export async function syncProductCatalog(
               ...derivedData(action.input),
               slug: action.input.slug,
               sourceHash: action.hash,
+              completenessScore: completenessAfterWrite(action.input, null, true),
               // A product Aurora has never assessed is not yet intelligible to
               // the engine, so it arrives stale and awaits extraction.
               intelligenceStale: true,
@@ -214,6 +311,11 @@ export async function syncProductCatalog(
             ...sourceData(action.input),
             ...(action.mayWriteDerived ? derivedData(action.input) : {}),
             sourceHash: action.hash,
+            completenessScore: completenessAfterWrite(
+              action.input,
+              intelligenceById.get(action.id) ?? null,
+              action.mayWriteDerived,
+            ),
             ...(action.markStale ? { intelligenceStale: true } : {}),
           },
         })

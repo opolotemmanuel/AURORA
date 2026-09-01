@@ -87,6 +87,9 @@ export type AuditAction =
   | "tenant.deleted"
   | "tenant.comp_access_changed"
   | "tenant.plan_changed"
+  // Tenant configuration that changes the advice patients receive. Recorded
+  // alongside the other tenant.* transitions rather than as its own vocabulary.
+  | "tenant.recommendation_weights_changed"
   // Tenant routing — which hosts serve this tenant. A custom domain changes
   // where the clinic answers, so each transition is recorded on its own.
   | "tenant.domain_claimed"

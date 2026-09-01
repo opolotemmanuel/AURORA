@@ -5,10 +5,17 @@ import { useRouter } from "next/navigation"
 import { IconAlertTriangle, IconCircleCheck, IconClock, IconRefresh } from "@tabler/icons-react"
 
 import { retryProductExtractionAction } from "@/lib/products/actions"
+import {
+  revokeProductVerificationAction,
+  verifyProductIntelligenceAction,
+} from "@/lib/products/intelligence/verification-actions"
 import type { ProductQualityRow } from "@/lib/products/catalogue-health"
 import { CONFIDENT_RECOMMENDATION_THRESHOLD } from "@/lib/products/completeness"
 import { Badge } from "@/components/ui/badge"
+import { ProductBulkExtract } from "@/components/admin/product-bulk-extract"
+import { ProductIntelligenceDetail } from "@/components/admin/product-intelligence-detail"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
 /**
@@ -32,6 +39,12 @@ export type QualityFilter =
   | "active"
   | "archived"
   | "needs_extraction"
+  | "failed"
+  | "stale"
+  | "ineligible"
+  | "unavailable"
+  | "manual"
+  | "woocommerce"
 
 const FILTERS: ReadonlyArray<{ value: QualityFilter; label: string }> = [
   { value: "all", label: "All" },
@@ -44,6 +57,12 @@ const FILTERS: ReadonlyArray<{ value: QualityFilter; label: string }> = [
   { value: "not_recommendable", label: "Not recommendable" },
   { value: "active", label: "Active" },
   { value: "archived", label: "Archived" },
+  { value: "failed", label: "Extraction failed" },
+  { value: "stale", label: "Stale" },
+  { value: "ineligible", label: "Not eligible" },
+  { value: "unavailable", label: "Unavailable" },
+  { value: "manual", label: "Manual" },
+  { value: "woocommerce", label: "WooCommerce" },
 ]
 
 export function matchesFilter(row: ProductQualityRow, filter: QualityFilter): boolean {
@@ -64,6 +83,18 @@ export function matchesFilter(row: ProductQualityRow, filter: QualityFilter): bo
       return row.isActive
     case "archived":
       return !row.isActive
+    case "failed":
+      return row.intelligenceStatus === "failed"
+    case "stale":
+      return row.intelligenceStale
+    case "ineligible":
+      return row.eligibilityReasons.length > 0
+    case "unavailable":
+      return row.availability === "out_of_stock" || row.availability === "discontinued"
+    case "manual":
+      return row.source === "manual"
+    case "woocommerce":
+      return row.source === "woocommerce"
     case "needs_extraction":
       return row.intelligenceStale || row.primaryClassification === null
     default:
@@ -152,7 +183,42 @@ export function ProductQualityTable({ rows, onOpen }: ProductQualityTableProps) 
   const [filter, setFilter] = useState<QualityFilter>("all")
   const [expanded, setExpanded] = useState<string | null>(null)
   const [retrying, setRetrying] = useState<string | null>(null)
+  const [search, setSearch] = useState("")
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [, startTransition] = useTransition()
+
+  const [verifying, setVerifying] = useState<string | null>(null)
+  const [verifyError, setVerifyError] = useState<string | null>(null)
+
+  // Verification is only ever an explicit act. Nothing in the extraction path
+  // sets it, and an automated pass saying a product is organic is a derivation
+  // where a person saying so is a warranty.
+  function verify(productId: string) {
+    setVerifying(productId)
+    setVerifyError(null)
+    startTransition(async () => {
+      try {
+        const result = await verifyProductIntelligenceAction(productId)
+        if (!result.ok) setVerifyError(result.error)
+        else router.refresh()
+      } finally {
+        setVerifying(null)
+      }
+    })
+  }
+
+  function revoke(productId: string) {
+    setVerifying(productId)
+    setVerifyError(null)
+    startTransition(async () => {
+      try {
+        await revokeProductVerificationAction(productId)
+        router.refresh()
+      } finally {
+        setVerifying(null)
+      }
+    })
+  }
 
   // An explicit retry, distinct from the automatic pass that runs on creation:
   // it forces past the in-flight guard, because somebody asking for it is
@@ -177,13 +243,70 @@ export function ProductQualityTable({ rows, onOpen }: ProductQualityTableProps) 
     return result
   }, [rows])
 
-  const visible = useMemo(
-    () => rows.filter((row) => matchesFilter(row, filter)),
-    [rows, filter],
+  const visible = useMemo(() => {
+    const needle = search.trim().toLowerCase()
+    return rows.filter((row) => {
+      if (!matchesFilter(row, filter)) return false
+      if (!needle) return true
+      // Name, slug and classification: the three things somebody actually knows
+      // when they are looking for one product in a catalogue.
+      return (
+        row.name.toLowerCase().includes(needle) ||
+        row.slug.toLowerCase().includes(needle) ||
+        (row.primaryClassification ?? "").toLowerCase().includes(needle)
+      )
+    })
+  }, [rows, filter, search])
+
+  const selected = useMemo(
+    () =>
+      rows
+        .filter((row) => selectedIds.has(row.id))
+        .map((row) => ({ id: row.id, name: row.name })),
+    [rows, selectedIds],
   )
+
+  function toggleSelected(id: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  // Selects what is on screen, not the whole catalogue — the visible set is
+  // what the administrator has actually looked at.
+  function toggleAllVisible() {
+    setSelectedIds((current) => {
+      const allSelected = visible.every((row) => current.has(row.id))
+      const next = new Set(current)
+      for (const row of visible) {
+        if (allSelected) next.delete(row.id)
+        else next.add(row.id)
+      }
+      return next
+    })
+  }
 
   return (
     <div className="space-y-3">
+      <Input
+        type="search"
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+        placeholder="Search by name, slug or classification"
+        className="h-8 max-w-sm text-xs"
+        aria-label="Search products"
+      />
+
+      {selected.length > 0 ? (
+        <ProductBulkExtract
+          selected={selected}
+          onClear={() => setSelectedIds(new Set())}
+        />
+      ) : null}
+
       <div className="flex flex-wrap gap-1.5">
         {FILTERS.map(({ value, label }) => (
           <button
@@ -208,6 +331,15 @@ export function ProductQualityTable({ rows, onOpen }: ProductQualityTableProps) 
         <table className="w-full min-w-[70rem] text-xs">
           <thead className="bg-muted/40 text-left text-muted-foreground">
             <tr>
+              <th className="w-8 px-3 py-2">
+                <input
+                  type="checkbox"
+                  aria-label="Select all visible products"
+                  checked={visible.length > 0 && visible.every((row) => selectedIds.has(row.id))}
+                  onChange={toggleAllVisible}
+                  className="cursor-pointer accent-primary"
+                />
+              </th>
               <th className="px-3 py-2 font-medium">Product</th>
               <th className="px-3 py-2 font-medium">Source</th>
               <th className="px-3 py-2 font-medium">Classification</th>
@@ -218,7 +350,9 @@ export function ProductQualityTable({ rows, onOpen }: ProductQualityTableProps) 
               <th className="px-3 py-2 font-medium">Routine</th>
               <th className="px-3 py-2 font-medium">Data quality</th>
               <th className="px-3 py-2 font-medium">Intelligence</th>
+              <th className="px-3 py-2 font-medium">Verification</th>
               <th className="px-3 py-2 font-medium">Status</th>
+              <th className="px-3 py-2 font-medium">Updated</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
@@ -231,6 +365,15 @@ export function ProductQualityTable({ rows, onOpen }: ProductQualityTableProps) 
                   onClick={() => setExpanded(expanded === row.id ? null : row.id)}
                   className="cursor-pointer hover:bg-muted/20"
                 >
+                  <td className="px-3 py-2" onClick={(event) => event.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${row.name}`}
+                      checked={selectedIds.has(row.id)}
+                      onChange={() => toggleSelected(row.id)}
+                      className="cursor-pointer accent-primary"
+                    />
+                  </td>
                   <td className="px-3 py-2">
                     <span className="font-medium text-foreground">{row.name}</span>
                     <span className="block text-[0.65rem] text-muted-foreground">
@@ -270,6 +413,17 @@ export function ProductQualityTable({ rows, onOpen }: ProductQualityTableProps) 
                   <td className="px-3 py-2"><QualityBar score={row.completenessScore} /></td>
                   <td className="px-3 py-2"><IntelligenceBadge row={row} /></td>
                   <td className="px-3 py-2">
+                    {row.verificationStatus === "confirmed" ? (
+                      <Badge variant="outline" className="gap-1 border-primary/40 text-[0.65rem] text-primary">
+                        <IconCircleCheck className="size-3" aria-hidden /> Verified
+                      </Badge>
+                    ) : (
+                      <span className="text-[0.65rem] text-muted-foreground">
+                        Unverified
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
                     <span
                       className={cn(
                         "text-[0.65rem] font-medium",
@@ -288,11 +442,17 @@ export function ProductQualityTable({ rows, onOpen }: ProductQualityTableProps) 
                       {row.availability.replace(/_/g, " ")}
                     </span>
                   </td>
+                  <td className="px-3 py-2 text-[0.65rem] text-muted-foreground">
+                    {row.lastSyncedAt
+                      ? new Date(row.lastSyncedAt).toLocaleDateString()
+                      : "—"}
+                  </td>
                 </tr>
                 {expanded === row.id ? (
                   <tr className="bg-muted/10">
-                    <td colSpan={11} className="px-3 py-3">
-                      <div className="flex flex-wrap items-start justify-between gap-4">
+                    <td colSpan={14} className="px-3 py-3">
+                      <ProductIntelligenceDetail row={row} />
+                      <div className="mt-4 flex flex-wrap items-start justify-between gap-4 border-t border-border pt-4">
                         <div className="space-y-1">
                           <p className="text-[0.7rem] font-medium tracking-wide text-muted-foreground uppercase">
                             Data quality {row.completenessScore}%
@@ -366,6 +526,33 @@ export function ProductQualityTable({ rows, onOpen }: ProductQualityTableProps) 
                           >
                             Edit intelligence
                           </Button>
+                          {row.verificationStatus === "confirmed" ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              disabled={verifying === row.id}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                revoke(row.id)
+                              }}
+                            >
+                              Withdraw verification
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={verifying === row.id}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                verify(row.id)
+                              }}
+                            >
+                              <IconCircleCheck className="size-3.5" aria-hidden />
+                              {verifying === row.id ? "Verifying…" : "Verify"}
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -376,6 +563,12 @@ export function ProductQualityTable({ rows, onOpen }: ProductQualityTableProps) 
           </tbody>
         </table>
       </div>
+
+      {verifyError ? (
+        <p className="rounded-sm border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+          {verifyError}
+        </p>
+      ) : null}
 
       {visible.length === 0 ? (
         <p className="text-xs text-muted-foreground">No products match this filter.</p>

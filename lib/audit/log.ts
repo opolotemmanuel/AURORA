@@ -105,6 +105,17 @@ export type AuditAction =
   | "product.archived"
   | "product.recommendation_enabled"
   | "product.recommendation_disabled"
+  // Product intelligence. Named under product.* like the rest of the catalogue
+  // vocabulary rather than a new intelligence.* namespace, because the subject
+  // is a product and subjectType already says so.
+  //
+  // Extraction itself is deliberately not here. It runs automatically on every
+  // creation and every sync, and the audit log records administrative acts
+  // rather than machine events — the outcome already lives on the product row
+  // as intelligenceStatus, intelligenceExtractedAt and intelligenceError.
+  | "product.intelligence_corrected"
+  | "product.intelligence_verified"
+  | "product.intelligence_verification_revoked"
   // Membership lifecycle — who may act inside a tenant
   | "membership.created"
   | "membership.role_changed"

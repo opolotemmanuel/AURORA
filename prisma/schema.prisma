@@ -566,6 +566,14 @@ model Product {
   /// Why the last extraction failed. Never carries credentials or prompts.
   intelligenceError  String?
   intelligenceExtractedAt DateTime?
+  /// Where each intelligence field's current value came from.
+  ///
+  /// A map of field name to "source", "extraction" or "admin". Written by
+  /// whichever step last set the field, so the admin surface can say how a
+  /// value was arrived at instead of implying every field was reviewed. Fields
+  /// absent from the map have no recorded provenance and are shown as such —
+  /// claiming an origin nobody recorded would be worse than admitting the gap.
+  intelligenceProvenance Json?
 
   sku               String
   name              String

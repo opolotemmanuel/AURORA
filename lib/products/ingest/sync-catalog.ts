@@ -17,6 +17,11 @@ import type {
   RoutineCategory,
 } from "@/generated/prisma/client"
 import { assessCompleteness } from "@/lib/products/completeness"
+import {
+  markProvenance,
+  readProvenance,
+  type ProvenanceField,
+} from "@/lib/products/intelligence/provenance"
 import type {
   CatalogSyncResult,
   IngestProductInput,
@@ -101,7 +106,15 @@ async function loadIngestProducts(
  * actually scores 58% is being shown the one number this view exists to make
  * trustworthy.
  */
+/** The only intelligence fields a sync ever writes, from merchant tag names. */
+const SOURCE_HINT_FIELDS: readonly ProvenanceField[] = [
+  "targetConcerns",
+  "climateTags",
+  "ingredientList",
+]
+
 type ExistingIntelligence = {
+  provenance: unknown
   brand: string | null
   primaryClassification: ProductClassification | null
   suitableSkinTypes: string[]
@@ -223,6 +236,7 @@ export async function syncProductCatalog(
         sourceHash: true,
         verificationStatus: true,
         primaryClassification: true,
+        intelligenceProvenance: true,
         brand: true,
         suitableSkinTypes: true,
         cosmeticBenefits: true,
@@ -250,6 +264,7 @@ export async function syncProductCatalog(
       existingRows.map((row) => [
         row.id,
         {
+          provenance: row.intelligenceProvenance,
           brand: row.brand,
           primaryClassification: row.primaryClassification,
           suitableSkinTypes: row.suitableSkinTypes,
@@ -295,6 +310,8 @@ export async function syncProductCatalog(
               slug: action.input.slug,
               sourceHash: action.hash,
               completenessScore: completenessAfterWrite(action.input, null, true),
+              // The store's own tag names are the origin of these two.
+              intelligenceProvenance: markProvenance({}, SOURCE_HINT_FIELDS, "source"),
               // A product Aurora has never assessed is not yet intelligible to
               // the engine, so it arrives stale and awaits extraction.
               intelligenceStale: true,
@@ -309,7 +326,16 @@ export async function syncProductCatalog(
           where: { id: action.id },
           data: {
             ...sourceData(action.input),
-            ...(action.mayWriteDerived ? derivedData(action.input) : {}),
+            ...(action.mayWriteDerived
+              ? {
+                  ...derivedData(action.input),
+                  intelligenceProvenance: markProvenance(
+                    readProvenance(intelligenceById.get(action.id)?.provenance),
+                    SOURCE_HINT_FIELDS,
+                    "source",
+                  ),
+                }
+              : {}),
             sourceHash: action.hash,
             completenessScore: completenessAfterWrite(
               action.input,

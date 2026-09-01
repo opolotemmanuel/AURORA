@@ -123,7 +123,35 @@ export function CatalogueSyncPanel({ health }: CatalogueSyncPanelProps) {
         <Stat
           label="Need extraction"
           value={String(health.needingExtraction)}
-          hint={`${health.awaitingVerification} awaiting human review`}
+          hint={`${health.stale} stale · ${health.failed} failed`}
+        />
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+        <Stat
+          label="Extracted"
+          value={String(health.byIntelligenceStatus.extracted ?? 0)}
+          hint="Complete enough for the engine"
+        />
+        <Stat
+          label="Needs review"
+          value={String(health.byIntelligenceStatus.needs_review ?? 0)}
+          hint="Extracted, but too little established"
+        />
+        <Stat
+          label="Pending"
+          value={String(health.byIntelligenceStatus.pending ?? 0)}
+          hint="Never extracted, or source changed"
+        />
+        <Stat
+          label="Verified"
+          value={String(health.verified)}
+          hint={`${health.unverified} unverified`}
+        />
+        <Stat
+          label="Eligible"
+          value={String(health.eligible)}
+          hint="Meets every engine requirement"
         />
       </div>
 

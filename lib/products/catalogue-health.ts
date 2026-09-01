@@ -14,6 +14,10 @@ import {
   CONFIDENT_RECOMMENDATION_THRESHOLD,
 } from "@/lib/products/completeness"
 import { evaluateEligibility } from "@/lib/products/intelligence/eligibility"
+import {
+  readProvenance,
+  type IntelligenceProvenance,
+} from "@/lib/products/intelligence/provenance"
 
 /**
  * What the administrator needs to see about the catalogue, from real records.
@@ -54,6 +58,15 @@ export type ProductQualityRow = {
   intelligenceStale: boolean
   intelligenceStatus: ProductIntelligenceStatus
   intelligenceError: string | null
+  sku: string
+  priceCents: number | null
+  currency: string | null
+  storeUrl: string | null
+  /** Source description, shown apart from the derived intelligence. */
+  description: string
+  ingredients: string | null
+  /** Recorded origin per intelligence field. Absent entries claim nothing. */
+  provenance: IntelligenceProvenance
   /** Why the engine may not select this product. Empty when it may. */
   eligibilityReasons: string[]
   isActive: boolean
@@ -90,6 +103,14 @@ export type CatalogueHealth = {
   needingExtraction: number
   /** Extracted but not confirmed by a person. */
   awaitingVerification: number
+  /** One count per extraction status, from the rows themselves. */
+  byIntelligenceStatus: Record<string, number>
+  verified: number
+  unverified: number
+  stale: number
+  failed: number
+  /** Products the engine is currently allowed to select. */
+  eligible: number
   bySource: Record<string, number>
   averageCompleteness: number
   lastSync: SyncRunSummary | null
@@ -148,6 +169,13 @@ function toQualityRow(
     intelligenceStale: product.intelligenceStale,
     intelligenceStatus: product.intelligenceStatus,
     intelligenceError: product.intelligenceError,
+    sku: product.sku,
+    priceCents: product.priceCents,
+    currency: product.currency,
+    storeUrl: product.storeUrl,
+    description: product.description,
+    ingredients: product.ingredients,
+    provenance: readProvenance(product.intelligenceProvenance),
     eligibilityReasons: evaluateEligibility({
       isActive: product.isActive,
       intelligenceStatus: product.intelligenceStatus,
@@ -191,6 +219,10 @@ function fetchProducts() {
       intelligenceStale: true,
       intelligenceStatus: true,
       intelligenceError: true,
+      intelligenceProvenance: true,
+      sku: true,
+      currency: true,
+      storeUrl: true,
       isActive: true,
       isRecommendable: true,
       availability: true,
@@ -223,8 +255,20 @@ export async function loadCatalogueQuality(): Promise<{
     bySource[row.source] = (bySource[row.source] ?? 0) + 1
   }
 
+  const byIntelligenceStatus: Record<string, number> = {}
+  for (const row of rows) {
+    byIntelligenceStatus[row.intelligenceStatus] =
+      (byIntelligenceStatus[row.intelligenceStatus] ?? 0) + 1
+  }
+
   const health: CatalogueHealth = {
     total: rows.length,
+    byIntelligenceStatus,
+    verified: rows.filter((row) => row.verificationStatus === "confirmed").length,
+    unverified: rows.filter((row) => row.verificationStatus !== "confirmed").length,
+    stale: rows.filter((row) => row.intelligenceStale).length,
+    failed: rows.filter((row) => row.intelligenceStatus === "failed").length,
+    eligible: rows.filter((row) => row.eligibilityReasons.length === 0).length,
     active: rows.filter((row) => row.isActive).length,
     recommendable: rows.filter((row) => row.isActive && row.isRecommendable).length,
     dataComplete: rows.filter((row) => row.missing.length === 0).length,

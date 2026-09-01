@@ -8,6 +8,11 @@ import {
 } from "@/lib/products/enrich/rate-limit"
 import { sourceHash } from "@/lib/products/ingest/source-hash"
 import { statusForOutcome } from "@/lib/products/intelligence/eligibility"
+import {
+  markProvenance,
+  readProvenance,
+  type ProvenanceField,
+} from "@/lib/products/intelligence/provenance"
 import { parseInciList } from "@/lib/products/parse-inci"
 
 /**
@@ -30,6 +35,21 @@ import { parseInciList } from "@/lib/products/parse-inci"
  * with it — persistence and extraction are separate steps, and a failure here
  * leaves a saved product with a recorded reason and a retry available.
  */
+
+/** The fields an extraction writes, and therefore may claim as its own. */
+const EXTRACTED_FIELDS: readonly ProvenanceField[] = [
+  "primaryClassification",
+  "secondaryClassifications",
+  "suitableSkinTypes",
+  "cosmeticBenefits",
+  "climateTags",
+  "suitableHumidity",
+  "suitableTemperature",
+  "suitableUv",
+  "routineCategory",
+  "ingredientList",
+  "targetConcerns",
+]
 
 export const DEFAULT_EXTRACTION_MODEL = "gemini-2.5-flash"
 
@@ -76,6 +96,7 @@ export async function extractProductIntelligence(
       imageUrl: true,
       priceCents: true,
       intelligenceStatus: true,
+      intelligenceProvenance: true,
     },
   })
 
@@ -172,6 +193,14 @@ export async function extractProductIntelligence(
         intelligenceStatus: status,
         intelligenceError: null,
         intelligenceExtractedAt: new Date(),
+        // Only the fields this pass actually wrote. An administrator who
+        // corrected one of them keeps their attribution until an extraction
+        // overwrites that field specifically.
+        intelligenceProvenance: markProvenance(
+          readProvenance(product.intelligenceProvenance),
+          EXTRACTED_FIELDS,
+          "extraction",
+        ),
       },
     })
 

@@ -6,6 +6,8 @@ import { revalidateCatalogContext } from "@/lib/ai/context/cache-tags"
 import { requireAdmin } from "@/lib/auth/session"
 import { prisma } from "@/lib/db/client"
 import { productIntelligenceFields } from "@/lib/products/intelligence-fields"
+import { evaluateEligibility } from "@/lib/products/intelligence/eligibility"
+import { extractProductIntelligence } from "@/lib/products/intelligence/extract-product"
 import { normalizeProductInput } from "@/lib/products/normalize"
 import { productFormSchema, productSchema } from "@/lib/products/schemas"
 
@@ -36,14 +38,92 @@ export async function createProductAction(input: unknown) {
       // Typed in by a person rather than fetched from the store. Recorded so a
       // store sync can never adopt, overwrite or archive it.
       source: "manual",
+      // A product nothing has assessed is not yet intelligible to the engine.
+      // Set explicitly rather than left to the column default so the intent is
+      // visible at the point of creation.
+      intelligenceStatus: "pending",
+      // Never recommendable on creation. Eligibility is decided after
+      // extraction, against the engine's own requirements — a product cannot
+      // be advertised as suitable for anyone before anything has established
+      // what it is.
+      isRecommendable: false,
       createdById: session.user.id,
     },
   })
 
+  // Extraction runs after the product is committed, never inside the same
+  // write. A model call that fails must leave a saved product with a recorded
+  // reason and a retry available, not roll the product back.
+  //
+  // There is no background job queue in this application, so this runs inline
+  // and the caller waits for one model call. That is a real limitation, stated
+  // rather than disguised behind a promise nothing keeps.
+  const extraction = await extractProductIntelligence(product.id)
+
+  if (extraction.ok) {
+    await applyEligibility(product.id)
+  }
+
   revalidatePath("/admin")
   revalidatePath("/admin/products")
   revalidateCatalogContext()
-  return product
+
+  return { product, extraction }
+}
+
+/**
+ * Sets `isRecommendable` from what the data now supports.
+ *
+ * Eligibility is a statement about the product's intelligence; `isRecommendable`
+ * is the switch the engine reads. Deriving one from the other here means a
+ * newly created product becomes recommendable exactly when it earns it, rather
+ * than by default.
+ *
+ * Only ever applied on creation and on an explicit retry. It does not run over
+ * the existing catalogue, because an administrator who deliberately withdrew a
+ * product should not find it silently reinstated by an extraction.
+ */
+async function applyEligibility(productId: string): Promise<void> {
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    select: {
+      isActive: true,
+      intelligenceStatus: true,
+      intelligenceStale: true,
+      completenessScore: true,
+      primaryClassification: true,
+      targetConcerns: true,
+    },
+  })
+  if (!product) return
+
+  const { eligible } = evaluateEligibility(product)
+
+  await prisma.product.update({
+    where: { id: productId },
+    data: { isRecommendable: eligible },
+  })
+}
+
+/**
+ * Runs extraction again for one product, at an administrator's request.
+ *
+ * Distinct from the automatic pass: `force` bypasses the in-flight guard,
+ * because an explicit retry is somebody saying the previous attempt is not
+ * coming back.
+ */
+export async function retryProductExtractionAction(productId: string) {
+  await requireAdmin()
+
+  const extraction = await extractProductIntelligence(productId, { force: true })
+  if (extraction.ok) {
+    await applyEligibility(productId)
+  }
+
+  revalidatePath("/admin/products")
+  revalidateCatalogContext()
+
+  return extraction
 }
 
 export async function updateProductAction(id: string, input: unknown) {

@@ -556,6 +556,16 @@ model Product {
   /// Set when the source changed in a way that could alter the intelligence.
   /// Cleared by a successful extraction.
   intelligenceStale Boolean       @default(false)
+  /// Where this product is in the extraction lifecycle.
+  ///
+  /// Deliberately a separate axis from verificationStatus. Extraction is what
+  /// the system derived; verification is whether a person has checked it. A
+  /// product can be fully extracted and unverified, and conflating the two
+  /// would make an automated pass look like human sign-off.
+  intelligenceStatus ProductIntelligenceStatus @default(pending)
+  /// Why the last extraction failed. Never carries credentials or prompts.
+  intelligenceError  String?
+  intelligenceExtractedAt DateTime?
 
   sku               String
   name              String
@@ -662,6 +672,7 @@ model Product {
   @@index([isActive])
   @@index([organizationId])
   @@index([organizationId, isActive, isRecommendable])
+  @@index([intelligenceStatus])
   @@index([primaryClassification])
   @@index([routineCategory])
   @@map("product")
@@ -1725,4 +1736,25 @@ model ProductSyncRun {
   @@index([startedAt])
   @@index([status])
   @@map("product_sync_run")
+}
+
+/// Where a product is in the intelligence extraction lifecycle.
+///
+/// Separate from DataConfidence, which records whether a person has checked the
+/// result. These are different questions — "has the system derived this yet"
+/// and "has anybody confirmed it" — and a single field answering both would
+/// make an automated extraction indistinguishable from human sign-off.
+enum ProductIntelligenceStatus {
+  /// Never extracted, or the source has changed since it was.
+  pending
+  /// An extraction is running. Set before the model call and cleared after, so
+  /// a second automatic extraction cannot start for the same product.
+  extracting
+  /// Extracted, and complete enough for the engine to reason about.
+  extracted
+  /// Extracted, but too little was established for the engine to rely on it.
+  /// The product stays saved and listed; it is simply not yet recommendable.
+  needs_review
+  /// The extraction itself failed. The product is unaffected and can be retried.
+  failed
 }

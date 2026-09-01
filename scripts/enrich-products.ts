@@ -53,8 +53,7 @@ async function main() {
       }
       console.log(
         `  ✓ ${o.slug}: ${o.completenessBefore}% → ${o.completenessAfter}%` +
-          ` [${o.classification ?? "unclassified"}/${o.routineCategory ?? "unplaced"}]` +
-          ` ${o.keyIngredientsFound} ingredients named`,
+          ` [${o.classification ?? "unclassified"}] ${o.status}`,
       )
     },
   })

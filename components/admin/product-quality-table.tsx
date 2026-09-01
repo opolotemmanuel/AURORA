@@ -1,8 +1,10 @@
 "use client"
 
-import { Fragment, useMemo, useState } from "react"
-import { IconAlertTriangle, IconCircleCheck, IconClock } from "@tabler/icons-react"
+import { Fragment, useMemo, useState, useTransition } from "react"
+import { useRouter } from "next/navigation"
+import { IconAlertTriangle, IconCircleCheck, IconClock, IconRefresh } from "@tabler/icons-react"
 
+import { retryProductExtractionAction } from "@/lib/products/actions"
 import type { ProductQualityRow } from "@/lib/products/catalogue-health"
 import { CONFIDENT_RECOMMENDATION_THRESHOLD } from "@/lib/products/completeness"
 import { Badge } from "@/components/ui/badge"
@@ -97,31 +99,45 @@ function Cell({ values }: { values: string[] }) {
   )
 }
 
-function VerificationBadge({ row }: { row: ProductQualityRow }) {
-  if (row.intelligenceStale) {
+/**
+ * Where this product is in the extraction lifecycle.
+ *
+ * Extraction status and human verification are different questions and are
+ * shown as such. A product can be fully extracted and unverified; collapsing
+ * the two would make an automated pass look like somebody signed it off.
+ */
+function IntelligenceBadge({ row }: { row: ProductQualityRow }) {
+  if (row.intelligenceStatus === "failed") {
     return (
-      <Badge variant="outline" className="gap-1 text-[0.65rem]">
-        <IconClock className="size-3" aria-hidden /> Stale
+      <Badge variant="outline" className="gap-1 border-destructive/40 text-[0.65rem] text-destructive">
+        <IconAlertTriangle className="size-3" aria-hidden /> Failed
       </Badge>
     )
   }
-  if (row.verificationStatus === "confirmed") {
+  if (row.intelligenceStatus === "extracting") {
     return (
-      <Badge variant="outline" className="gap-1 border-primary/40 text-[0.65rem] text-primary">
-        <IconCircleCheck className="size-3" aria-hidden /> Verified
+      <Badge variant="outline" className="gap-1 text-[0.65rem]">
+        <IconClock className="size-3" aria-hidden /> Extracting
       </Badge>
     )
   }
-  if (row.primaryClassification === null) {
+  if (row.intelligenceStale || row.intelligenceStatus === "pending") {
     return (
       <Badge variant="outline" className="gap-1 text-[0.65rem]">
-        <IconAlertTriangle className="size-3" aria-hidden /> Not extracted
+        <IconClock className="size-3" aria-hidden /> Pending
+      </Badge>
+    )
+  }
+  if (row.intelligenceStatus === "needs_review") {
+    return (
+      <Badge variant="outline" className="gap-1 text-[0.65rem]">
+        <IconAlertTriangle className="size-3" aria-hidden /> Needs review
       </Badge>
     )
   }
   return (
-    <Badge variant="outline" className="text-[0.65rem]">
-      Imported
+    <Badge variant="outline" className="gap-1 border-primary/40 text-[0.65rem] text-primary">
+      <IconCircleCheck className="size-3" aria-hidden /> Extracted
     </Badge>
   )
 }
@@ -132,8 +148,26 @@ type ProductQualityTableProps = {
 }
 
 export function ProductQualityTable({ rows, onOpen }: ProductQualityTableProps) {
+  const router = useRouter()
   const [filter, setFilter] = useState<QualityFilter>("all")
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [retrying, setRetrying] = useState<string | null>(null)
+  const [, startTransition] = useTransition()
+
+  // An explicit retry, distinct from the automatic pass that runs on creation:
+  // it forces past the in-flight guard, because somebody asking for it is
+  // saying the previous attempt is not coming back.
+  function retry(productId: string) {
+    setRetrying(productId)
+    startTransition(async () => {
+      try {
+        await retryProductExtractionAction(productId)
+        router.refresh()
+      } finally {
+        setRetrying(null)
+      }
+    })
+  }
 
   const counts = useMemo(() => {
     const result = {} as Record<QualityFilter, number>
@@ -183,7 +217,7 @@ export function ProductQualityTable({ rows, onOpen }: ProductQualityTableProps) 
               <th className="px-3 py-2 font-medium">Climate</th>
               <th className="px-3 py-2 font-medium">Routine</th>
               <th className="px-3 py-2 font-medium">Data quality</th>
-              <th className="px-3 py-2 font-medium">Verification</th>
+              <th className="px-3 py-2 font-medium">Intelligence</th>
               <th className="px-3 py-2 font-medium">Status</th>
             </tr>
           </thead>
@@ -234,7 +268,7 @@ export function ProductQualityTable({ rows, onOpen }: ProductQualityTableProps) 
                     )}
                   </td>
                   <td className="px-3 py-2"><QualityBar score={row.completenessScore} /></td>
-                  <td className="px-3 py-2"><VerificationBadge row={row} /></td>
+                  <td className="px-3 py-2"><IntelligenceBadge row={row} /></td>
                   <td className="px-3 py-2">
                     <span
                       className={cn(
@@ -279,18 +313,60 @@ export function ProductQualityTable({ rows, onOpen }: ProductQualityTableProps) 
                               Source text changed since this was extracted.
                             </p>
                           ) : null}
+                          {row.intelligenceError ? (
+                            <p className="text-xs text-destructive">
+                              Extraction failed: {row.intelligenceError}
+                            </p>
+                          ) : null}
                         </div>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            onOpen(row.id)
-                          }}
-                        >
-                          Edit intelligence
-                        </Button>
+
+                        <div className="space-y-1">
+                          <p className="text-[0.7rem] font-medium tracking-wide text-muted-foreground uppercase">
+                            Recommendation eligibility
+                          </p>
+                          {row.eligibilityReasons.length === 0 ? (
+                            <p className="text-xs text-foreground">
+                              The engine may select this product.
+                            </p>
+                          ) : (
+                            <ul className="text-xs text-muted-foreground">
+                              {row.eligibilityReasons.map((reason) => (
+                                <li key={reason}>· {reason}</li>
+                              ))}
+                            </ul>
+                          )}
+                          {!row.isRecommendable && row.eligibilityReasons.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">
+                              Withdrawn from advice by an administrator.
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={retrying === row.id}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              retry(row.id)
+                            }}
+                          >
+                            <IconRefresh className="size-3.5" aria-hidden />
+                            {retrying === row.id ? "Extracting…" : "Retry extraction"}
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              onOpen(row.id)
+                            }}
+                          >
+                            Edit intelligence
+                          </Button>
+                        </div>
                       </div>
                     </td>
                   </tr>

@@ -1,5 +1,6 @@
 import type {
   DataConfidence,
+  ProductIntelligenceStatus,
   ProductAvailability,
   ProductSource,
   ProductSyncStatus,
@@ -12,6 +13,7 @@ import {
   assessCompleteness,
   CONFIDENT_RECOMMENDATION_THRESHOLD,
 } from "@/lib/products/completeness"
+import { evaluateEligibility } from "@/lib/products/intelligence/eligibility"
 
 /**
  * What the administrator needs to see about the catalogue, from real records.
@@ -50,6 +52,10 @@ export type ProductQualityRow = {
   verificationStatus: DataConfidence
   classificationConfidence: DataConfidence
   intelligenceStale: boolean
+  intelligenceStatus: ProductIntelligenceStatus
+  intelligenceError: string | null
+  /** Why the engine may not select this product. Empty when it may. */
+  eligibilityReasons: string[]
   isActive: boolean
   isRecommendable: boolean
   availability: ProductAvailability
@@ -140,6 +146,16 @@ function toQualityRow(
     verificationStatus: product.verificationStatus,
     classificationConfidence: product.classificationConfidence,
     intelligenceStale: product.intelligenceStale,
+    intelligenceStatus: product.intelligenceStatus,
+    intelligenceError: product.intelligenceError,
+    eligibilityReasons: evaluateEligibility({
+      isActive: product.isActive,
+      intelligenceStatus: product.intelligenceStatus,
+      intelligenceStale: product.intelligenceStale,
+      completenessScore: score,
+      primaryClassification: product.primaryClassification,
+      targetConcerns: product.targetConcerns,
+    }).reasons,
     isActive: product.isActive,
     isRecommendable: product.isRecommendable,
     availability: product.availability,
@@ -173,6 +189,8 @@ function fetchProducts() {
       verificationStatus: true,
       classificationConfidence: true,
       intelligenceStale: true,
+      intelligenceStatus: true,
+      intelligenceError: true,
       isActive: true,
       isRecommendable: true,
       availability: true,

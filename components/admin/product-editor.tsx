@@ -237,6 +237,32 @@ export function ProductEditorForm({
     product ? mapProductToForm(product) : EMPTY_FORM,
   )
   const isEditing = Boolean(product)
+/**
+ * What to tell the administrator after a product is created.
+ *
+ * Extraction succeeding is not the same as the product being usable, and the
+ * message says which happened. "Needs review" is an honest outcome, not an
+ * error: the extraction ran and found too little in the product's own
+ * description for the engine to rely on.
+ */
+function describeCreation(
+  extraction: Awaited<ReturnType<typeof createProductAction>>["extraction"],
+): string {
+  if (!extraction.ok) {
+    if (extraction.status === "failed") {
+      return "Product saved, but intelligence extraction failed. It can be retried from the catalogue."
+    }
+    return `Product saved. Extraction skipped: ${extraction.reason}`
+  }
+
+  if (extraction.status === "extracted") {
+    return `Product saved and intelligence extracted (${extraction.completenessScore}% complete). It is now recommendable.`
+  }
+
+  return `Product saved and intelligence extracted (${extraction.completenessScore}% complete), but it needs review before the engine can use it. Missing: ${extraction.missing.join(", ")}`
+}
+
+
   const ingredientPreview = parseInciList(form.ingredients ?? "")
   const previewStoreUrl =
     isEditing && product
@@ -257,8 +283,11 @@ export function ProductEditorForm({
               await updateProductAction(product.id, form)
               setMessage("Product updated.")
             } else {
-              await createProductAction(form)
-              setMessage("Product created.")
+              // Creation runs the extraction server-side and returns its
+              // outcome, so the administrator learns in one step whether the
+              // product is usable rather than having to go looking.
+              const { extraction } = await createProductAction(form)
+              setMessage(describeCreation(extraction))
               setForm(EMPTY_FORM)
             }
             onSaved()

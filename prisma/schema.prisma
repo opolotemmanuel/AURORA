@@ -1766,3 +1766,89 @@ enum ProductIntelligenceStatus {
   /// The extraction itself failed. The product is unaffected and can be retried.
   failed
 }
+
+// ─── product intelligence jobs ──────────────────────────────────────────────
+
+/// What a queued unit of product work does.
+enum ProductJobKind {
+  /// Extract one product's intelligence through the shared service.
+  intelligence_extraction
+  /// Reconcile the catalogue against its source. Reserved for the WooCommerce
+  /// sync, which is structurally ready and dormant until credentials exist.
+  catalogue_sync
+}
+
+enum ProductJobStatus {
+  queued
+  running
+  succeeded
+  failed
+  cancelled
+}
+
+/// One durable unit of product-intelligence work.
+///
+/// The queue exists because the application runs on serverless functions and
+/// has no long-lived worker process. Bulk extraction previously ran from the
+/// browser, one request per product, which meant closing the tab abandoned
+/// whatever was left. A row here survives the tab, the request, the deploy and
+/// the process — the work is a record in Postgres, and anything that can reach
+/// the database can pick it up.
+///
+/// Reference ids are plain columns without foreign keys, following AiUsage: a
+/// job is a record of work that was requested, and it should outlive the
+/// deletion of the product or the person who asked for it.
+model ProductJob {
+  id     String           @id @default(cuid())
+  kind   ProductJobKind
+  status ProductJobStatus @default(queued)
+
+  /// The product this job acts on. Null for catalogue-wide work.
+  productId String?
+  /// The tenant whose catalogue this belongs to. Null is Aurora's own.
+  ///
+  /// Recorded at enqueue from the caller's resolved scope, never from a
+  /// payload, so a job cannot be created against a catalogue the requester
+  /// could not otherwise reach.
+  organizationId String?
+  /// Groups the jobs of one bulk run so it can be reported as a single thing.
+  batchId String?
+
+  attempts    Int @default(0)
+  maxAttempts Int @default(3)
+
+  /// Not eligible to run before this. Carries both retry backoff and the
+  /// deferral applied when the provider's daily allowance is exhausted.
+  runAfter DateTime @default(now())
+
+  /// Lease held by whichever drain claimed this job.
+  ///
+  /// A serverless function can be killed mid-job, leaving a row `running`
+  /// forever. The lease timestamp is what lets a later drain tell a job that is
+  /// genuinely in flight from one whose worker died.
+  lockedAt DateTime?
+  lockedBy String?
+
+  startedAt  DateTime?
+  finishedAt DateTime?
+
+  /// Why the last attempt failed. Never carries credentials or prompts.
+  error  String?
+  result Json?
+
+  /// Whether this run should bypass the "already extracted" guard. Set when an
+  /// administrator explicitly asked, not when work was scheduled automatically.
+  force Boolean @default(false)
+
+  requestedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// The claim query orders by this pair, so it is the index that matters.
+  @@index([status, runAfter])
+  @@index([batchId])
+  @@index([organizationId])
+  @@index([productId])
+  @@map("product_job")
+}

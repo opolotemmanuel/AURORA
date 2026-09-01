@@ -28,12 +28,16 @@ import { parseInciList } from "@/lib/products/parse-inci"
  * nothing to express a preference between — this is extraction, not
  * recommendation, and the two are different responsibilities.
  *
- * There is no background job queue in this application. This runs inline on the
- * server, in whichever action calls it, and the caller waits. That is a real
- * limitation and is stated rather than disguised: a product creation blocks for
- * the length of one model call. What it never does is take the product down
- * with it — persistence and extraction are separate steps, and a failure here
- * leaves a saved product with a recorded reason and a retry available.
+ * This runs inline, in whichever caller invokes it, and that caller waits. Two
+ * kinds of caller do: creating a product, where blocking for one model call is
+ * the point — the administrator learns immediately whether the product is
+ * usable — and the queue drain, where the wait is the worker's rather than
+ * anybody's. Bulk work goes through the queue precisely so nothing has to sit
+ * in a browser waiting for it; see lib/products/jobs.
+ *
+ * What it never does is take the product down with it. Persistence and
+ * extraction are separate steps, and a failure here leaves a saved product with
+ * a recorded reason and a retry available.
  */
 
 /** The fields an extraction writes, and therefore may claim as its own. */
@@ -50,6 +54,22 @@ const EXTRACTED_FIELDS: readonly ProvenanceField[] = [
   "ingredientList",
   "targetConcerns",
 ]
+
+/**
+ * How long an in-flight claim is believed.
+ *
+ * A process killed between claiming a product and finishing leaves it reading
+ * `extracting` forever, and the guard below would then skip it on every future
+ * attempt — a single terminated function would strand one product permanently.
+ * Past this window the claim is treated as abandoned rather than active. Longer
+ * than any single extraction takes, so a genuinely running one is never
+ * interrupted.
+ */
+const CLAIM_BELIEVED_FOR_MS = 10 * 60 * 1000
+
+function isRecentlyClaimed(updatedAt: Date): boolean {
+  return Date.now() - updatedAt.getTime() < CLAIM_BELIEVED_FOR_MS
+}
 
 export const DEFAULT_EXTRACTION_MODEL = "gemini-2.5-flash"
 
@@ -97,6 +117,7 @@ export async function extractProductIntelligence(
       priceCents: true,
       intelligenceStatus: true,
       intelligenceProvenance: true,
+      updatedAt: true,
     },
   })
 
@@ -104,7 +125,11 @@ export async function extractProductIntelligence(
     return { ok: false, status: "skipped", reason: "Product not found" }
   }
 
-  if (product.intelligenceStatus === "extracting" && !options.force) {
+  if (
+    product.intelligenceStatus === "extracting" &&
+    !options.force &&
+    isRecentlyClaimed(product.updatedAt)
+  ) {
     return {
       ok: false,
       status: "skipped",

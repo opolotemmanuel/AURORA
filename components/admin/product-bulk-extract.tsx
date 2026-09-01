@@ -1,59 +1,32 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { IconPlayerPlay, IconX } from "@tabler/icons-react"
 
 import {
-  bulkExtractOneAction,
-  type BulkExtractOutcome,
-} from "@/lib/products/intelligence/bulk-actions"
+  cancelJobBatchAction,
+  getJobBatchProgressAction,
+  queueProductExtractionAction,
+  type JobBatchProgress,
+} from "@/lib/products/jobs/actions"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 
 /**
- * Runs extraction across a selection, one product at a time.
+ * Queues extraction for a selection and reports on it.
  *
- * Sequential by construction rather than by a rate limiter alone: the next
- * product is only requested once the previous one has come back, so a bulk run
- * can never open more provider requests than there are administrators clicking.
- * The pause between them keeps a long run inside the per-minute allowance.
+ * This component no longer performs the work. It used to loop through the
+ * selection calling the server once per product, which meant closing the tab
+ * abandoned whatever was left — the run existed only as long as the page did.
+ * Now it enqueues durable jobs and polls; the drain happens server-side on a
+ * schedule and finishes with or without anybody watching.
  *
- * Stopping on quota exhaustion is the point of the whole component. The
- * remaining products are left in whatever state they were already in and
- * reported as not processed — never as failed, which would blame each row for
- * an account-level limit.
+ * Leaving this page is therefore safe, and the copy says so rather than warning
+ * against it.
  */
 
-/** Just inside the provider's five-per-minute allowance. */
-const PACE_MS = 13_000
-
-type RunState = {
-  total: number
-  done: number
-  running: string | null
-  outcomes: Map<string, BulkExtractOutcome>
-  stoppedByQuota: boolean
-  cancelled: boolean
-}
-
-function outcomeLabel(outcome: BulkExtractOutcome): { text: string; tone: string } {
-  switch (outcome.kind) {
-    case "extracted":
-      return { text: `Extracted ${outcome.completenessScore}%`, tone: "text-primary" }
-    case "needs_review":
-      return {
-        text: `Needs review ${outcome.completenessScore}%`,
-        tone: "text-amber-600",
-      }
-    case "skipped":
-      return { text: `Skipped — ${outcome.reason}`, tone: "text-muted-foreground" }
-    case "failed":
-      return { text: "Failed", tone: "text-destructive" }
-    case "quota_exhausted":
-      return { text: "Not processed — quota", tone: "text-muted-foreground" }
-  }
-}
+/** Often enough to feel live, rarely enough to be unnoticeable on the server. */
+const POLL_MS = 4000
 
 type ProductBulkExtractProps = {
   selected: Array<{ id: string; name: string }>
@@ -62,67 +35,85 @@ type ProductBulkExtractProps = {
 
 export function ProductBulkExtract({ selected, onClear }: ProductBulkExtractProps) {
   const router = useRouter()
-  const [state, setState] = useState<RunState | null>(null)
-  // A ref rather than state: the running loop reads it between products, and a
-  // state value captured at the start of the run would never see the change.
-  const cancelRef = useRef(false)
+  const [batchId, setBatchId] = useState<string | null>(null)
+  const [progress, setProgress] = useState<JobBatchProgress | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const refreshedRef = useRef(false)
 
-  async function run() {
-    cancelRef.current = false
-    const outcomes = new Map<string, BulkExtractOutcome>()
+  const poll = useCallback(async (id: string) => {
+    const next = await getJobBatchProgressAction(id)
+    setProgress(next)
+    return next
+  }, [])
 
-    setState({
-      total: selected.length,
-      done: 0,
-      running: null,
-      outcomes,
-      stoppedByQuota: false,
-      cancelled: false,
-    })
+  useEffect(() => {
+    if (!batchId) return
 
-    for (const [index, product] of selected.entries()) {
-      if (cancelRef.current) {
-        setState((current) => (current ? { ...current, cancelled: true, running: null } : current))
-        break
-      }
+    let active = true
+    refreshedRef.current = false
 
-      setState((current) => (current ? { ...current, running: product.id } : current))
+    const tick = async () => {
+      if (!active) return
+      const next = await poll(batchId).catch(() => null)
 
-      // Explicitly forced. The administrator picked these products, which is a
-      // different intent from the automatic pass that only takes what is due.
-      const result = await bulkExtractOneAction(product.id, { force: true })
-      outcomes.set(product.id, result.outcome)
-
-      if (result.outcome.kind === "quota_exhausted") {
-        setState((current) =>
-          current
-            ? {
-                ...current,
-                running: null,
-                stoppedByQuota: true,
-                outcomes: new Map(outcomes),
-              }
-            : current,
-        )
+      // Refresh the catalogue once the batch settles, so the table reflects
+      // what the queue actually did. Guarded so a finished batch left on screen
+      // does not refresh on every subsequent tick.
+      if (next?.finished && !refreshedRef.current) {
+        refreshedRef.current = true
         router.refresh()
-        return
-      }
-
-      setState((current) =>
-        current
-          ? { ...current, done: index + 1, running: null, outcomes: new Map(outcomes) }
-          : current,
-      )
-
-      if (index < selected.length - 1 && !cancelRef.current) {
-        await new Promise((resolve) => setTimeout(resolve, PACE_MS))
       }
     }
 
+    void tick()
+    const timer = setInterval(tick, POLL_MS)
+
+    return () => {
+      active = false
+      clearInterval(timer)
+    }
+  }, [batchId, poll, router])
+
+  async function queue() {
+    setBusy(true)
+    setNotice(null)
+    try {
+      const result = await queueProductExtractionAction({
+        productIds: selected.map((product) => product.id),
+        // Explicitly forced: the administrator picked these products, which is
+        // a different intent from the scheduled pass that takes only what is due.
+        force: true,
+      })
+
+      setBatchId(result.batchId)
+      setNotice(
+        [
+          `${result.queued} queued.`,
+          result.alreadyQueued > 0
+            ? `${result.alreadyQueued} already had work outstanding.`
+            : null,
+          result.skipped > 0 ? `${result.skipped} could not be found.` : null,
+        ]
+          .filter(Boolean)
+          .join(" "),
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function cancel() {
+    if (!batchId) return
+    const cancelled = await cancelJobBatchAction(batchId)
+    setNotice(`${cancelled} outstanding job(s) cancelled.`)
+    await poll(batchId)
     router.refresh()
   }
 
-  const busy = state !== null && state.running !== null
+  const done = progress
+    ? progress.byStatus.succeeded + progress.byStatus.failed + progress.byStatus.cancelled
+    : 0
 
   return (
     <div className="space-y-3 rounded-sm border border-border bg-muted/20 p-3">
@@ -132,75 +123,72 @@ export function ProductBulkExtract({ selected, onClear }: ProductBulkExtractProp
             {selected.length} product{selected.length === 1 ? "" : "s"} selected
           </p>
           <p className="text-xs text-muted-foreground">
-            Extraction runs one product at a time, about {PACE_MS / 1000}s apart, to
-            stay inside the provider allowance. Closing this page stops the run —
-            products already finished keep their result.
+            Extraction runs on the server, paced inside the provider allowance.
+            You can leave this page — the work continues without it.
           </p>
         </div>
         <div className="flex gap-2">
-          <Button type="button" size="sm" onClick={run} disabled={busy || selected.length === 0}>
+          <Button
+            type="button"
+            size="sm"
+            onClick={queue}
+            disabled={busy || selected.length === 0}
+          >
             <IconPlayerPlay className="size-3.5" aria-hidden />
-            {busy ? "Extracting…" : "Extract intelligence"}
+            {busy ? "Queueing…" : "Queue extraction"}
           </Button>
           <Button
             type="button"
             size="sm"
             variant="outline"
             onClick={() => {
-              cancelRef.current = true
               onClear()
-              setState(null)
+              setBatchId(null)
+              setProgress(null)
+              setNotice(null)
             }}
           >
             <IconX className="size-3.5" aria-hidden />
-            {busy ? "Stop" : "Clear"}
+            Clear
           </Button>
         </div>
       </div>
 
-      {state ? (
+      {notice ? <p className="text-xs text-muted-foreground">{notice}</p> : null}
+
+      {progress ? (
         <div className="space-y-2">
           <p className="text-xs text-muted-foreground tabular-nums">
-            {state.done} of {state.total} processed
+            {done} of {progress.total} processed
+            {progress.byStatus.running > 0 ? " · 1 running" : ""}
+            {progress.byStatus.queued > 0 ? ` · ${progress.byStatus.queued} queued` : ""}
+            {progress.byStatus.failed > 0 ? ` · ${progress.byStatus.failed} failed` : ""}
           </p>
 
-          {state.stoppedByQuota ? (
+          {progress.waitingForQuota ? (
             <p className="rounded-sm border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
-              Provider quota reached. Remaining products were not processed and keep
-              their previous state — you can run this again later.
+              Provider quota reached. The remaining products stay queued and will
+              be picked up automatically once the allowance resets — nothing was
+              marked failed.
             </p>
           ) : null}
 
-          {state.cancelled ? (
+          {progress.finished ? (
             <p className="text-xs text-muted-foreground">
-              Stopped. Products already processed keep their result.
+              Batch complete. {progress.byStatus.succeeded} succeeded
+              {progress.byStatus.failed > 0
+                ? `, ${progress.byStatus.failed} failed`
+                : ""}
+              {progress.byStatus.cancelled > 0
+                ? `, ${progress.byStatus.cancelled} cancelled`
+                : ""}
+              .
             </p>
-          ) : null}
-
-          <ul className="max-h-48 space-y-1 overflow-y-auto">
-            {selected.map((product) => {
-              const outcome = state.outcomes.get(product.id)
-              const isRunning = state.running === product.id
-              const label = outcome ? outcomeLabel(outcome) : null
-
-              return (
-                <li
-                  key={product.id}
-                  className="flex items-center justify-between gap-3 text-xs"
-                >
-                  <span className="truncate text-foreground">{product.name}</span>
-                  <span
-                    className={cn(
-                      "shrink-0",
-                      isRunning ? "text-foreground" : (label?.tone ?? "text-muted-foreground/60"),
-                    )}
-                  >
-                    {isRunning ? "Extracting…" : (label?.text ?? "Pending")}
-                  </span>
-                </li>
-              )
-            })}
-          </ul>
+          ) : (
+            <Button type="button" size="sm" variant="ghost" onClick={cancel}>
+              Cancel remaining
+            </Button>
+          )}
         </div>
       ) : null}
     </div>

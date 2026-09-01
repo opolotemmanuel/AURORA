@@ -169,8 +169,12 @@ describe("extraction never takes the product with it", () => {
 describe("extraction is idempotent", () => {
   it("an extraction already in flight is skipped rather than repeated", () => {
     // A refreshed page or a double-submitted form must not start a second
-    // model call for the same product.
-    assert.match(extractService, /intelligenceStatus === "extracting" && !options\.force/)
+    // model call for the same product. Asserted as three separate conditions
+    // rather than one literal line, because the guard also has to bound how
+    // long a claim is believed — see the abandoned-claim test in
+    // lib/products/jobs/queue.test.ts.
+    assert.match(extractService, /intelligenceStatus === "extracting"/)
+    assert.match(extractService, /!options\.force/)
     assert.match(extractService, /status: "skipped"/)
   })
 
